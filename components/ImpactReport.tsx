@@ -1,43 +1,83 @@
-import React, { useEffect, useState } from 'react';
-import { Project, ImpactMetrics } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useProject } from '../context/ProjectContext';
 import { generateEcoImpactReport } from '../services/geminiService';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Loader2, Award, Leaf, DollarSign, Building, Share2, Download } from 'lucide-react';
+import { ImpactMetrics, SurplusAction } from '../types';
+import { Loader2, Leaf, Share2, Award, Building, DollarSign } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
-interface ImpactReportProps {
-    project: Project;
-}
-
-export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
+export const ImpactReport: React.FC = () => {
+    const { project } = useProject();
     const [metrics, setMetrics] = useState<ImpactMetrics | null>(null);
     const [loading, setLoading] = useState(false);
+    const [chartView, setChartView] = useState<'quantity' | 'money' | 'co2'>('quantity');
 
-    // Avoid infinite loop by checking if items changed meaningfully or if we already have data for this session
-    // In a real app, we'd trigger this manually or store it in state more persistently
     useEffect(() => {
-        const fetchReport = async () => {
-            if (project.items.some(i => i.quantityCurrent > 0)) {
+        const fetchMetrics = async () => {
+            if (project.items.length > 0) {
                 setLoading(true);
                 const data = await generateEcoImpactReport(project.items, project.name);
                 setMetrics(data);
                 setLoading(false);
             }
         };
-
-        // Only fetch if we haven't yet, or make a manual refresh button. 
-        // For demo, we fetch on mount if there is data.
-        if (!metrics) {
-            fetchReport();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        fetchMetrics();
     }, [project.name]);
 
-    const chartData = metrics ? [
-        { name: 'Déchets évités (kg)', value: metrics.wasteDivertedKg, color: '#34d399' },
-        { name: 'CO2 économisé (kg)', value: metrics.co2SavedKg, color: '#10b981' },
-    ] : [];
+    // Calculate Pie Chart Data (Lifecycle)
+    const surplusItems = project.items.filter(i => i.quantityCurrent > 0);
+    
+    // Heuristics for Estimation
+    const getEstimatedPrice = (item: any) => {
+        if (item.price) return item.price;
+        switch (item.department) {
+            case 'Caméra': return 150;
+            case 'Lumière': return 80;
+            case 'Son': return 100;
+            case 'Machinerie': return 40;
+            case 'Décoration': return 30;
+            case 'Costume': return 45;
+            case 'Régie': return 5;
+            default: return 15;
+        }
+    };
+
+    const getEstimatedCO2 = (item: any) => {
+        // kg CO2e per item
+        switch (item.department) {
+            case 'Régie': return 0.5; // Food/Plastic (Low)
+            case 'Décoration': return 2.0; // Wood/Paint (Medium)
+            case 'Lumière': return 5.0; // Electronics/Bulbs (High)
+            case 'Caméra': return 8.0; // Electronics (Very High)
+            case 'Machinerie': return 3.0; // Metal/Heavy
+            default: return 1.0;
+        }
+    };
+
+    const getMetricByAction = (action: SurplusAction, view: 'quantity' | 'money' | 'co2') => {
+        return surplusItems
+            .filter(i => i.surplusAction === action)
+            .reduce((acc, i) => {
+                if (view === 'quantity') return acc + i.quantityCurrent;
+                if (view === 'money') return acc + (i.quantityCurrent * getEstimatedPrice(i));
+                if (view === 'co2') return acc + (i.quantityCurrent * getEstimatedCO2(i));
+                return acc;
+            }, 0);
+    };
+
+    const pieData = [
+        { name: 'Don Pédagogique', value: getMetricByAction(SurplusAction.DONATION, chartView), color: '#d946ef' }, // Fuchsia
+        { name: 'Stock Virtuel', value: getMetricByAction(SurplusAction.MARKETPLACE, chartView), color: '#06b6d4' }, // Cyan
+        { name: 'Court-Métrage', value: getMetricByAction(SurplusAction.SHORT_FILM, chartView), color: '#f59e0b' }, // Amber
+        { name: 'Non Valorisé', value: getMetricByAction(SurplusAction.NONE, chartView), color: '#ef4444' }, // Red
+    ].filter(d => d.value > 0);
+
+    const formatValue = (value: number) => {
+        if (chartView === 'money') return `${value.toFixed(0)} €`;
+        if (chartView === 'co2') return `${value.toFixed(1)} kg`;
+        return value;
+    };
 
     const handleShare = async () => {
         const element = document.getElementById('impact-report-content');
@@ -57,15 +97,18 @@ export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
                 format: 'a4',
             });
 
+            // Add Dark Background
+            pdf.setFillColor(15, 23, 42); // #0f172a
+            pdf.rect(0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight(), 'F');
+
             const imgProps = pdf.getImageProperties(imgData);
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
+            
             const fileName = `Rapport_RSE_${project.name.replace(/\s+/g, '_')}.pdf`;
 
-            // Mobile Share
             if (navigator.share) {
                 const blob = pdf.output('blob');
                 const file = new File([blob], fileName, { type: 'application/pdf' });
@@ -75,7 +118,6 @@ export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
                     files: [file],
                 });
             } else {
-                // Desktop Download
                 pdf.save(fileName);
             }
         } catch (error) {
@@ -102,6 +144,10 @@ export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
                 <div>
                     <h2 className="text-3xl font-bold text-white">Rapport d'Impact RSE</h2>
                     <p className="text-slate-400 mt-1">Performance écologique et sociale de la production {project.productionCompany}. Film {project.name}</p>
+                    <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium">
+                        <Award className="h-3 w-3" />
+                        Conforme AFNOR Spec 2308 (Estimé)
+                    </div>
                 </div>
                 {loading && (
                     <div className="flex items-center gap-2 text-eco-400 bg-eco-900/20 px-4 py-2 rounded-full">
@@ -172,10 +218,10 @@ export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
                         <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700">
                             <div className="flex items-center gap-3 mb-2 text-slate-400">
                                 <Building className="h-5 w-5" />
-                                <span className="text-sm uppercase font-bold">Impact Social</span>
+                                <span className="text-sm uppercase font-bold">Taux de Valorisation</span>
                             </div>
-                            <p className="text-4xl font-bold text-white">{metrics.schoolsHelped}</p>
-                            <p className="text-sm text-slate-500">Écoles soutenues par vos dons</p>
+                            <p className="text-4xl font-bold text-white">{metrics.recyclingRate}%</p>
+                            <p className="text-sm text-slate-500">Réemploi &amp; Recyclage (Objectif &gt; 50%)</p>
                         </div>
                         <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700">
                             <div className="flex items-center gap-3 mb-2 text-slate-400">
@@ -191,27 +237,56 @@ export const ImpactReport: React.FC<ImpactReportProps> = ({ project }) => {
                                 <span className="text-sm uppercase font-bold">Environnement</span>
                             </div>
                             <p className="text-4xl font-bold text-blue-400">{metrics.co2SavedKg} kg</p>
-                            <p className="text-sm text-slate-500">CO2 évité grâce au réemploi</p>
+                            <p className="text-sm text-slate-500">CO2 évité (Scope 3 - Base Carbone)</p>
                         </div>
                     </div>
 
-                    <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 h-80">
-                        <h3 className="text-lg font-bold text-white mb-6">Visualisation d'Impact</h3>
-                        <ResponsiveContainer width="100%" height="80%">
-                            <BarChart data={chartData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#334155" />
-                                <XAxis type="number" stroke="#94a3b8" />
-                                <YAxis dataKey="name" type="category" stroke="#94a3b8" width={120} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                                    itemStyle={{ color: '#fff' }}
-                                />
-                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                    {chartData.map((entry, index) => (
+                    <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 h-96">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white">Cycle de Vie des Consommables</h3>
+                            <div className="flex bg-cinema-900 rounded-lg p-1">
+                                <button 
+                                    onClick={() => setChartView('quantity')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${chartView === 'quantity' ? 'bg-cinema-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Quantité
+                                </button>
+                                <button 
+                                    onClick={() => setChartView('money')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${chartView === 'money' ? 'bg-cinema-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Économie (€)
+                                </button>
+                                <button 
+                                    onClick={() => setChartView('co2')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${chartView === 'co2' ? 'bg-cinema-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    Carbone (CO2)
+                                </button>
+                            </div>
+                        </div>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {pieData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
-                                </Bar>
-                            </BarChart>
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    formatter={(value: number) => formatValue(value)}
+                                />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                            </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

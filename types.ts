@@ -59,6 +59,7 @@ export interface ImpactMetrics {
   moneySaved: number;
   co2SavedKg: number;
   schoolsHelped: number;
+  recyclingRate: number; // New field for AFNOR Spec 2308
   sustainabilityScore: number; // 0-100
   aiAnalysis?: string;
 }
