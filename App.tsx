@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sidebar } from './components/Sidebar';
+import Sidebar from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { InventoryManager } from './components/InventoryManager';
 import { CircularEconomy } from './components/CircularEconomy';
@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            
+
             {/* Connection Status (Mobile & Desktop) */}
             <div className="hidden md:flex items-center gap-2 text-xs text-gray-400 bg-cinema-800 px-3 py-1.5 rounded-full border border-cinema-700">
               <div className={`w-2 h-2 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500' : 'bg-red-500'}`} />
