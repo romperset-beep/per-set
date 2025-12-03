@@ -1,29 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  Project, 
-  User, 
-  Notification, 
-  Department, 
-  ExpenseReport, 
-  ExpenseStatus, 
-  BuyBackItem, 
-  SocialPost, 
-  UserProfile, 
+import {
+  Project,
+  User,
+  Notification,
+  Department,
+  ExpenseReport,
+  ExpenseStatus,
+  BuyBackItem,
+  SocialPost,
+  UserProfile,
   Language,
   ConsumableItem,
   ItemStatus,
   SurplusAction
 } from '../types';
-import { TRANSLATIONS } from '../translations';
+
 import { db } from '../services/firebase';
-import { 
-  collection, 
-  doc, 
-  onSnapshot, 
-  updateDoc, 
-  addDoc, 
-  setDoc, 
-  query, 
+import {
+  collection,
+  doc,
+  onSnapshot,
+  updateDoc,
+  addDoc,
+  setDoc,
+  query,
   orderBy,
   arrayUnion
 } from 'firebase/firestore';
@@ -31,7 +31,7 @@ import {
 interface ProjectContextType {
   project: Project;
   setProject: React.Dispatch<React.SetStateAction<Project>>;
-  
+
   // Firestore Actions
   addItem: (item: ConsumableItem) => Promise<void>;
   updateItem: (item: ConsumableItem) => Promise<void>;
@@ -103,8 +103,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
 
   const t = (key: string): string => {
-    // @ts-ignore
-    return TRANSLATIONS[language][key] || key;
+    return key;
   };
 
   // --- Firestore Sync ---
@@ -113,15 +112,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     // Listen to the 'items' subcollection of the project
     // For simplicity in this demo, we use a fixed project ID 'demo-project'
-    const projectId = 'demo-project'; 
+    const projectId = 'demo-project';
     const itemsRef = collection(db, 'projects', projectId, 'items');
-    
+
     const unsubscribe = onSnapshot(itemsRef, (snapshot) => {
       const items: ConsumableItem[] = [];
       snapshot.forEach((doc) => {
         items.push({ id: doc.id, ...doc.data() } as ConsumableItem);
       });
-      
+
       setProject(prev => ({ ...prev, items }));
     }, (error) => {
       console.error("Firestore Error:", error);
@@ -140,9 +139,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const projectId = 'demo-project';
     const itemsRef = collection(db, 'projects', projectId, 'items');
     // Remove id if present to let Firestore generate one
-    const { id, ...itemData } = item; 
+    const { id, ...itemData } = item;
     await addDoc(itemsRef, itemData);
-    
+
     addNotification(
       `Nouvel article ajouté : ${item.name}`,
       'INFO',
