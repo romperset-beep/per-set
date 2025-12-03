@@ -113,7 +113,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 1. Test REST API immediately (Pure HTTP)
     try {
       const projectId = "studio-4995281481-cbcdb";
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/_debug_connection`;
+      // Use the named database 'cinestock-db' instead of '(default)'
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/cinestock-db/documents/_debug_connection`;
       const response = await fetch(url);
 
       if (!response.ok && response.status !== 404) { // 404 is fine (collection might be empty), 403/400 is bad

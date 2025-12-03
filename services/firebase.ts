@@ -16,5 +16,5 @@ const app = initializeApp(firebaseConfig);
 // Enable debug logs to see why it hangs
 setLogLevel('debug');
 
-// Standard init (persistence is disabled by default in some environments, but let's stick to standard)
-export const db = getFirestore(app);
+// Connect to the specific database 'cinestock-db' created by the user
+export const db = getFirestore(app, 'cinestock-db');
