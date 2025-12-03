@@ -112,8 +112,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // 1. Sync Project Items
   useEffect(() => {
     // Listen to the 'items' subcollection of the project
-    // For simplicity in this demo, we use a fixed project ID 'demo-project'
-    const projectId = 'demo-project';
+    // Use dynamic project ID from state (derived from login)
+    const projectId = project.id;
+
+    if (!projectId || projectId === 'default-project') return;
+
     const itemsRef = collection(db, 'projects', projectId, 'items');
 
     const unsubscribe = onSnapshot(itemsRef, (snapshot) => {
@@ -125,19 +128,18 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setProject(prev => ({ ...prev, items }));
     }, (error) => {
       console.error("Firestore Error:", error);
-      // We need to use a timeout or similar because addNotification isn't defined yet in this scope?
-      // Actually addNotification is defined below. We should move it up or use a ref.
-      // For now let's just log. The UI will show empty list which is a hint.
-      // Better: set a state.
-      alert(`Erreur de connexion à la base de données : ${error.message}. Vérifiez vos règles de sécurité Firestore.`);
+      // Only alert if we have a real project ID
+      if (projectId !== 'default-project') {
+        // alert(`Erreur de connexion : ${error.message}`);
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [project.id]);
 
   // Firestore Actions
   const addItem = async (item: ConsumableItem) => {
-    const projectId = 'demo-project';
+    const projectId = project.id;
     const itemsRef = collection(db, 'projects', projectId, 'items');
     // Remove id if present to let Firestore generate one
     const { id, ...itemData } = item;
@@ -152,7 +154,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const updateItem = async (item: ConsumableItem) => {
     if (!item.id) return;
-    const projectId = 'demo-project';
+    const projectId = project.id;
     const itemRef = doc(db, 'projects', projectId, 'items', item.id);
     const { id, ...itemData } = item;
     await updateDoc(itemRef, itemData);
@@ -188,16 +190,41 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }));
   };
 
+  // Helper to generate consistent Project ID
+  const generateProjectId = (prod: string, film: string) => {
+    const combined = `${prod}-${film}`;
+    return combined.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'demo-project';
+  };
+
   useEffect(() => {
     if (user) {
       setCurrentDept(user.department);
-      // We don't overwrite project name from user anymore, we trust Firestore
+      // Update project ID from persisted user data to ensure sync
+      const newProjectId = generateProjectId(user.productionName, user.filmTitle);
+      setProject(prev => ({
+        ...prev,
+        id: newProjectId,
+        name: user.filmTitle,
+        productionCompany: user.productionName
+      }));
     }
   }, [user]);
 
   const login = (userData: User) => {
     setUser(userData);
     localStorage.setItem('cineStockUser', JSON.stringify(userData));
+
+    // Force immediate update of project ID
+    const newProjectId = generateProjectId(userData.productionName, userData.filmTitle);
+    setProject(prev => ({
+      ...prev,
+      id: newProjectId,
+      name: userData.filmTitle,
+      productionCompany: userData.productionName
+    }));
+
     addNotification(`Bienvenue ${userData.name} !`, 'INFO', userData.department);
   };
 

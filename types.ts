@@ -149,3 +149,11 @@ export interface UserProfile {
   idCard?: string;
   drivingLicense?: string;
 }
+
+export interface User {
+  name: string;
+  email: string;
+  department: Department | 'PRODUCTION';
+  productionName: string;
+  filmTitle: string;
+}
