@@ -163,7 +163,9 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <p>User: <span className="text-white">{user?.name} ({user?.department})</span></p>
                     <p>Last Render: <span className="text-white">{new Date().toLocaleTimeString()}</span></p>
                     <p>Source: <span className="text-white">{(window as any).firestoreSource || 'Unknown'}</span></p>
-                    <p>DB Config: <span className="text-white">studio-4995...</span></p>
+                    <p>API Key: <span className={import.meta.env.VITE_FIREBASE_API_KEY ? "text-green-400" : "text-red-500"}>
+                        {import.meta.env.VITE_FIREBASE_API_KEY ? "Chargée ✅" : "MANQUANTE ❌"}
+                    </span></p>
                 </div>
             </div>
         </div>
