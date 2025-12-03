@@ -2,7 +2,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ConsumableItem, ImpactMetrics, SurplusAction } from "../types";
 
 // Initialize Gemini API (New SDK)
-const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+if (!apiKey) {
+  console.warn("VITE_GEMINI_API_KEY is missing. AI features will be disabled.");
+}
 
 export const generateEcoImpactReport = async (items: ConsumableItem[], projectName: string): Promise<ImpactMetrics> => {
   // 1. Pre-calculate deterministic metrics
@@ -19,6 +24,18 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
     .filter(i => i.surplusAction === SurplusAction.DONATION)
     .reduce((acc, i) => acc + i.quantityCurrent, 0);
   const schoolsHelped = Math.ceil(donatedCount / 50);
+
+  if (!genAI) {
+    return {
+      wasteDivertedKg: valorizedWeightKg,
+      moneySaved: surplusItems.reduce((acc, item) => acc + (item.quantityCurrent * 10), 0),
+      co2SavedKg: valorizedWeightKg * 2,
+      schoolsHelped,
+      recyclingRate,
+      sustainabilityScore: recyclingRate,
+      aiAnalysis: "Analyse indisponible (Clé API manquante)."
+    };
+  }
 
   try {
     const prompt = `
@@ -92,6 +109,7 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
 };
 
 export const suggestEcoAlternatives = async (itemName: string): Promise<string> => {
+  if (!genAI) return "Conseil éco non disponible (Clé API manquante).";
   try {
     const response = await genAI.models.generateContent({
       model: "gemini-2.0-flash",
@@ -131,6 +149,7 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
 };
 
 export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<ConsumableItem>[], rawResponse: string }> => {
+  if (!genAI) return { items: [], rawResponse: "API Key Missing" };
   try {
     let contentPart;
     const isText = file.type.includes('text') || file.type.includes('csv') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt');
@@ -176,6 +195,7 @@ export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<Con
 };
 
 export const analyzeReceipt = async (file: File): Promise<{ data: any, rawResponse: string }> => {
+  if (!genAI) return { data: null, rawResponse: "API Key Missing" };
   try {
     const imagePart = await fileToGenerativePart(file);
 
