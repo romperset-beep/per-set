@@ -11,7 +11,7 @@ interface ProjectManagerProps {
 export const ProjectManager: React.FC<ProjectManagerProps> = ({
     setActiveTab,
 }) => {
-    const { project, setProject, currentDept, setCurrentDept, setCircularView, buyBackItems, socialPosts, userProfiles, user, t } = useProject();
+    const { project, setProject, currentDept, setCurrentDept, setCircularView, buyBackItems, socialPosts, userProfiles, user, t, error } = useProject();
 
     // Filter items based on current view (Department vs Production)
     const filteredItems = currentDept === 'PRODUCTION'
@@ -167,6 +167,12 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                         {import.meta.env.VITE_FIREBASE_API_KEY ? "Chargée ✅" : "MANQUANTE ❌"}
                     </span></p>
                 </div>
+                {error && (
+                    <div className="mt-2 p-2 bg-red-950 border border-red-500 rounded">
+                        <p className="font-bold text-red-500">ERREUR FIRESTORE :</p>
+                        <p className="text-white break-all">{error}</p>
+                    </div>
+                )}
             </div>
         </div>
     );

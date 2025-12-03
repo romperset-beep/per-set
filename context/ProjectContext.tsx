@@ -70,6 +70,7 @@ interface ProjectContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  error: string | null;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -101,6 +102,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [buyBackItems, setBuyBackItems] = useState<BuyBackItem[]>([]);
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const t = (key: string): string => {
     // @ts-ignore
@@ -132,13 +134,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log("Data came from " + source);
       // We could expose this to the UI if needed
       (window as any).firestoreSource = source;
+      setError(null); // Clear error on success
 
-    }, (error) => {
-      console.error("Firestore Error:", error);
+    }, (err) => {
+      console.error("Firestore Error:", err);
       // Only alert if we have a real project ID
       if (projectId !== 'default-project') {
         // alert(`Erreur de connexion : ${error.message}`);
       }
+      setError(err.message);
     });
 
     return () => unsubscribe();
@@ -343,7 +347,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       updateUserProfile,
       language,
       setLanguage,
-      t
+      language,
+      setLanguage,
+      t,
+      error
     }}>
       {children}
     </ProjectContext.Provider>
