@@ -78,9 +78,9 @@ const AppContent: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            <button 
+            <button
               onClick={() => setActiveTab('profile')}
-              className="hidden md:flex items-center gap-3 bg-cinema-800 px-3 py-1.5 rounded-full border border-cinema-700 hover:bg-cinema-700 transition-colors cursor-pointer"
+              className="flex items-center gap-3 bg-cinema-800 px-3 py-1.5 rounded-full border border-cinema-700 hover:bg-cinema-700 transition-colors cursor-pointer"
             >
               <div className="bg-eco-500/20 p-1 rounded-full">
                 <UserIcon className="h-4 w-4 text-eco-400" />
