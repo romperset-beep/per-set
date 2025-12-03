@@ -339,8 +339,41 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return n.targetDept === user.department || n.targetDept === undefined;
   });
 
-  const addSocialPost = (post: SocialPost) => {
-    setSocialPosts(prev => [post, ...prev]);
+  // 2. Sync Social Posts
+  useEffect(() => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    const postsRef = collection(db, 'projects', projectId, 'socialPosts');
+    const q = query(postsRef, orderBy('date', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const posts: SocialPost[] = [];
+      snapshot.forEach((doc) => {
+        // Convert Firestore Timestamp to Date
+        const data = doc.data();
+        posts.push({
+          id: doc.id,
+          ...data,
+          date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+        } as SocialPost);
+      });
+      setSocialPosts(posts);
+    });
+
+    return () => unsubscribe();
+  }, [project.id]);
+
+  const addSocialPost = async (post: SocialPost) => {
+    const projectId = project.id;
+    const postsRef = collection(db, 'projects', projectId, 'socialPosts');
+    const { id, ...postData } = post;
+    await addDoc(postsRef, {
+      ...postData,
+      date: new Date() // Ensure server timestamp
+    });
+
+    // Notification is handled by local state for now, or could be synced too
     addNotification(
       `Nouveau message de ${post.authorName} sur le mur social`,
       'INFO',
