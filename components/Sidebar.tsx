@@ -1,133 +1,112 @@
 import React from 'react';
-import {
-  LayoutDashboard,
-  Package,
-  Globe,
-  RefreshCw,
-  FileText,
-  ShoppingBag,
-  MessageSquare,
-  Users,
-  FileBarChart,
-  UserCircle,
+import { 
+  LayoutDashboard, 
+  Package, 
+  ShoppingBag, 
+  Recycle, 
+  FileText, 
+  Settings, 
   LogOut,
-  X
+  Users,
+  MessageSquare,
+  Euro
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  isOpen?: boolean;
-  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen = false, onClose }) => {
-  const { user, logout, t } = useProject();
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+  const { currentDept, logout, unreadCount, user } = useProject();
+  const { t } = useTranslation();
 
-  // Define all possible menu items
-  const allMenuItems = [
-    { id: 'dashboard', label: t('sidebar.dashboard'), icon: LayoutDashboard, allowed: ['ALL'] },
-    { id: 'inventory', label: t('sidebar.inventory'), icon: Package, allowed: ['ALL'] },
-    { id: 'global-stock', label: t('sidebar.globalStock'), icon: Globe, allowed: ['ALL'] },
-    { id: 'circular', label: t('sidebar.circular'), icon: RefreshCw, allowed: ['ALL'] },
-    { id: 'expenses', label: t('sidebar.expenses'), icon: FileText, allowed: ['ALL'] },
-    { id: 'buyback', label: t('sidebar.buyback'), icon: ShoppingBag, allowed: ['ALL'] },
-    { id: 'social', label: t('sidebar.social'), icon: MessageSquare, allowed: ['ALL'] },
-    { id: 'team', label: t('sidebar.team'), icon: Users, allowed: ['ALL'] },
-    { id: 'report', label: t('sidebar.report'), icon: FileBarChart, allowed: ['PRODUCTION', 'Régie'] },
+  const menuItems = [
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'inventory', label: t('nav.inventory'), icon: Package },
+    { id: 'marketplace', label: t('nav.marketplace'), icon: ShoppingBag },
+    { id: 'donations', label: t('nav.donations'), icon: Recycle },
+    { id: 'reports', label: t('nav.reports'), icon: FileText },
+    { id: 'expenses', label: t('nav.expenses'), icon: Euro },
+    { id: 'social', label: t('nav.social'), icon: MessageSquare },
+    { id: 'team', label: t('nav.team'), icon: Users },
+    { id: 'settings', label: t('nav.settings'), icon: Settings },
   ];
 
-  // Filter based on user role
-  const menuItems = allMenuItems.filter(item => {
-    if (item.allowed.includes('ALL')) return true;
-    if (user?.department === 'PRODUCTION' && item.allowed.includes('PRODUCTION')) return true;
-    if (user?.department === 'Régie' && item.allowed.includes('Régie')) return true;
+  // Filter items based on department
+  const filteredItems = menuItems.filter(item => {
+    if (item.id === 'settings') return true;
+    if (item.id === 'social') return true;
+    
+    // Production sees everything
+    if (currentDept === 'PRODUCTION' || currentDept === 'Régie') return true;
+
+    // Departments see limited view
+    if (item.id === 'dashboard') return true;
+    if (item.id === 'inventory') return true;
+    if (item.id === 'marketplace') return true; // Can buy
+    if (item.id === 'donations') return true; // Can see donations
+    if (item.id === 'expenses') return true; // Can submit expenses
+    if (item.id === 'team') return true; // Can see team
+
     return false;
   });
 
   return (
-    <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
-          onClick={onClose}
-        />
-      )}
+    <div className="w-64 bg-slate-900 text-white flex flex-col h-screen relative">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
+          CinéStock Vert
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">{currentDept}</p>
+      </div>
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-cinema-800 border-r border-cinema-700 flex flex-col transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="p-6 flex items-center justify-between border-b border-cinema-700">
-          <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Logo" className="h-14 w-auto object-contain" />
-            <h1 className="text-xl font-bold text-white tracking-tight">CinéStock</h1>
-          </div>
-          <button
-            onClick={onClose}
-            className="md:hidden text-slate-400 hover:text-white"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        {filteredItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className=`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive 
+                  ? 'bg-emerald-600 text-white' 
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`
+            >
+              <Icon size={20} />
+              <span className="font-medium">{item.label}</span>
+              {item.id === 'inventory' && unreadCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
-        <nav className="flex-1 p-4 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
+      <div className="p-4 border-t border-slate-800">
+        <button
+          onClick={logout}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"
+        >
+          <LogOut size={20} />
+          <span className="font-medium">{t('nav.logout')}</span>
+        </button>
+      </div>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  if (onClose) onClose();
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                  ? 'bg-gradient-to-r from-eco-600 to-eco-500 text-white shadow-lg shadow-eco-900/20'
-                  : 'text-slate-400 hover:bg-cinema-700 hover:text-white'
-                  }`}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
-                <span className="font-medium">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-cinema-700">
-          <div className="bg-cinema-800 rounded-lg p-4 text-xs text-slate-400 mb-4">
-            <p className="font-semibold text-slate-200 mb-1">Statut Production</p>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-eco-500 animate-pulse"></span>
-              Tournage en cours
-            </div>
-          </div>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 mb-2 ${activeTab === 'profile'
-                ? 'bg-eco-600 text-white shadow-lg shadow-eco-900/20'
-                : 'text-slate-400 hover:bg-cinema-700 hover:text-white'
-              }`}
-          >
-            <UserCircle className="h-5 w-5" />
-            <span className="font-medium">{t('sidebar.profile')}</span>
-          </button>
-
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="font-medium">{t('sidebar.logout')}</span>
-          </button>
-        </div>
-      </aside>
-    </>
+      {/* Connection Status Indicator */}
+      <div className="absolute bottom-2 right-2 flex items-center gap-2 text-xs text-gray-400">
+        <div className={`w-2 h-2 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500' : 'bg-red-500'}`} />
+        {typeof navigator !== 'undefined' && navigator.onLine ? 'Connecté' : 'Hors ligne'}
+      </div>
+    </div>
   );
 };
+
+export default Sidebar;
