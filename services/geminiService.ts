@@ -1,9 +1,9 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 import { ConsumableItem, ImpactMetrics, SurplusAction } from "../types";
 
-// Initialize Gemini API (New SDK)
+// Initialize Gemini API (Web SDK)
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 if (!apiKey) {
   console.warn("VITE_GEMINI_API_KEY is missing. AI features will be disabled.");
@@ -13,8 +13,8 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
   // 1. Pre-calculate deterministic metrics
   const surplusItems = items.filter(i => i.quantityCurrent > 0);
   const totalWeightKg = surplusItems.reduce((acc, item) => acc + (item.quantityCurrent * 0.5), 0);
-  
-  const valorizedItems = surplusItems.filter(i => 
+
+  const valorizedItems = surplusItems.filter(i =>
     [SurplusAction.DONATION, SurplusAction.MARKETPLACE, SurplusAction.SHORT_FILM].includes(i.surplusAction as SurplusAction)
   );
   const valorizedWeightKg = valorizedItems.reduce((acc, item) => acc + (item.quantityCurrent * 0.5), 0);
@@ -38,17 +38,19 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
   }
 
   try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
     const prompt = `
       Agis en tant qu'expert auditeur RSE spécialisé dans le secteur audiovisuel (AFNOR Spec 2308).
       Analyse l'inventaire de la production "${projectName}".
       
       Données d'inventaire :
       ${JSON.stringify(surplusItems.map(i => ({
-        name: i.name,
-        qty: i.quantityCurrent,
-        action: i.surplusAction,
-        dept: i.department
-      })))}
+      name: i.name,
+      qty: i.quantityCurrent,
+      action: i.surplusAction,
+      dept: i.department
+    })))}
 
       Métriques pré-calculées :
       - Poids total estimé : ${totalWeightKg} kg
@@ -60,33 +62,23 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
       3. Assigne un Score de Durabilité (0-100).
       4. Rédige une analyse professionnelle (aiAnalysis) EN FRANÇAIS. L'analyse DOIT être en français.
 
-      Retourne UNIQUEMENT du JSON.
+      Retourne UNIQUEMENT du JSON respectant ce schéma :
+      {
+        "wasteDivertedKg": number,
+        "moneySaved": number,
+        "co2SavedKg": number,
+        "sustainabilityScore": number,
+        "aiAnalysis": string
+      }
     `;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            wasteDivertedKg: { type: Type.NUMBER },
-            moneySaved: { type: Type.NUMBER },
-            co2SavedKg: { type: Type.NUMBER },
-            sustainabilityScore: { type: Type.NUMBER },
-            aiAnalysis: { type: Type.STRING },
-          },
-          required: ["wasteDivertedKg", "moneySaved", "co2SavedKg", "sustainabilityScore", "aiAnalysis"]
-        }
-      }
-    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    // FIX: Use .text getter instead of .text() method
-    const text = response.text; 
-    if (!text) throw new Error("No response text from Gemini");
-
-    const data = JSON.parse(text);
+    // Clean up markdown code blocks if present
+    const jsonStr = text.replace(/```json\n?|\n?```/g, "").trim();
+    const data = JSON.parse(jsonStr);
 
     return {
       ...data,
@@ -111,31 +103,29 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
 export const suggestEcoAlternatives = async (itemName: string): Promise<string> => {
   if (!genAI) return "Conseil éco non disponible (Clé API manquante).";
   try {
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [{ role: "user", parts: [{ text: `Give me a very short (1 sentence) eco-friendly alternative for: "${itemName}". Answer in French.` }] }],
-    });
-    return response.text || "Pas de suggestion.";
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent(`Give me a very short (1 sentence) eco-friendly alternative for: "${itemName}". Answer in French.`);
+    return result.response.text() || "Pas de suggestion.";
   } catch (e) {
     return "Conseil éco non disponible.";
   }
 };
 
-// Helper to convert File to Base64 for Gemini (New SDK Format)
-const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
+// Helper to convert File to Base64 for Gemini
+const fileToGenerativePart = async (file: File): Promise<Part> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
       const base64Data = base64String.split(',')[1];
-      
+
       let mimeType = file.type;
       if (!mimeType) {
-          if (file.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
-          else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
-          else if (file.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
+        if (file.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
+        else if (file.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
       }
-      
+
       resolve({
         inlineData: {
           data: base64Data,
@@ -151,7 +141,9 @@ const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: s
 export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<ConsumableItem>[], rawResponse: string }> => {
   if (!genAI) return { items: [], rawResponse: "API Key Missing" };
   try {
-    let contentPart;
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    let contentPart: Part;
     const isText = file.type.includes('text') || file.type.includes('csv') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt');
 
     if (isText) {
@@ -173,20 +165,15 @@ export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<Con
       Return ONLY the JSON array.
     `;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        { role: "user", parts: [{ text: prompt }, contentPart as any] }
-      ],
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+    const result = await model.generateContent([prompt, contentPart]);
+    const response = await result.response;
+    const text = response.text();
 
-    const text = response.text;
     if (!text) return { items: [], rawResponse: "No response text" };
 
-    return { items: JSON.parse(text) as Partial<ConsumableItem>[], rawResponse: text };
+    // Clean up markdown code blocks if present
+    const jsonStr = text.replace(/```json\n?|\n?```/g, "").trim();
+    return { items: JSON.parse(jsonStr) as Partial<ConsumableItem>[], rawResponse: text };
 
   } catch (error) {
     console.error("Error analyzing file:", error);
@@ -197,6 +184,7 @@ export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<Con
 export const analyzeReceipt = async (file: File): Promise<{ data: any, rawResponse: string }> => {
   if (!genAI) return { data: null, rawResponse: "API Key Missing" };
   try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const imagePart = await fileToGenerativePart(file);
 
     const prompt = `
@@ -205,20 +193,15 @@ export const analyzeReceipt = async (file: File): Promise<{ data: any, rawRespon
       Return ONLY JSON.
     `;
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        { role: "user", parts: [{ text: prompt }, imagePart as any] }
-      ],
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+    const result = await model.generateContent([prompt, imagePart]);
+    const response = await result.response;
+    const text = response.text();
 
-    const text = response.text;
     if (!text) return { data: null, rawResponse: "No response text" };
 
-    return { data: JSON.parse(text), rawResponse: text };
+    // Clean up markdown code blocks if present
+    const jsonStr = text.replace(/```json\n?|\n?```/g, "").trim();
+    return { data: JSON.parse(jsonStr), rawResponse: text };
 
   } catch (error) {
     console.error("Error analyzing receipt:", error);
