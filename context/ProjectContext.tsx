@@ -506,8 +506,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       updateUserProfile,
       language,
       setLanguage,
-      language,
-      setLanguage,
       t,
       error,
       testConnection,

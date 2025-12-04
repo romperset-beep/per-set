@@ -214,7 +214,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         };
 
         // Use Firestore Action instead of local state
-        await addItem(newItem);
+        if (addItem) {
+            await addItem(newItem);
+        } else {
+            console.error("addItem function is missing from context!");
+            alert("Erreur interne : Impossible d'ajouter l'article (Fonction manquante).");
+            setIsSubmitting(false);
+            return;
+        }
 
         // Notification is now handled inside addItem (or we can keep it here if we remove it from context)
         // For now, let's rely on context's addItem notification to avoid duplicates if we added it there.
