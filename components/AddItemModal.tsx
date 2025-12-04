@@ -189,7 +189,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
     if (!isOpen) return null;
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     const handleAddItem = async () => {
         if (!newItemName) return;
