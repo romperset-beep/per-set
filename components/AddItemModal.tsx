@@ -501,4 +501,3 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         </div>
     );
 };
-```
