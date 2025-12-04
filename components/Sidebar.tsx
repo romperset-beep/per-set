@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { currentDept, logout, unreadCount, user, t } = useProject();
+  const { currentDept, logout, unreadCount, user, t, unreadMarketplaceCount, unreadSocialCount, markMarketplaceAsRead, markSocialAsRead } = useProject();
 
   const menuItems = [
     { id: 'dashboard', label: t('sidebar.dashboard'), icon: LayoutDashboard },
@@ -83,11 +83,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
+            let badgeCount = 0;
+            if (item.id === 'inventory') badgeCount = unreadCount;
+            if (item.id === 'marketplace') badgeCount = unreadMarketplaceCount;
+            if (item.id === 'social') badgeCount = unreadSocialCount;
+
             return (
               <button
                 key={item.id}
                 onClick={() => {
                   setActiveTab(item.id);
+                  if (item.id === 'marketplace') markMarketplaceAsRead();
+                  if (item.id === 'social') markSocialAsRead();
                   if (onClose) onClose();
                 }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
@@ -97,9 +104,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
               >
                 <Icon size={20} />
                 <span className="font-medium">{item.label}</span>
-                {item.id === 'inventory' && unreadCount > 0 && (
+                {badgeCount > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {unreadCount}
+                    {badgeCount}
                   </span>
                 )}
               </button>
