@@ -554,6 +554,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       markMarketplaceAsRead,
 
       // Expense Reports,
+      expenseReports,
       addExpenseReport,
       updateExpenseReportStatus,
       buyBackItems,
