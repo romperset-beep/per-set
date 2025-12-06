@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { generateEcoImpactReport } from '../services/geminiService';
 import { ImpactMetrics, SurplusAction } from '../types';
-import { Loader2, Leaf, Share2, Award, Building, DollarSign } from 'lucide-react';
+import { Loader2, Leaf, Share2, Award, Building, DollarSign, PackageOpen } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -288,6 +288,57 @@ export const ImpactReport: React.FC = () => {
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             </PieChart>
                         </ResponsiveContainer>
+                    </div>
+
+                    {/* Consumed Items Table */}
+                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden col-span-full">
+                        <div className="bg-cinema-700/40 px-6 py-4 border-b border-cinema-700">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <PackageOpen className="h-5 w-5 text-slate-400" />
+                                Articles Entièrement Consommés
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-400">
+                                <thead className="bg-cinema-900 uppercase font-medium border-b border-cinema-700 text-xs">
+                                    <tr>
+                                        <th className="px-6 py-3">Article</th>
+                                        <th className="px-6 py-3">Département</th>
+                                        <th className="px-6 py-3">Quantité Consommée</th>
+                                        <th className="px-6 py-3">Impact CO2 Est.</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-cinema-700">
+                                    {project.items.filter(i => i.quantityCurrent === 0 && i.purchased).length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-8 text-center italic text-slate-500">
+                                                Aucun article entièrement consommé pour le moment.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        project.items
+                                            .filter(i => i.quantityCurrent === 0 && i.purchased)
+                                            .sort((a, b) => a.department.localeCompare(b.department))
+                                            .map(item => (
+                                                <tr key={item.id} className="hover:bg-cinema-700/20 transition-colors">
+                                                    <td className="px-6 py-4 font-medium text-white">{item.name}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="bg-cinema-900 text-slate-300 px-2 py-1 rounded text-xs border border-cinema-600">
+                                                            {item.department}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-300">
+                                                        {item.quantityInitial} {item.unit}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-500">
+                                                        {(item.quantityInitial * getEstimatedCO2(item)).toFixed(1)} kg
+                                                    </td>
+                                                </tr>
+                                            ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

@@ -316,7 +316,7 @@ export const InventoryManager: React.FC = () => {
 
     // Filter items based on Purchase Status and Current Department view
     const requestedItems = project.items.filter(item => !item.purchased);
-    const stockItems = project.items.filter(item => item.purchased && (!item.surplusAction || item.surplusAction === SurplusAction.NONE));
+    const stockItems = project.items.filter(item => item.purchased && (!item.surplusAction || item.surplusAction === SurplusAction.NONE) && item.quantityCurrent > 0);
 
     // Further filter by department if not Production view
     const visibleRequests = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
