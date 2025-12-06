@@ -40,7 +40,7 @@ export enum SurplusAction {
 export interface ConsumableItem {
   id: string;
   name: string;
-  department: Department;
+  department: Department | 'PRODUCTION';
   quantityInitial: number;
   quantityCurrent: number;
   unit: string; // e.g., "rouleaux", "boîtes", "bouteilles"

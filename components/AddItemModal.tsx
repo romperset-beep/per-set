@@ -196,11 +196,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         setIsSubmitting(true);
 
         // Determine final department:
-        // If user is PRODUCTION (Admin) or REGIE, they can order for the selected department.
-        // If user is another Department, they can only order for themselves, even if they browsed another catalog.
-        const finalDepartment = (currentDept === 'PRODUCTION')
-            ? selectedDept
-            : (currentDept as Department);
+        // Always use the current user's department.
+        // Even Production orders for itself now.
+        const finalDepartment = currentDept as (Department | 'PRODUCTION');
 
         const newItem: ConsumableItem = {
             id: Math.random().toString(36).substr(2, 9), // Will be ignored by addItem
@@ -301,9 +299,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                                         // Add all items found
                                         items.forEach(item => {
                                             if (item.name) {
-                                                const targetDept = (currentDept === 'PRODUCTION')
-                                                    ? ((item.department as Department) || selectedDept)
-                                                    : (currentDept as Department);
+                                                const targetDept = currentDept as (Department | 'PRODUCTION');
 
                                                 const newItem: ConsumableItem = {
                                                     id: Math.random().toString(36).substr(2, 9),
