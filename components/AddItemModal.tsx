@@ -301,10 +301,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                                         // Add all items found
                                         items.forEach(item => {
                                             if (item.name) {
+                                                const targetDept = (currentDept === 'PRODUCTION')
+                                                    ? ((item.department as Department) || selectedDept)
+                                                    : (currentDept as Department);
+
                                                 const newItem: ConsumableItem = {
                                                     id: Math.random().toString(36).substr(2, 9),
                                                     name: item.name,
-                                                    department: (item.department as Department) || selectedDept,
+                                                    department: targetDept,
                                                     quantityInitial: item.quantityInitial || 1,
                                                     quantityCurrent: item.quantityInitial || 1,
                                                     unit: item.unit || 'unités',
