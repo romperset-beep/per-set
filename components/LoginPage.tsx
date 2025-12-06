@@ -58,7 +58,7 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 <div className="text-center mb-8">
-                    <img src="/logo.jpg" alt="Logo" className="w-full h-auto mb-6 rounded-xl shadow-2xl" />
+                    <img src="/logo.png" alt="A Better Set Logo" className="w-48 h-auto mx-auto mb-6 rounded-full shadow-2xl" />
                     <h1 className="text-3xl font-bold text-white tracking-tight">A Better Set</h1>
                     <p className="text-slate-400">{t('login.welcome')}</p>
                 </div>
