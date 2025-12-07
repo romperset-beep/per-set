@@ -123,12 +123,15 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                         <Building2 className="absolute left-3 top-3 h-5 w-5 text-slate-500 group-focus-within:text-eco-400 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Nom de la Production"
+                            placeholder="Société de Production (ex: HBO, Marvel...)"
                             value={formData.productionName}
                             onChange={(e) => setFormData({ ...formData, productionName: e.target.value })}
                             className="w-full bg-cinema-900 border border-cinema-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-eco-500 focus:outline-none transition-all"
                             required
                         />
+                        <p className="text-[10px] text-slate-500 mt-1 ml-1">
+                            * Ce nom doit être identique pour toute l'équipe afin de rejoindre le même projet.
+                        </p>
                     </div>
 
                     <div className="relative group">

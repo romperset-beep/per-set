@@ -158,7 +158,6 @@ const AppContent: React.FC = () => {
           {renderContent()}
         </div>
       </main >
-      <DebugFooter />
     </div >
   );
 };

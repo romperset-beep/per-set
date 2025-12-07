@@ -380,9 +380,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             const userData = userSnap.data() as User;
             setUser(userData);
 
-            // If user has a project attached, we DON'T load it automatically anymore.
-            // We just let the UI handle the "Welcome Back" screen based on userData.
-            // The user must explicitly click "Continue" or "New Project"
+            // Security: Enforce View restriction for non-production users
+            if (userData.department !== 'PRODUCTION') {
+              setCurrentDept(userData.department);
+            } else {
+              setCurrentDept('PRODUCTION');
+            }
           } else {
             console.log("Auth Logged in but no firestore profile found (Legacy?)");
             // If anonymous legacy user, we might want to keep them logged in?
