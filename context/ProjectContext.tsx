@@ -52,7 +52,8 @@ interface ProjectContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<void>;
   register: (email: string, pass: string, name: string, dept: Department | 'PRODUCTION') => Promise<void>; // Added
-  joinProject: (prod: string, film: string, start?: string, end?: string) => Promise<void>; // Added
+  joinProject: (prod: string, film: string, start?: string, end?: string) => Promise<void>;
+  leaveProject: () => Promise<void>; // Added
   logout: () => void;
 
   // Notifications
@@ -475,6 +476,30 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     addNotification(`Bienvenue sur le plateau de "${film}" !`, 'INFO', user.department);
   };
 
+  const leaveProject = async () => {
+    if (!auth.currentUser || !user) return;
+
+    // 1. Reset Local State
+    setProject(DEFAULT_PROJECT);
+
+    // 2. Clear persisted project info in Firestore
+    const updatedUser: User = {
+      ...user,
+      productionName: '',
+      filmTitle: '',
+      startDate: undefined,
+      endDate: undefined
+    };
+    setUser(updatedUser);
+
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+      productionName: '',
+      filmTitle: '',
+      startDate: null,
+      endDate: null
+    });
+  };
+
   const logout = async () => {
     await signOut(auth);
     localStorage.removeItem('cineStockUser'); // Clean legacy
@@ -667,6 +692,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setProject,
       updateProjectDetails,
       joinProject,
+      leaveProject,
       addItem,
       updateItem,
       deleteItem,

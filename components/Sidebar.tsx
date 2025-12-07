@@ -9,7 +9,8 @@ import {
   LogOut,
   Users,
   MessageSquare,
-  Euro
+  Euro,
+  ArrowRightLeft
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -22,7 +23,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { currentDept, logout, unreadCount, user, t, unreadMarketplaceCount, unreadSocialCount, markMarketplaceAsRead, markSocialAsRead } = useProject();
+  const { currentDept, logout, leaveProject, unreadCount, user, t, unreadMarketplaceCount, unreadSocialCount, markMarketplaceAsRead, markSocialAsRead } = useProject();
 
   const menuItems = [
     { id: 'dashboard', label: t('sidebar.dashboard'), icon: LayoutDashboard },
@@ -115,6 +116,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         </nav>
 
         <div className="p-4 border-t border-slate-800 space-y-4">
+          <button
+            onClick={() => {
+              const confirm = window.confirm(t('Are you sure you want to switch projects?'));
+              if (confirm) leaveProject();
+            }}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <ArrowRightLeft size={20} />
+            <span className="font-medium">Changer de Film</span>
+          </button>
+
           <button
             onClick={logout}
             className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"
