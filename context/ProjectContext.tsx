@@ -360,8 +360,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const generateProjectId = (prod: string, film: string) => {
     const combined = `${prod}-${film}`;
     return combined.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'demo-project';
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[^a-z0-9]+/g, '-')     // Replace non-alphanumeric with dash
+      .replace(/^-+|-+$/g, '')         // Trim dashes
+      || 'demo-project';
   };
 
   // Auth State Listener
