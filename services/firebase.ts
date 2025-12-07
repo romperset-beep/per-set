@@ -13,8 +13,6 @@ const firebaseConfig = {
     appId: "1:28125070596:web:c806ebff513ee2c63cfc51"
 };
 
-};
-
 // DEBUG: helps identify if Vercel is picking up the key
 console.log("[Firebase Init] Config:", {
     ...firebaseConfig,
