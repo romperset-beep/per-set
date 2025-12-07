@@ -14,6 +14,7 @@ import { ProjectProvider, useProject } from './context/ProjectContext';
 import { LoginPage } from './components/LoginPage';
 import { ProjectSelection } from './components/ProjectSelection';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
+import { DebugFooter } from './components/DebugFooter';
 import { Bell, LogOut, User as UserIcon, Menu } from 'lucide-react';
 import { Department } from './types';
 
@@ -156,8 +157,10 @@ const AppContent: React.FC = () => {
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
           {renderContent()}
         </div>
-      </main>
     </div>
+      </main >
+  <DebugFooter />
+    </div >
   );
 };
 
