@@ -157,9 +157,8 @@ const AppContent: React.FC = () => {
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
           {renderContent()}
         </div>
-    </div>
       </main >
-  <DebugFooter />
+      <DebugFooter />
     </div >
   );
 };
