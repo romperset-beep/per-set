@@ -20,6 +20,21 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         endDate: user?.endDate || ''
     });
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.productionName || !formData.filmTitle) return;
+
+        setIsLoading(true);
+        try {
+            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate);
+            onProjectSelected();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleResume = async () => {
         if (!user?.productionName || !user?.filmTitle) return;
         setIsLoading(true);
