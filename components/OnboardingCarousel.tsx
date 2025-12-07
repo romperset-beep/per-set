@@ -22,16 +22,16 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({ onComple
             description: "Accéder aux reventes des objets déco et costumes, réservez ce qui vous intéresse et récupérez les en fin de tournage !"
         },
         {
-            icon: MessageSquare,
-            color: "text-pink-400",
-            title: "Communication Sécurisée",
-            description: "Échangez avec toute l'équipe de manière sécurisée et partagez vos photos et vidéos de tournage."
-        },
-        {
             icon: ShieldCheck,
             color: "text-blue-400",
             title: "Profil Sécurisé",
             description: "Gardez vos infos (CMB, RIB, Coordonnées) à jour dans un compte unique qui vous suit de production en production."
+        },
+        {
+            icon: MessageSquare,
+            color: "text-pink-400",
+            title: "Communication Sécurisée",
+            description: "Échangez avec toute l'équipe de manière sécurisée et partagez vos photos et vidéos de tournage."
         }
     ];
 
