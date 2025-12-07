@@ -58,7 +58,7 @@ const AppContent: React.FC = () => {
       case 'circular':
         return <CircularEconomy />;
       case 'report':
-        return <ImpactReport project={project} />;
+        return <ImpactReport />;
       case 'global-stock':
         return <GlobalStock />;
       case 'expenses':
