@@ -13,13 +13,6 @@ const firebaseConfig = {
     appId: "1:28125070596:web:c806ebff513ee2c63cfc51"
 };
 
-// DEBUG: helps identify if Vercel is picking up the key
-console.log("[Firebase Init] Config:", {
-    ...firebaseConfig,
-    apiKey: firebaseConfig.apiKey ? `...${firebaseConfig.apiKey.slice(-5)}` : "UNDEFINED",
-    projectId: firebaseConfig.projectId
-});
-
 const app = initializeApp(firebaseConfig);
 
 // Enable debug logs
