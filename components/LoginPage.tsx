@@ -4,6 +4,8 @@ import { AuthScreen } from './AuthScreen';
 import { ProjectSelection } from './ProjectSelection';
 import { useProject } from '../context/ProjectContext';
 import { Globe } from 'lucide-react';
+import { Clapperboard } from 'lucide-react';
+import { LottieAnimation } from './LottieAnimation';
 import { Language } from '../types';
 
 export const LoginPage: React.FC = () => {
