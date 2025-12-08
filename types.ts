@@ -7,6 +7,7 @@ export enum Department {
   MACHINERIE = 'Machinerie',
   REGIE = 'Régie',
   DECO = 'Décoration',
+  MISE_EN_SCENE = 'Mise en scène',
   SON = 'Son',
   COSTUME = 'Costume',
   MAQUILLAGE = 'Maquillage',
