@@ -161,6 +161,13 @@ export interface UserProfile {
   drivingLicense?: string;
 }
 
+export interface ProjectSummary {
+  id: string;
+  productionName: string;
+  filmTitle: string;
+  lastAccess: string; // ISO Date
+}
+
 export interface User {
   name: string;
   email: string;
@@ -169,4 +176,5 @@ export interface User {
   filmTitle: string;
   startDate?: string;
   endDate?: string;
+  projectHistory?: ProjectSummary[];
 }

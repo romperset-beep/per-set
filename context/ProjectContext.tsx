@@ -10,6 +10,7 @@ import {
   SocialPost,
   UserProfile,
   Language,
+  ProjectSummary,
   ConsumableItem,
   ItemStatus,
   SurplusAction
@@ -470,276 +471,300 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
     setUser(updatedUser); // Optimistic
 
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-      productionName: prod,
-      filmTitle: film,
+    filmTitle: film,
       startDate: start || null,
-      endDate: end || null
-    });
-
-    addNotification(`Bienvenue sur le plateau de "${film}" !`, 'INFO', user.department);
-  };
-
-  const leaveProject = async () => {
-    if (!auth.currentUser || !user) return;
-
-    // 1. Reset Local State
-    setProject(DEFAULT_PROJECT);
-
-    // 2. Clear persisted project info in Firestore
-    const updatedUser: User = {
-      ...user,
-      productionName: '',
-      filmTitle: '',
-      startDate: undefined,
-      endDate: undefined
-    };
-    setUser(updatedUser);
-
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-      productionName: '',
-      filmTitle: '',
-      startDate: null,
-      endDate: null
-    });
-  };
-
-  const logout = async () => {
-    await signOut(auth);
-    localStorage.removeItem('cineStockUser'); // Clean legacy
-    setCurrentDept('PRODUCTION');
-    setProject(DEFAULT_PROJECT);
-  };
-
-  // 3. Sync Notifications
-  useEffect(() => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    const notifsRef = collection(db, 'projects', projectId, 'notifications');
-    const q = query(notifsRef, orderBy('date', 'desc'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs: Notification[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        notifs.push({
-          id: doc.id,
-          ...data,
-          date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
-        } as Notification);
-      });
-      setNotifications(notifs);
-    });
-
-    return () => unsubscribe();
-  }, [project.id]);
-
-  const addNotification = async (message: string, type: Notification['type'], target: Department | 'PRODUCTION' = 'PRODUCTION', itemId?: string) => {
-    try {
-      const projectId = project.id;
-      const notifsRef = collection(db, 'projects', projectId, 'notifications');
-
-      await addDoc(notifsRef, {
-        message,
-        type,
-        targetDept: target,
-        itemId: itemId || null,
-        read: false,
-        date: new Date()
-      });
-    } catch (err) {
-      console.error("Failed to send notification:", err);
-    }
-  };
-
-  const markAsRead = async (id: string) => {
-    // Optimistic update
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-
-    try {
-      const projectId = project.id;
-      const notifRef = doc(db, 'projects', projectId, 'notifications', id);
-      await updateDoc(notifRef, { read: true });
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
-    }
-  };
-
-  const markNotificationAsReadByItemId = async (itemId: string) => {
-    // Find notifications related to this item
-    const targetNotifs = notifications.filter(n => n.itemId === itemId && !n.read);
-
-    // Optimistic update
-    setNotifications(prev => prev.map(n => n.itemId === itemId ? { ...n, read: true } : n));
-
-    try {
-      const projectId = project.id;
-      // Update all matching notifications in Firestore
-      const updatePromises = targetNotifs.map(n => {
-        const notifRef = doc(db, 'projects', projectId, 'notifications', n.id);
-        return updateDoc(notifRef, { read: true });
-      });
-      await Promise.all(updatePromises);
-    } catch (err) {
-      console.error("Failed to mark notifications as read by item:", err);
-    }
-  };
-
-  const addExpenseReport = (report: ExpenseReport) => {
-    setExpenseReports(prev => [report, ...prev]);
-    addNotification(
-      `Nouvelle note de frais de ${report.submittedBy} (${report.amountTTC}€)`,
-      'INFO',
-      'PRODUCTION'
-    );
-  };
-
-  const updateExpenseReportStatus = (id: string, status: ExpenseStatus) => {
-    setExpenseReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-  };
-
-  const userNotifications = notifications.filter(n => {
-    if (!user) return false;
-    if (user.department === 'PRODUCTION' || user.department === 'Régie') return true;
-    return n.targetDept === user.department || n.targetDept === undefined;
+        endDate: end || null,
+          projectHistory: arrayUnion({
+            id: projectId,
+            productionName: prod,
+            filmTitle: film,
+            lastAccess: new Date().toISOString()
+          })
   });
 
-  // 2. Sync Social Posts
-  useEffect(() => {
-    const projectId = project.id;
-    console.log(`[SocialWall] Init listener for project: ${projectId}`);
-
-    if (!projectId || projectId === 'default-project') return;
-
-    const postsRef = collection(db, 'projects', projectId, 'socialPosts');
-    const q = query(postsRef, orderBy('date', 'desc'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log(`[SocialWall] Snapshot received. Docs: ${snapshot.size}`);
-      const posts: SocialPost[] = [];
-      snapshot.forEach((doc) => {
-        // Convert Firestore Timestamp to Date
-        const data = doc.data();
-        posts.push({
-          id: doc.id,
-          ...data,
-          date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
-        } as SocialPost);
-      });
-      setSocialPosts(posts);
-    }, (err) => {
-      console.error("[SocialWall] Listener Error:", err);
-      setError(`Social Wall Sync Error: ${err.message}`);
-    });
-
-    return () => unsubscribe();
-  }, [project.id]);
-
-  const addSocialPost = async (post: SocialPost) => {
-    try {
-      const projectId = project.id;
-      console.log(`[SocialWall] Adding post to project: ${projectId}`);
-
-      const postsRef = collection(db, 'projects', projectId, 'socialPosts');
-      const { id, ...postData } = post;
-
-      // Firestore doesn't support 'undefined', replace with null
-      const sanitizedData = Object.fromEntries(
-        Object.entries(postData).map(([k, v]) => [k, v === undefined ? null : v])
-      );
-
-      await addDoc(postsRef, {
-        ...sanitizedData,
-        date: new Date() // Ensure server timestamp
-      });
-      console.log("[SocialWall] Post added successfully");
-
-      // Notification is handled by local state for now, or could be synced too
-      addNotification(
-        `Nouveau message de ${post.authorName} sur le mur social`,
-        'INFO',
-        'PRODUCTION'
-      );
-    } catch (err: any) {
-      console.error("[SocialWall] Add Error:", err);
-      setError(`Erreur d'envoi : ${err.message}`);
-      alert(`Erreur d'envoi : ${err.message}`);
-    }
+  // Update local user state specifically for history
+  const newHistoryItem: ProjectSummary = {
+    id: projectId,
+    productionName: prod,
+    filmTitle: film,
+    lastAccess: new Date().toISOString()
   };
 
-  const updateUserProfile = (profile: UserProfile) => {
-    setUserProfiles(prev => {
-      const existingIndex = prev.findIndex(p => p.email === profile.email);
-      if (existingIndex >= 0) {
-        const newProfiles = [...prev];
-        newProfiles[existingIndex] = profile;
-        return newProfiles;
-      }
-      return [...prev, profile];
+  // Remove existing entry if present (to avoid duplicates/update date) and add new one
+  const currentHistory = user.projectHistory || [];
+  const updatedHistory = [
+    newHistoryItem,
+    ...currentHistory.filter(p => p.id !== projectId)
+  ];
+
+  setUser({
+    ...updatedUser,
+    projectHistory: updatedHistory
+  });
+
+  addNotification(`Bienvenue sur le plateau de "${film}" !`, 'INFO', user.department);
+};
+
+const leaveProject = async () => {
+  if (!auth.currentUser || !user) return;
+
+  // 1. Reset Local State
+  setProject(DEFAULT_PROJECT);
+
+  // 2. Clear persisted project info in Firestore
+  const updatedUser: User = {
+    ...user,
+    productionName: '',
+    filmTitle: '',
+    startDate: undefined,
+    endDate: undefined
+  };
+  setUser(updatedUser);
+
+  await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+    productionName: '',
+    filmTitle: '',
+    startDate: null,
+    endDate: null
+  });
+};
+
+const logout = async () => {
+  await signOut(auth);
+  localStorage.removeItem('cineStockUser'); // Clean legacy
+  setCurrentDept('PRODUCTION');
+  setProject(DEFAULT_PROJECT);
+};
+
+// 3. Sync Notifications
+useEffect(() => {
+  const projectId = project.id;
+  if (!projectId || projectId === 'default-project') return;
+
+  const notifsRef = collection(db, 'projects', projectId, 'notifications');
+  const q = query(notifsRef, orderBy('date', 'desc'));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const notifs: Notification[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      notifs.push({
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+      } as Notification);
     });
+    setNotifications(notifs);
+  });
+
+  return () => unsubscribe();
+}, [project.id]);
+
+const addNotification = async (message: string, type: Notification['type'], target: Department | 'PRODUCTION' = 'PRODUCTION', itemId?: string) => {
+  try {
+    const projectId = project.id;
+    const notifsRef = collection(db, 'projects', projectId, 'notifications');
+
+    await addDoc(notifsRef, {
+      message,
+      type,
+      targetDept: target,
+      itemId: itemId || null,
+      read: false,
+      date: new Date()
+    });
+  } catch (err) {
+    console.error("Failed to send notification:", err);
+  }
+};
+
+const markAsRead = async (id: string) => {
+  // Optimistic update
+  setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+
+  try {
+    const projectId = project.id;
+    const notifRef = doc(db, 'projects', projectId, 'notifications', id);
+    await updateDoc(notifRef, { read: true });
+  } catch (err) {
+    console.error("Failed to mark notification as read:", err);
+  }
+};
+
+const markNotificationAsReadByItemId = async (itemId: string) => {
+  // Find notifications related to this item
+  const targetNotifs = notifications.filter(n => n.itemId === itemId && !n.read);
+
+  // Optimistic update
+  setNotifications(prev => prev.map(n => n.itemId === itemId ? { ...n, read: true } : n));
+
+  try {
+    const projectId = project.id;
+    // Update all matching notifications in Firestore
+    const updatePromises = targetNotifs.map(n => {
+      const notifRef = doc(db, 'projects', projectId, 'notifications', n.id);
+      return updateDoc(notifRef, { read: true });
+    });
+    await Promise.all(updatePromises);
+  } catch (err) {
+    console.error("Failed to mark notifications as read by item:", err);
+  }
+};
+
+const addExpenseReport = (report: ExpenseReport) => {
+  setExpenseReports(prev => [report, ...prev]);
+  addNotification(
+    `Nouvelle note de frais de ${report.submittedBy} (${report.amountTTC}€)`,
+    'INFO',
+    'PRODUCTION'
+  );
+};
+
+const updateExpenseReportStatus = (id: string, status: ExpenseStatus) => {
+  setExpenseReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+};
+
+const userNotifications = notifications.filter(n => {
+  if (!user) return false;
+  if (user.department === 'PRODUCTION' || user.department === 'Régie') return true;
+  return n.targetDept === user.department || n.targetDept === undefined;
+});
+
+// 2. Sync Social Posts
+useEffect(() => {
+  const projectId = project.id;
+  console.log(`[SocialWall] Init listener for project: ${projectId}`);
+
+  if (!projectId || projectId === 'default-project') return;
+
+  const postsRef = collection(db, 'projects', projectId, 'socialPosts');
+  const q = query(postsRef, orderBy('date', 'desc'));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    console.log(`[SocialWall] Snapshot received. Docs: ${snapshot.size}`);
+    const posts: SocialPost[] = [];
+    snapshot.forEach((doc) => {
+      // Convert Firestore Timestamp to Date
+      const data = doc.data();
+      posts.push({
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+      } as SocialPost);
+    });
+    setSocialPosts(posts);
+  }, (err) => {
+    console.error("[SocialWall] Listener Error:", err);
+    setError(`Social Wall Sync Error: ${err.message}`);
+  });
+
+  return () => unsubscribe();
+}, [project.id]);
+
+const addSocialPost = async (post: SocialPost) => {
+  try {
+    const projectId = project.id;
+    console.log(`[SocialWall] Adding post to project: ${projectId}`);
+
+    const postsRef = collection(db, 'projects', projectId, 'socialPosts');
+    const { id, ...postData } = post;
+
+    // Firestore doesn't support 'undefined', replace with null
+    const sanitizedData = Object.fromEntries(
+      Object.entries(postData).map(([k, v]) => [k, v === undefined ? null : v])
+    );
+
+    await addDoc(postsRef, {
+      ...sanitizedData,
+      date: new Date() // Ensure server timestamp
+    });
+    console.log("[SocialWall] Post added successfully");
+
+    // Notification is handled by local state for now, or could be synced too
     addNotification(
-      `Mise à jour du profil de ${profile.firstName} ${profile.lastName}`,
+      `Nouveau message de ${post.authorName} sur le mur social`,
       'INFO',
       'PRODUCTION'
     );
-  };
+  } catch (err: any) {
+    console.error("[SocialWall] Add Error:", err);
+    setError(`Erreur d'envoi : ${err.message}`);
+    alert(`Erreur d'envoi : ${err.message}`);
+  }
+};
 
-  const unreadCount = project.items.filter(i =>
-    !i.purchased &&
-    (user?.department === 'PRODUCTION' || user?.department === 'Régie' || i.department === user?.department)
-  ).length;
-
-  return (
-    <ProjectContext.Provider value={{
-      project,
-      setProject,
-      updateProjectDetails,
-      joinProject,
-      leaveProject,
-      addItem,
-      updateItem,
-      deleteItem,
-      currentDept,
-      setCurrentDept,
-      circularView,
-      setCircularView,
-      user,
-      login,
-      register,
-      logout,
-      notifications: userNotifications,
-      addNotification,
-      markAsRead,
-      markNotificationAsReadByItemId,
-      unreadCount,
-      unreadSocialCount,
-      unreadMarketplaceCount,
-      markSocialAsRead,
-      markMarketplaceAsRead,
-
-      // Expense Reports,
-      expenseReports,
-      addExpenseReport,
-      updateExpenseReportStatus,
-      buyBackItems,
-      addBuyBackItem,
-      toggleBuyBackReservation,
-      socialPosts,
-      addSocialPost,
-      userProfiles,
-      updateUserProfile,
-      language,
-      setLanguage,
-      t,
-      error,
-      testConnection,
-      debugStatus,
-      lastLog
-    }}>
-      {children}
-    </ProjectContext.Provider>
+const updateUserProfile = (profile: UserProfile) => {
+  setUserProfiles(prev => {
+    const existingIndex = prev.findIndex(p => p.email === profile.email);
+    if (existingIndex >= 0) {
+      const newProfiles = [...prev];
+      newProfiles[existingIndex] = profile;
+      return newProfiles;
+    }
+    return [...prev, profile];
+  });
+  addNotification(
+    `Mise à jour du profil de ${profile.firstName} ${profile.lastName}`,
+    'INFO',
+    'PRODUCTION'
   );
+};
+
+const unreadCount = project.items.filter(i =>
+  !i.purchased &&
+  (user?.department === 'PRODUCTION' || user?.department === 'Régie' || i.department === user?.department)
+).length;
+
+return (
+  <ProjectContext.Provider value={{
+    project,
+    setProject,
+    updateProjectDetails,
+    joinProject,
+    leaveProject,
+    addItem,
+    updateItem,
+    deleteItem,
+    currentDept,
+    setCurrentDept,
+    circularView,
+    setCircularView,
+    user,
+    login,
+    register,
+    logout,
+    notifications: userNotifications,
+    addNotification,
+    markAsRead,
+    markNotificationAsReadByItemId,
+    unreadCount,
+    unreadSocialCount,
+    unreadMarketplaceCount,
+    markSocialAsRead,
+    markMarketplaceAsRead,
+
+    // Expense Reports,
+    expenseReports,
+    addExpenseReport,
+    updateExpenseReportStatus,
+    buyBackItems,
+    addBuyBackItem,
+    toggleBuyBackReservation,
+    socialPosts,
+    addSocialPost,
+    userProfiles,
+    updateUserProfile,
+    language,
+    setLanguage,
+    t,
+    error,
+    testConnection,
+    debugStatus,
+    lastLog
+  }}>
+    {children}
+  </ProjectContext.Provider>
+);
 };
 
 export const useProject = () => {
