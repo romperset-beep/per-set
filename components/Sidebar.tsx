@@ -44,9 +44,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     if (item.id === 'profile') return true;
     if (item.id === 'social') return true;
 
-    // Super Admin (DEBUG: Open to all Production for troubleshooting)
+    // Super Admin (Restricted to owner)
     if (item.id === 'admin') {
-      return currentDept === 'PRODUCTION';
+      return user?.email === 'romperset@gmail.com';
     }
 
     // Production sees everything
