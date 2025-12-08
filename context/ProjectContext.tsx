@@ -468,6 +468,30 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       projectType: type || prev.projectType
     }));
 
+    // 1.5 Persist Project Metadata to Firestore (Important for Sync)
+    // Only if we have valid data (at least prod and film)
+    if (prod && film) {
+      try {
+        const projectRef = doc(db, 'projects', projectId);
+        // setDoc with merge: true ensures we create it if missing, or update if existing.
+        // We only update dates if they are provided, otherwise we keep existing ones to avoid overwriting with nulls.
+        const projectUpdates: any = {
+          name: film,
+          productionCompany: prod,
+          id: projectId
+        };
+        if (start) projectUpdates.shootingStartDate = start;
+        if (end) projectUpdates.shootingEndDate = end;
+        if (type) projectUpdates.projectType = type;
+
+        // Ensure basic structure exists
+        await setDoc(projectRef, projectUpdates, { merge: true });
+        console.log("[joinProject] Project metadata synced to Firestore:", projectUpdates);
+      } catch (err) {
+        console.error("[joinProject] Failed to sync project metadata:", err);
+      }
+    }
+
     // 2. Update Persisted User Profile with new current project
     const updatedUser: User = {
       ...user,

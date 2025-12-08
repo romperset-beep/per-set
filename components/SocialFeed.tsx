@@ -7,22 +7,79 @@ export const SocialFeed: React.FC = () => {
     const { socialPosts, addSocialPost, user } = useProject();
     const [newPostContent, setNewPostContent] = useState('');
     const [photo, setPhoto] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setIsProcessing(true);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhoto(reader.result as string);
+
+            reader.onload = (event) => {
+                const img = new Image();
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Resize logic: Max 1024px (increased slightly)
+                        const MAX_SIZE = 1024;
+                        if (width > height) {
+                            if (width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            }
+                        } else {
+                            if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) throw new Error("Canvas Context not found");
+
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Compress to JPEG 70% quality
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        setPhoto(compressedBase64);
+                    } catch (error) {
+                        console.error("Compression ended in error:", error);
+                        alert("Erreur lors du traitement de l'image.");
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                };
+
+                img.onerror = () => {
+                    console.error("Image failed to load");
+                    alert("Impossible de lire ce format d'image (essayez JPG ou PNG).");
+                    setIsProcessing(false);
+                };
+
+                if (event.target?.result) {
+                    img.src = event.target.result as string;
+                }
             };
+
+            reader.onerror = () => {
+                console.error("FileReader error");
+                setIsProcessing(false);
+            };
+
             reader.readAsDataURL(file);
         }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newPostContent.trim() && !photo) return;
+        if ((!newPostContent.trim() && !photo) || isProcessing) return;
 
         const newPost: SocialPost = {
             id: `post_${Date.now()}`,
@@ -65,7 +122,14 @@ export const SocialFeed: React.FC = () => {
                                 placeholder={`Quoi de neuf, ${user?.name.split(' ')[0]} ?`}
                                 className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-4 text-white focus:ring-2 focus:ring-pink-500 focus:outline-none resize-none min-h-[100px]"
                             />
-                            
+
+                            {isProcessing && (
+                                <div className="text-pink-400 text-sm flex items-center gap-2 animate-pulse">
+                                    <ImageIcon className="h-4 w-4" />
+                                    Traitement de l'image en cours...
+                                </div>
+                            )}
+
                             {photo && (
                                 <div className="relative w-full max-w-sm rounded-lg overflow-hidden border border-cinema-700">
                                     <img src={photo} alt="Preview" className="w-full h-auto" />
@@ -83,7 +147,8 @@ export const SocialFeed: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex items-center gap-2 text-slate-400 hover:text-pink-400 transition-colors text-sm font-medium"
+                                    disabled={isProcessing}
+                                    className="flex items-center gap-2 text-slate-400 hover:text-pink-400 transition-colors text-sm font-medium disabled:opacity-50"
                                 >
                                     <ImageIcon className="h-5 w-5" />
                                     Ajouter une photo
@@ -98,7 +163,7 @@ export const SocialFeed: React.FC = () => {
 
                                 <button
                                     type="submit"
-                                    disabled={!newPostContent.trim() && !photo}
+                                    disabled={(!newPostContent.trim() && !photo) || isProcessing}
                                     className="bg-pink-600 hover:bg-pink-500 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-600/20"
                                 >
                                     <Send className="h-4 w-4" />
@@ -149,9 +214,9 @@ export const SocialFeed: React.FC = () => {
                                 {/* Photo */}
                                 {post.photo && (
                                     <div className="pl-14">
-                                        <img 
-                                            src={post.photo} 
-                                            alt="Post attachment" 
+                                        <img
+                                            src={post.photo}
+                                            alt="Post attachment"
                                             className="rounded-lg max-h-96 w-auto object-cover border border-cinema-700"
                                         />
                                     </div>
