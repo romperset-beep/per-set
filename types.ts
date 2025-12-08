@@ -120,6 +120,9 @@ export interface SocialPost {
   photo?: string; // URL or Base64
   date: string; // ISO Date
   likes: number;
+  targetAudience?: 'GLOBAL' | 'DEPARTMENT' | 'USER'; // Added
+  targetDept?: Department | 'PRODUCTION'; // Added
+  targetUserId?: string; // Added
 }
 
 export interface UserProfile {
