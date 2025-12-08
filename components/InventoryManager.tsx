@@ -405,6 +405,63 @@ export const InventoryManager: React.FC = () => {
                 prefillItemNames={project.items.filter(i => selectedForExpense.has(i.id)).map(i => i.name)}
             />
 
+            {/* SECTION 0: VALIDATION QUEUE (PRODUCTION ONLY) */}
+            {itemsPendingValidation.length > 0 && (
+                <div className="bg-orange-900/20 rounded-xl border border-orange-500/30 overflow-hidden mb-8 animate-in slide-in-from-top-4">
+                    <div className="px-6 py-4 border-b border-orange-500/30 flex justify-between items-center bg-orange-900/20">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400">
+                                <PackageCheck className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">Validations En Attente</h3>
+                                <p className="text-xs text-orange-200/70">
+                                    {itemsPendingValidation.length} articles libérés par les départements
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="divide-y divide-orange-500/10">
+                        {itemsPendingValidation.map(item => (
+                            <div key={item.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white">{item.name}</span>
+                                        <span className="text-xs bg-cinema-900 text-slate-400 px-2 py-0.5 rounded">
+                                            {item.department}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-slate-400">
+                                        Quantité libérée : <span className="text-white font-bold">{item.quantityCurrent} {item.unit}</span>
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleSurplusClick(item, SurplusAction.MARKETPLACE)}
+                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Valider vers Stock Virtuel
+                                    </button>
+                                    <button
+                                        onClick={() => handleSurplusClick(item, SurplusAction.DONATION)}
+                                        className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Valider vers Dons
+                                    </button>
+                                    <button
+                                        onClick={() => handleSurplusClick(item, SurplusAction.SHORT_FILM)}
+                                        className="px-3 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Court-Métrage
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Surplus Confirmation Modal */}
             {surplusConfirmation && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -635,10 +692,28 @@ export const InventoryManager: React.FC = () => {
                                                             <button
                                                                 onClick={() => {
                                                                     const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                    if (target) handleSurplusClick(target, SurplusAction.MARKETPLACE);
+                                                                    if (target) {
+                                                                        if (user?.department === 'PRODUCTION') {
+                                                                            handleSurplusClick(target, SurplusAction.MARKETPLACE);
+                                                                        } else {
+                                                                            // Department View: Check Date
+                                                                            if (isShootingFinished) {
+                                                                                handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
+                                                                            } else {
+                                                                                alert(`Vous ne pourrez libérer le matériel que le ${shootingEndDate?.toLocaleDateString()}`);
+                                                                            }
+                                                                        }
+                                                                    }
                                                                 }}
-                                                                className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                                                                title="Envoyer au Stock Virtuel"
+                                                                disabled={user?.department !== 'PRODUCTION' && !isShootingFinished}
+                                                                className={`p-2 rounded-lg border transition-all ${user?.department !== 'PRODUCTION' && !isShootingFinished
+                                                                        ? 'border-slate-700 text-slate-600 cursor-not-allowed'
+                                                                        : 'border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10'
+                                                                    }`}
+                                                                title={user?.department !== 'PRODUCTION'
+                                                                    ? (isShootingFinished ? "Libérer pour la Production" : `Disponible le ${shootingEndDate?.toLocaleDateString()}`)
+                                                                    : "Envoyer au Stock Virtuel"
+                                                                }
                                                             >
                                                                 <RefreshCw className="h-4 w-4" />
                                                             </button>
