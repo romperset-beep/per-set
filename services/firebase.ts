@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
 import { getFirestore, setLogLevel } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration
@@ -21,3 +22,4 @@ setLogLevel('debug');
 // Revert to simple init to fix crash, but keep named DB
 export const db = getFirestore(app, 'cinestock-db');
 export const auth = getAuth(app);
+export const storage = getStorage(app);

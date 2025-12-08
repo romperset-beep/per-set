@@ -35,6 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     { id: 'expenses', label: t('sidebar.expenses'), icon: Euro },
     { id: 'social', label: t('sidebar.social'), icon: MessageSquare },
     { id: 'team', label: t('sidebar.team'), icon: Users },
+    { id: 'callsheets', label: 'Feuilles de Service', icon: FileText }, // Added
     { id: 'profile', label: t('sidebar.profile'), icon: Settings },
     { id: 'admin', label: 'Administration', icon: ShieldCheck }, // Hidden by default filter
   ];
@@ -43,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   const filteredItems = menuItems.filter(item => {
     if (item.id === 'profile') return true;
     if (item.id === 'social') return true;
+    if (item.id === 'callsheets') return true; // Visible to everyone
 
     // Super Admin (Restricted to owner)
     if (item.id === 'admin') {

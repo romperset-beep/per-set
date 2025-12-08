@@ -1,6 +1,6 @@
 import React from 'react';
 import { Department, SurplusAction } from '../types';
-import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar } from 'lucide-react';
+import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar, FileText } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
 interface ProjectManagerProps {
@@ -43,54 +43,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 </div>
             </div>
 
-            {/* Shooting Dates Banner */}
-            <div className="bg-gradient-to-r from-cinema-800 to-cinema-900 rounded-xl p-6 border border-cinema-700 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/20 rounded-full">
-                        <Calendar className="h-6 w-6 text-blue-400" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-white">Dates de Tournage</h3>
-                        <p className="text-slate-400 text-sm">Période officielle de production</p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-lg border border-white/5">
-                    <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-sm uppercase font-bold">Début</span>
-                        {user?.department === 'PRODUCTION' ? (
-                            <input
-                                type="date"
-                                value={project.shootingStartDate || ''}
-                                onChange={(e) => updateProjectDetails({ shootingStartDate: e.target.value })}
-                                className="bg-cinema-800 border border-cinema-600 rounded px-3 py-1 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            />
-                        ) : (
-                            <span className="text-white font-mono bg-cinema-800 px-3 py-1 rounded border border-cinema-700">
-                                {project.shootingStartDate ? new Date(project.shootingStartDate).toLocaleDateString('fr-FR') : 'Non défini'}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="hidden sm:block w-8 h-0.5 bg-cinema-600"></div>
-
-                    <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-sm uppercase font-bold">Fin</span>
-                        {user?.department === 'PRODUCTION' ? (
-                            <input
-                                type="date"
-                                value={project.shootingEndDate || ''}
-                                onChange={(e) => updateProjectDetails({ shootingEndDate: e.target.value })}
-                                className="bg-cinema-800 border border-cinema-600 rounded px-3 py-1 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            />
-                        ) : (
-                            <span className="text-white font-mono bg-cinema-800 px-3 py-1 rounded border border-cinema-700">
-                                {project.shootingEndDate ? new Date(project.shootingEndDate).toLocaleDateString('fr-FR') : 'Non défini'}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
+            {/* Shooting Dates Banner REMOVED as per user request */}
 
             {/* Project Config (Read only for departments maybe? kept editable for now) */}
 
@@ -149,6 +102,21 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                         <p className="text-xs text-slate-400 mt-1">Annuaire & Fiches</p>
                     </button>
                 )}
+
+                <button
+                    onClick={() => setActiveTab && setActiveTab('callsheets')}
+                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                >
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold opacity-70">Feuilles de Service</h3>
+                        <FileText className="h-6 w-6 text-blue-300 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <p className="text-4xl font-bold mt-2 text-blue-300">
+                        {/* We could show count here if available in context, otherwise just ellipsis or icon */}
+                        <span className="text-2xl">PDF</span>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Planning journalier</p>
+                </button>
 
 
 

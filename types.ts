@@ -185,3 +185,13 @@ export interface User {
   projectType?: string; // Added to User to persist selection across sessions
   projectHistory?: ProjectSummary[];
 }
+
+export interface CallSheet {
+  id: string;
+  date: string; // Target date of the call sheet (e.g. "2023-10-25")
+  uploadDate: string; // ISO Date of upload
+  name: string; // e.g., "Feuille de service J12"
+  url: string; // PDF URL or Base64
+  uploadedBy: string; // User Name
+  department: Department | 'PRODUCTION';
+}

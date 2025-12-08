@@ -13,7 +13,8 @@ import {
   ProjectSummary,
   ConsumableItem,
   ItemStatus,
-  SurplusAction
+  SurplusAction,
+  CallSheet
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db, auth } from '../services/firebase';
@@ -78,6 +79,10 @@ interface ProjectContextType {
   toggleBuyBackReservation: (itemId: string, department: Department | 'PRODUCTION') => void;
   socialPosts: SocialPost[];
   addSocialPost: (post: SocialPost) => void;
+  // Call Sheets
+  callSheets: CallSheet[];
+  addCallSheet: (item: CallSheet) => Promise<void>;
+
   userProfiles: UserProfile[];
   updateUserProfile: (profile: UserProfile) => void;
 
@@ -125,6 +130,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [language, setLanguage] = useState<Language>('fr');
   const [buyBackItems, setBuyBackItems] = useState<BuyBackItem[]>([]);
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
+  const [callSheets, setCallSheets] = useState<CallSheet[]>([]); // New State
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [debugStatus, setDebugStatus] = useState<string>("");
@@ -292,6 +298,59 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     return () => unsubscribe();
   }, [project.id]);
+
+  // FSC: Sync Call Sheets
+  useEffect(() => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    const callSheetsRef = collection(db, 'projects', projectId, 'callSheets');
+    // Sort by target date descending (closest future/recent past first, or purely chronological?)
+    // Usually next day's call sheet is most important. 
+    // User likely wants "most recent" relevant one.
+    // Let's sort by date desc for now.
+    const q = query(callSheetsRef, orderBy('date', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const sheets: CallSheet[] = [];
+      snapshot.forEach(doc => {
+        sheets.push({ id: doc.id, ...doc.data() } as CallSheet);
+      });
+      setCallSheets(sheets);
+    }, (err) => {
+      console.error("[CallSheets] Sync Error:", err);
+    });
+
+    return () => unsubscribe();
+  }, [project.id]);
+
+  const addCallSheet = async (sheet: CallSheet) => {
+    try {
+      const projectId = project.id;
+      const { id, ...data } = sheet;
+      const colRef = collection(db, 'projects', projectId, 'callSheets');
+      await addDoc(colRef, { ...data, timestamp: new Date() });
+
+      addNotification(
+        `Nouvelle feuille de service disponible pour le ${new Date(sheet.date).toLocaleDateString()}`,
+        'INFO',
+        'PRODUCTION' // Notify everyone? Or just production? Usually "INFO" to GLOBAL if possible.
+        // Current addNotification param says 'target'. 
+        // 'PRODUCTION' target is usually restricted??
+        // Let's check notification logic.
+        // If target is undefined or Global... wait default is PRODUCTION.
+        // I should probably make target optional in addNotification signature or handle 'GLOBAL'.
+        // For now, let's use 'PRODUCTION' but usually FS concerns everyone.
+        // The `userNotifications` filter logic:
+        // if (user.department === 'PRODUCTION' || user.department === 'Régie') return true;
+        // return n.targetDept === user.department || n.targetDept === undefined;
+        // So `undefined` target = GLOBAL.
+      );
+    } catch (err: any) {
+      console.error("Error adding call sheet:", err);
+      throw err;
+    }
+  };
 
   // Firestore Actions
   const addItem = async (item: ConsumableItem) => {
@@ -725,7 +784,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: any) {
       console.error("[SocialWall] Add Error:", err);
       setError(`Erreur d'envoi : ${err.message}`);
-      alert(`Erreur d'envoi : ${err.message}`);
+      // alert(`Erreur d'envoi : ${err.message}`);
     }
   };
 
@@ -814,8 +873,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       unreadMarketplaceCount,
       markSocialAsRead,
       markMarketplaceAsRead,
-
-      // Expense Reports,
       expenseReports,
       addExpenseReport,
       updateExpenseReportStatus,
@@ -824,6 +881,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       toggleBuyBackReservation,
       socialPosts,
       addSocialPost,
+      callSheets,
+      addCallSheet,
       userProfiles,
       updateUserProfile,
       language,

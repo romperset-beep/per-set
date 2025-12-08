@@ -10,19 +10,21 @@ import { BuyBackMarketplace } from './components/BuyBackMarketplace';
 import { SocialFeed } from './components/SocialFeed';
 import { UserProfilePage } from './components/UserProfilePage';
 import { TeamDirectory } from './components/TeamDirectory';
+import { CallSheetView } from './components/CallSheetView';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { LoginPage } from './components/LoginPage';
 import { ProjectSelection } from './components/ProjectSelection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
-import { Bell, LogOut, User as UserIcon, Menu, Calendar } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check } from 'lucide-react';
 import { Department } from './types';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, logout, unreadCount, project, setCurrentDept } = useProject();
+  const [isEditingDates, setIsEditingDates] = useState(false);
+  const { user, logout, unreadCount, project, setCurrentDept, updateProjectDetails } = useProject();
 
   if (!user) {
     return <LoginPage />;
@@ -76,6 +78,8 @@ const AppContent: React.FC = () => {
         return <UserProfilePage />;
       case 'team':
         return <TeamDirectory />;
+      case 'callsheets':
+        return <CallSheetView />;
       case 'admin':
         return <AdminDashboard />;
 
@@ -116,19 +120,79 @@ const AppContent: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400 uppercase tracking-wider">
                 <span className="truncate max-w-[150px] md:max-w-none">{user.productionName}</span>
-                {project.shootingStartDate && project.shootingEndDate && (
+                {/* Date Display & Edit Logic */}
+                {(project.shootingStartDate || user.department === 'PRODUCTION') && (
                   <>
                     <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-600"></span>
-                    <span className="hidden sm:flex items-center gap-1 text-slate-500">
-                      <Calendar className="h-3 w-3" />
-                      {(() => {
-                        try {
-                          return new Date(project.shootingStartDate).toLocaleDateString() + ' - ' + new Date(project.shootingEndDate).toLocaleDateString();
-                        } catch (e) {
-                          return '';
-                        }
-                      })()}
-                    </span>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => user.department === 'PRODUCTION' && setIsEditingDates(true)}
+                        className={`hidden sm:flex items-center gap-1 text-slate-500 transition-colors ${user.department === 'PRODUCTION' ? 'hover:text-blue-400 cursor-pointer' : ''}`}
+                        title={user.department === 'PRODUCTION' ? "Modifier les dates de tournage" : undefined}
+                      >
+                        <Calendar className="h-3 w-3" />
+                        {project.shootingStartDate && project.shootingEndDate ? (
+                          <span>
+                            {new Date(project.shootingStartDate).toLocaleDateString()} - {new Date(project.shootingEndDate).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="italic text-slate-600">Définir les dates</span>
+                        )}
+                      </button>
+
+                      {/* Edit Modal */}
+                      {isEditingDates && (
+                        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-32" onClick={() => setIsEditingDates(false)}>
+                          <div
+                            className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 shadow-2xl min-w-[320px] animate-in fade-in slide-in-from-top-4 duration-200"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <div className="flex justify-between items-center mb-6">
+                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Calendar className="h-5 w-5 text-blue-400" />
+                                Dates de Tournage
+                              </h3>
+                              <button onClick={() => setIsEditingDates(false)} className="text-slate-400 hover:text-white">
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de début</label>
+                                <input
+                                  type="date"
+                                  value={project.shootingStartDate || ''}
+                                  onChange={e => updateProjectDetails({ shootingStartDate: e.target.value })}
+                                  className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de fin</label>
+                                <input
+                                  type="date"
+                                  value={project.shootingEndDate || ''}
+                                  onChange={e => updateProjectDetails({ shootingEndDate: e.target.value })}
+                                  className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                />
+                              </div>
+
+                              <div className="pt-4 flex justify-end">
+                                <button
+                                  onClick={() => setIsEditingDates(false)}
+                                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 font-medium transition-colors flex items-center gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Valider
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
