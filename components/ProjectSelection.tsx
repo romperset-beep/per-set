@@ -21,7 +21,8 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         productionName: user?.productionName || '',
         filmTitle: user?.filmTitle || '',
         startDate: user?.startDate || '',
-        endDate: user?.endDate || ''
+        endDate: user?.endDate || '',
+        projectType: user?.projectType || '' // Added
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -30,7 +31,7 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
 
         setIsLoading(true);
         try {
-            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate);
+            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate, formData.projectType);
             onProjectSelected();
         } catch (err) {
             console.error(err);
@@ -43,7 +44,7 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         if (!user?.productionName || !user?.filmTitle) return;
         setIsLoading(true);
         try {
-            await joinProject(user.productionName, user.filmTitle, user.startDate, user.endDate);
+            await joinProject(user.productionName, user.filmTitle, user.startDate, user.endDate, user.projectType);
             onProjectSelected();
         } catch (err) {
             console.error(err);
@@ -213,6 +214,25 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                             className="w-full bg-cinema-900 border border-cinema-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-eco-500 focus:outline-none transition-all"
                             required
                         />
+                    </div>
+
+                    <div className="relative group animate-in fade-in slide-in-from-top-1 duration-500 delay-100">
+                        <label className="text-xs text-slate-400 mb-1 block ml-1">Type de Projet</label>
+                        <select
+                            value={formData.projectType}
+                            onChange={(e) => setFormData({ ...formData, projectType: e.target.value })}
+                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-eco-500 focus:outline-none transition-all appearance-none"
+                        >
+                            <option value="">Sélectionner le type...</option>
+                            <option value="Long Métrage">Long Métrage</option>
+                            <option value="Série TV">Série TV</option>
+                            <option value="Court Métrage">Court Métrage</option>
+                            <option value="Publicité">Publicité</option>
+                            <option value="Documentaire">Documentaire</option>
+                            <option value="Shooting Photo">Shooting Photo</option>
+                            <option value="Clip">Clip</option>
+                            <option value="Événementiel">Événementiel</option>
+                        </select>
                     </div>
 
                     {(user?.department === 'PRODUCTION') && (

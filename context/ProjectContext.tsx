@@ -53,7 +53,7 @@ interface ProjectContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<void>;
   register: (email: string, pass: string, name: string, dept: Department | 'PRODUCTION') => Promise<void>; // Added
-  joinProject: (prod: string, film: string, start?: string, end?: string) => Promise<void>;
+  joinProject: (prod: string, film: string, start?: string, end?: string, type?: string) => Promise<void>;
   leaveProject: () => Promise<void>; // Added
   logout: () => void;
 
@@ -97,6 +97,7 @@ const DEFAULT_PROJECT: Project = {
   startDate: '2023-10-15',
   shootingStartDate: '2023-11-01',
   shootingEndDate: '2023-12-20',
+  projectType: 'Long Métrage',
   status: 'Shooting',
   items: []
 };
@@ -106,8 +107,13 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Persist user in localStorage for better DX
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('cineStockUser');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('cineStockUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to parse user from local storage", e);
+      return null;
+    }
   });
 
   const [project, setProject] = useState<Project>(DEFAULT_PROJECT);
@@ -446,7 +452,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const joinProject = async (prod: string, film: string, start?: string, end?: string) => {
+  const joinProject = async (prod: string, film: string, start?: string, end?: string, type?: string) => {
     if (!auth.currentUser || !user) return;
 
     const projectId = generateProjectId(prod, film);
@@ -458,7 +464,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       name: film,
       productionCompany: prod,
       shootingStartDate: start || prev.shootingStartDate,
-      shootingEndDate: end || prev.shootingEndDate
+      shootingEndDate: end || prev.shootingEndDate,
+      projectType: type || prev.projectType
     }));
 
     // 2. Update Persisted User Profile with new current project
@@ -467,7 +474,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       productionName: prod,
       filmTitle: film,
       startDate: start,
-      endDate: end
+      endDate: end,
+      projectType: type
     };
     setUser(updatedUser); // Optimistic
 
@@ -476,6 +484,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       filmTitle: film,
       startDate: start || null,
       endDate: end || null,
+      projectType: type || null,
       projectHistory: arrayUnion({
         id: projectId,
         productionName: prod,

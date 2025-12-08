@@ -16,7 +16,7 @@ import { ProjectSelection } from './components/ProjectSelection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
-import { Bell, LogOut, User as UserIcon, Menu } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Menu, Calendar } from 'lucide-react';
 import { Department } from './types';
 
 const AppContent: React.FC = () => {
@@ -53,7 +53,7 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <ProjectManager setActiveTab={setActiveTab} />;
+        return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
       case 'inventory':
         return <InventoryManager />;
       case 'marketplace':
@@ -86,6 +86,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-cinema-900 text-slate-200 font-sans overflow-hidden">
+
+
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -104,8 +106,32 @@ const AppContent: React.FC = () => {
               <Menu className="h-6 w-6" />
             </button>
             <div>
-              <h2 className="text-white font-bold text-lg">{user.filmTitle}</h2>
-              <p className="text-xs text-slate-400 uppercase tracking-wider">{user.productionName}</p>
+              <div className="flex items-center gap-3">
+                <h2 className="text-white font-bold text-lg">{user.filmTitle}</h2>
+                {project.projectType && (
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                    {project.projectType}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-400 uppercase tracking-wider">
+                <span className="truncate max-w-[150px] md:max-w-none">{user.productionName}</span>
+                {project.shootingStartDate && project.shootingEndDate && (
+                  <>
+                    <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-600"></span>
+                    <span className="hidden sm:flex items-center gap-1 text-slate-500">
+                      <Calendar className="h-3 w-3" />
+                      {(() => {
+                        try {
+                          return new Date(project.shootingStartDate).toLocaleDateString() + ' - ' + new Date(project.shootingEndDate).toLocaleDateString();
+                        } catch (e) {
+                          return '';
+                        }
+                      })()}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

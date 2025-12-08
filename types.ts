@@ -61,6 +61,7 @@ export interface Project {
   startDate: string;
   shootingStartDate?: string;
   shootingEndDate?: string;
+  projectType?: string; // e.g., "Long Métrage", "Série", "Pub"
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   items: ConsumableItem[];
 }
@@ -176,5 +177,6 @@ export interface User {
   filmTitle: string;
   startDate?: string;
   endDate?: string;
+  projectType?: string; // Added to User to persist selection across sessions
   projectHistory?: ProjectSummary[];
 }
