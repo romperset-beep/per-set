@@ -1,66 +1,84 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
-    <title>A Better Set</title>
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/logo.png" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              cinema: {
-                900: '#0f172a', // Slate 900
-                800: '#1e293b', // Slate 800
-                700: '#334155', // Slate 700
-              },
-              eco: {
-                400: '#34d399', // Emerald 400
-                500: '#10b981', // Emerald 500
-                600: '#059669', // Emerald 600
-              }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>A Better Set</title>
+  <meta name="description"
+    content="Une application pour tout le plateau. Gestion de stock, économie circulaire et communication sécurisée." />
+
+  <!-- Open Graph / Facebook / iMessage -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://cine-stock.vercel.app/" />
+  <meta property="og:title" content="A Better Set" />
+  <meta property="og:description"
+    content="Gestion responsable de matériel et communication sécurisée pour les productions cinéma." />
+  <meta property="og:site_name" content="A Better Set" />
+  <meta property="og:image" content="/logo.png" />
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cinema: {
+              900: '#0f172a', // Slate 900
+              800: '#1e293b', // Slate 800
+              700: '#334155', // Slate 700
             },
-            animation: {
-              marquee: 'marquee 25s linear infinite',
-            },
-            keyframes: {
-              marquee: {
-                '0%': { transform: 'translateX(0%)' },
-                '100%': { transform: 'translateX(-100%)' },
-              }
+            eco: {
+              400: '#34d399', // Emerald 400
+              500: '#10b981', // Emerald 500
+              600: '#059669', // Emerald 600
+            }
+          },
+          animation: {
+            marquee: 'marquee 25s linear infinite',
+          },
+          keyframes: {
+            marquee: {
+              '0%': { transform: 'translateX(0%)' },
+              '100%': { transform: 'translateX(-100%)' },
             }
           }
         }
       }
-    </script>
-    <style>
-      body {
-        background-color: #0f172a;
-        color: #f8fafc;
-      }
-      /* Scrollbar customization for a sleek look */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1e293b;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-      }
-      /* Pause animation on hover */
-      .hover\:pause:hover {
-        animation-play-state: paused;
-      }
-    </style>
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+
+    /* Scrollbar customization for a sleek look */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Pause animation on hover */
+    .hover\:pause:hover {
+      animation-play-state: paused;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -73,10 +91,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
