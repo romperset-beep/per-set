@@ -371,66 +371,59 @@ export const SocialFeed: React.FC = () => {
                         <p>Aucun message pour le moment. Soyez le premier à publier !</p>
                     </div>
                 ) : (
-                    visiblePosts.map(post => (
-                        <div key={post.id} className={`bg-cinema-800 rounded-xl border ${post.targetAudience && post.targetAudience !== 'GLOBAL' ? 'border-yellow-500/50' : 'border-cinema-700'} overflow-hidden shadow-md hover:border-cinema-600 transition-colors`}>
-                            <div className="p-6 space-y-4">
-                                {/* Header */}
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-gradient-to-br from-pink-500 to-purple-600 h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                            {post.authorName.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-white font-bold flex items-center gap-2">
-                                                {post.authorName}
-                                                {/* Audience Badge */}
-                                                {post.targetAudience === 'DEPARTMENT' && (
-                                                    <span className="text-[10px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1 border border-yellow-500/30">
-                                                        <Lock className="h-3 w-3" /> Privé: {post.targetDept}
-                                                    </span>
-                                                )}
-                                                {post.targetAudience === 'USER' && (
-                                                    <span className="text-[10px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1 border border-yellow-500/30">
-                                                        <Lock className="h-3 w-3" /> Privé: DM
-                                                    </span>
-                                                )}
-                                            </h3>
-                                            <div className="flex items-center gap-2 text-xs text-slate-400">
-                                                <span className="bg-cinema-700 px-2 py-0.5 rounded text-slate-300">{post.authorDepartment}</span>
-                                                <span>•</span>
-                                                <span className="flex items-center gap-1">
-                                                </span>
+                    <div className="space-y-4">
+                        {visiblePosts.map(post => {
+                            const myProfile = userProfiles.find(p => p.email === user?.email);
+                            const isMe = post.authorId === myProfile?.id || (!post.authorId && post.authorName === user?.name);
+
+                            return (
+                                <div
+                                    key={post.id}
+                                    className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}
+                                >
+                                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm text-sm ${isMe
+                                            ? 'bg-pink-600 text-white rounded-br-none'
+                                            : 'bg-cinema-700 text-slate-200 rounded-bl-none'
+                                        }`}>
+                                        {/* Sender Name (Only if not me and in generic view) */}
+                                        {!isMe && (
+                                            <div className="text-[10px] text-pink-400 font-bold mb-1 flex items-center gap-2">
+                                                {post.authorName} - {post.authorDepartment}
                                             </div>
+                                        )}
+
+                                        {/* Content */}
+                                        <div className="whitespace-pre-wrap leading-relaxed">
+                                            {post.content}
+                                        </div>
+
+                                        {/* Photo */}
+                                        {post.photo && (
+                                            <div className="mt-2 text-right">
+                                                <img
+                                                    src={post.photo}
+                                                    alt="Attachement"
+                                                    className="rounded-lg max-h-60 w-auto object-cover border border-white/10"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Metadata Footer */}
+                                        <div className={`flex items-center gap-2 mt-1 text-[10px] ${isMe ? 'text-pink-200' : 'text-slate-400'} justify-end`}>
+                                            <span>
+                                                {new Date(post.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            {post.likes > 0 && (
+                                                <span className="flex items-center gap-0.5">
+                                                    <Heart className="h-3 w-3 fill-current" /> {post.likes}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Content */}
-                                <div className="text-slate-200 whitespace-pre-wrap pl-14">
-                                    {post.content}
-                                </div>
-
-                                {/* Photo */}
-                                {post.photo && (
-                                    <div className="pl-14">
-                                        <img
-                                            src={post.photo}
-                                            alt="Post attachment"
-                                            className="rounded-lg max-h-96 w-auto object-cover border border-cinema-700"
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Footer */}
-                                <div className="pl-14 pt-2 flex items-center gap-4">
-                                    <button className="flex items-center gap-1.5 text-slate-500 hover:text-pink-500 transition-colors text-sm group">
-                                        <Heart className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                        <span>J'aime</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))
+                            );
+                        })}
+                    </div>
                 )}
             </div>
         </div>
