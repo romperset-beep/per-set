@@ -196,17 +196,15 @@ ${formData.firstName} ${formData.lastName}`;
                 )}
             </form>
 
-            {!isEditing && (
-                <div className="flex justify-center pt-8 pb-12">
-                    <button
-                        onClick={handleSendEmail}
-                        className="flex items-center gap-3 bg-cinema-700 hover:bg-cinema-600 text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-105 shadow-xl border border-cinema-600"
-                    >
-                        <FileText className="h-5 w-5" />
-                        Envoyer ma fiche par Email
-                    </button>
-                </div>
-            )}
+            <div className="flex justify-center pt-8 pb-12">
+                <button
+                    onClick={handleSendEmail}
+                    className="flex items-center gap-3 bg-cinema-700 hover:bg-cinema-600 text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-105 shadow-xl border border-cinema-600"
+                >
+                    <FileText className="h-5 w-5" />
+                    Envoyer ma fiche par Email
+                </button>
+            </div>
         </div>
     );
 };
