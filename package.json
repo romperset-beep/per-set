@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "date-fns": "^4.1.0",
     "firebase": "^12.6.0",
     "html2canvas": "^1.4.1",
     "i18next": "^25.7.1",
