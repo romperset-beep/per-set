@@ -17,9 +17,9 @@ export const LoginPage: React.FC = () => {
 
     // Check localStorage for "onboarding seen" flag
     useEffect(() => {
-        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v1');
-        if (hasSeenOnboarding) {
-            setShowOnboarding(false);
+        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v2');
+        if (!hasSeenOnboarding) {
+            setShowOnboarding(true);
         }
     }, []);
 
