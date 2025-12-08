@@ -114,6 +114,7 @@ export interface BuyBackItem {
 
 export interface SocialPost {
   id: string;
+  authorId?: string; // Added for precise filtering
   authorName: string;
   authorDepartment: Department | 'PRODUCTION';
   content: string;

@@ -101,8 +101,18 @@ export const SocialFeed: React.FC = () => {
         e.preventDefault();
         if ((!newPostContent.trim() && !photo) || isProcessing) return;
 
+        // Find current user profile ID for best practice, or use user.uid if available in context (it is available as auth.currentUser.uid in firebase but here via user object we might lack ID)
+        // Actually user object in context is generic, but the context has userProfiles.
+        // Let's try to map email to ID, or if we trust auth state.
+        // For now, let's rely on name/email matching if ID is missing or pass it via context.
+        // BETTER: user object in ProjectContext should probably have 'id' or 'uid'. 
+        // Checking ProjectContext.tsx: user is type User, which doesn't explicitly have ID in interface (types.ts:175).
+        // BUT, we have userProfiles list. Let's find self.
+        const myProfile = userProfiles.find(p => p.email === user?.email);
+
         const newPost: SocialPost = {
             id: `post_${Date.now()}`,
+            authorId: myProfile?.id, // Save ID for robust filtering
             authorName: user?.name || 'Anonyme',
             authorDepartment: user?.department || 'PRODUCTION',
             content: newPostContent,
@@ -117,37 +127,70 @@ export const SocialFeed: React.FC = () => {
         addSocialPost(newPost);
         setNewPostContent('');
         setPhoto(null);
-        // Reset Targeting
-        setTargetAudience('GLOBAL');
-        setTargetUserId('');
-        setSearchTerm('');
+        // Do NOT reset targeting immediately if we want to "stay" in the conversation?
+        // User request "si je choisi une personne alors je n'ai que les messages échangés" imply mode persistence.
+        // So let's keep the selection.
+        // setTargetAudience('GLOBAL');
+        // setTargetUserId('');
+        // setSearchTerm('');
     };
 
-    // Filter Posts Logic
+    // Filter Posts Logic (Security + Channel View)
     const visiblePosts = socialPosts.filter(post => {
-        // 1. Global posts are visible to everyone
-        if (!post.targetAudience || post.targetAudience === 'GLOBAL') return true;
+        // 1. SECURITY FILTER (Can I see this?)
+        let allowed = false;
 
-        // 2. Department posts
-        if (post.targetAudience === 'DEPARTMENT') {
-            // Production sees everything
-            if (user?.department === 'PRODUCTION' || user?.department === 'Régie') return true;
-            // Target dept sees it
-            if (post.targetDept === user?.department) return true;
-            // Author sees it
-            if (post.authorDepartment === user?.department) return true;
+        // Global posts -> Everyone
+        if (!post.targetAudience || post.targetAudience === 'GLOBAL') allowed = true;
+
+        // Department posts -> Members of Dept + Prod + Author
+        else if (post.targetAudience === 'DEPARTMENT') {
+            if (user?.department === 'PRODUCTION' || user?.department === 'Régie') allowed = true;
+            else if (post.targetDept === user?.department) allowed = true;
+            else if (post.authorDepartment === user?.department) allowed = true;
         }
 
-        // 3. Private messages
-        if (post.targetAudience === 'USER') {
-            // Admin see everything
-            if (user?.department === 'PRODUCTION') return true;
-            // Recipient sees it
-            const currentUserProfile = userProfiles.find(p => p.email === user?.email);
-            if (post.targetUserId === currentUserProfile?.id) return true;
+        // Private DMs -> Sender + Recipient + Admin
+        else if (post.targetAudience === 'USER') {
+            if (user?.department === 'PRODUCTION') allowed = true;
+            const myProfile = userProfiles.find(p => p.email === user?.email);
+            // Recipient is me
+            if (post.targetUserId === myProfile?.id) allowed = true;
+            // Sender is me (check via ID or Name backup)
+            if (post.authorId === myProfile?.id) allowed = true;
+            else if (!post.authorId && post.authorName === user?.name) allowed = true; // Legacy fallback
+        }
 
-            // Author sees it
-            if (post.authorName === user?.name) return true;
+        if (!allowed) return false;
+
+        // 2. CHANNEL VIEW FILTER (Does it match my current selection scope?)
+        // If I selected "Global", I want to see Global posts.
+        // If I selected "Dept X", I want to see posts for Dept X.
+        // If I selected "User Y", I want to see DMs with User Y.
+
+        if (targetAudience === 'GLOBAL') {
+            // Show Global posts + maybe my Department posts mixed in? 
+            // Usually "Global" feed shows public stuff.
+            return !post.targetAudience || post.targetAudience === 'GLOBAL';
+        }
+
+        if (targetAudience === 'DEPARTMENT') {
+            // Show posts specifically targeting this department (or My Dept posts?)
+            return post.targetAudience === 'DEPARTMENT' && post.targetDept === targetDept;
+        }
+
+        if (targetAudience === 'USER') {
+            const myProfile = userProfiles.find(p => p.email === user?.email);
+            const otherUserId = targetUserId;
+
+            // Show conversation between ME and OtherUser
+            // 1. They sent to me
+            const isFromThemToMe = (post.authorId === otherUserId || (!post.authorId && post.authorName === searchTerm)) && post.targetUserId === myProfile?.id;
+
+            // 2. I sent to them
+            const isFromMeToThem = (post.authorId === myProfile?.id || (!post.authorId && post.authorName === user?.name)) && post.targetUserId === otherUserId;
+
+            return isFromThemToMe || isFromMeToThem;
         }
 
         return false;
