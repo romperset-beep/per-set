@@ -193,7 +193,35 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return saved ? Number(saved) : Date.now();
   });
 
-  const unreadSocialCount = socialPosts.filter(p => new Date(p.date).getTime() > lastReadSocial).length;
+  const unreadSocialCount = socialPosts.filter(p => {
+    if (!user) return false;
+    // 1. Check Date
+    if (new Date(p.date).getTime() <= lastReadSocial) return false;
+
+    // 2. Exclude my own posts
+    // We need to resolve my ID. 
+    const myProfile = userProfiles.find(up => up.email === user.email);
+    const myId = myProfile?.id;
+    if (myId && p.authorId === myId) return false;
+    if (!myId && p.authorName === user.name) return false; // Fallback
+
+    // 3. Relevance Check
+    // Global
+    if (!p.targetAudience || p.targetAudience === 'GLOBAL') return true;
+
+    // Department
+    if (p.targetAudience === 'DEPARTMENT') {
+      // Strict matching as requested ("son département")
+      return p.targetDept === user.department;
+    }
+
+    // User (Private)
+    if (p.targetAudience === 'USER') {
+      return p.targetUserId === myId;
+    }
+
+    return false;
+  }).length;
   const unreadMarketplaceCount = buyBackItems.filter(i => new Date(i.date).getTime() > lastReadMarketplace).length;
 
   const markSocialAsRead = () => {
