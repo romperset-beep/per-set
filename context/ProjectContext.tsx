@@ -34,6 +34,8 @@ import {
   deleteDoc // Added
 } from 'firebase/firestore';
 
+import { getStorage, ref, deleteObject } from 'firebase/storage';
+
 // Auth State Listener and Functions moved inside Provider
 
 
@@ -82,6 +84,7 @@ interface ProjectContextType {
   toggleBuyBackReservation: (itemId: string, department: Department | 'PRODUCTION') => void;
   socialPosts: SocialPost[];
   addSocialPost: (post: SocialPost) => void;
+  deleteSocialPost: (postId: string, photoUrl?: string) => Promise<void>; // Added
   // Call Sheets
   callSheets: CallSheet[];
   addCallSheet: (item: CallSheet) => Promise<void>;
@@ -866,6 +869,36 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const deleteSocialPost = async (postId: string, photoUrl?: string) => {
+    try {
+      const projectId = project.id;
+      if (!projectId || projectId === 'default-project') return;
+
+      console.log(`[SocialWall] Deleting post: ${postId}`);
+
+      // 1. Delete Firestore Document
+      const postRef = doc(db, 'projects', projectId, 'socialPosts', postId);
+      await deleteDoc(postRef);
+
+      // 2. Delete Photo from Storage if exists
+      if (photoUrl && photoUrl.includes('firebase')) {
+        try {
+          const photoRef = ref(getStorage(), photoUrl);
+          await deleteObject(photoRef);
+          console.log("[SocialWall] Photo deleted from storage");
+        } catch (storageErr) {
+          console.warn("[SocialWall] Failed to delete photo from storage (might be shared or already gone):", storageErr);
+        }
+      }
+
+      console.log("[SocialWall] Post deleted successfully");
+    } catch (err: any) {
+      console.error("[SocialWall] Delete Error:", err);
+      setError(`Erreur de suppression : ${err.message}`);
+      throw err;
+    }
+  };
+
   // 4. Sync User Profiles (Team Members)
   useEffect(() => {
     if (!project.name || project.id === 'default-project') return;
@@ -988,6 +1021,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       toggleBuyBackReservation,
       socialPosts,
       addSocialPost,
+      deleteSocialPost, // Added
       callSheets,
       addCallSheet,
       userProfiles,

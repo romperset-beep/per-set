@@ -4,7 +4,7 @@ import { MessageSquare, Image as ImageIcon, Send, Heart, User, Clock, Trash2, Us
 import { SocialPost, Department } from '../types'; // Added Department
 
 export const SocialFeed: React.FC = () => {
-    const { socialPosts, addSocialPost, user, userProfiles } = useProject(); // Added userProfiles
+    const { socialPosts, addSocialPost, deleteSocialPost, user, userProfiles } = useProject(); // Added deleteSocialPost
     const [newPostContent, setNewPostContent] = useState('');
     const [photo, setPhoto] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -452,6 +452,19 @@ export const SocialFeed: React.FC = () => {
                                                     <span className="flex items-center gap-0.5">
                                                         <Heart className="h-3 w-3 fill-current text-pink-500" /> {post.likes}
                                                     </span>
+                                                )}
+                                                {(isMe || user?.department === 'PRODUCTION') && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm("Supprimer ce message ?")) {
+                                                                deleteSocialPost(post.id, post.photo);
+                                                            }
+                                                        }}
+                                                        className="hover:text-red-400 transition-colors p-1"
+                                                        title="Supprimer"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
