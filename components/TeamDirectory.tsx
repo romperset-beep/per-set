@@ -8,9 +8,7 @@ export const TeamDirectory: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
 
-    if (currentDept !== 'PRODUCTION') {
-        return <div className="p-8 text-center text-red-400">Accès réservé à la production.</div>;
-    }
+
 
     const filteredProfiles = userProfiles.filter(profile => {
         const matchesSearch = (
@@ -99,12 +97,14 @@ export const TeamDirectory: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 border-t border-cinema-700 grid grid-cols-2 gap-2">
-                                        <DocumentButton label="RIB" hasDoc={!!profile.rib} url={profile.rib} />
-                                        <DocumentButton label="CNI" hasDoc={!!profile.idCard} url={profile.idCard} />
-                                        <DocumentButton label="CMB" hasDoc={!!profile.cmbCard} url={profile.cmbCard} />
-                                        <DocumentButton label="Permis" hasDoc={!!profile.drivingLicense} url={profile.drivingLicense} />
-                                    </div>
+                                    {currentDept === 'PRODUCTION' && (
+                                        <div className="pt-4 border-t border-cinema-700 grid grid-cols-2 gap-2">
+                                            <DocumentButton label="RIB" hasDoc={!!profile.rib} url={profile.rib} />
+                                            <DocumentButton label="CNI" hasDoc={!!profile.idCard} url={profile.idCard} />
+                                            <DocumentButton label="CMB" hasDoc={!!profile.cmbCard} url={profile.cmbCard} />
+                                            <DocumentButton label="Permis" hasDoc={!!profile.drivingLicense} url={profile.drivingLicense} />
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
