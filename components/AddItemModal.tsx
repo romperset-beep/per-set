@@ -108,16 +108,28 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
     const [isSubmitting, setIsSubmitting] = useState(false);
     const suggestionsListRef = useRef<HTMLDivElement>(null);
 
-    // Flatten all items for global autocomplete
+    // Flatten all items for global autocomplete with case-insensitive deduplication
     const allCatalogItems = useMemo(() => {
-        const allItems = new Set<string>();
-        Object.values(POPULAR_ITEMS).forEach(items => items.forEach(i => allItems.add(i)));
-        // Add items from history
-        project.items.forEach(i => allItems.add(i.name));
-        // Add items from Global Catalog
-        catalogItems.forEach(i => allItems.add(i.name));
+        const itemMap = new Map<string, string>(); // lowercase -> display name
 
-        return Array.from(allItems).sort();
+        const addToMap = (name: string) => {
+            if (!name) return;
+            const key = name.trim().toLowerCase();
+            if (!itemMap.has(key)) {
+                itemMap.set(key, name.trim());
+            }
+        };
+
+        // 1. Popular Items (Standard/Cleanest names first)
+        Object.values(POPULAR_ITEMS).forEach(items => items.forEach(addToMap));
+
+        // 2. Global Catalog (Next preferred source)
+        catalogItems.forEach(i => addToMap(i.name));
+
+        // 3. Project History (User typed, might be less clean)
+        project.items.forEach(i => addToMap(i.name));
+
+        return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
     }, [project.items, catalogItems]);
 
     // Filter suggestions when typing
@@ -198,9 +210,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         setIsSubmitting(true);
 
         // Determine final department:
-        // Always use the current user's department.
-        // Even Production orders for itself now.
-        const finalDepartment = currentDept as (Department | 'PRODUCTION');
+        // Use the selected department from the dropdown. 
+        // This allows Production to order for specific departments and ensures catalog consistency.
+        const finalDepartment = selectedDept;
 
         const newItem: ConsumableItem = {
             id: Math.random().toString(36).substr(2, 9), // Will be ignored by addItem
@@ -250,16 +262,32 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         setIsCatalogOpen(false);
     };
 
-    // Get suggestions for current department catalog
-    const baseCatalog = POPULAR_ITEMS[selectedDept] || [];
-    const historyItems = project.items
-        .filter(item => item.department === selectedDept)
-        .map(item => item.name);
-    const globalCatalogItems = catalogItems
-        .filter(item => item.department === selectedDept)
-        .map(item => item.name);
+    // Get suggestions for current department catalog with deduplication
+    const catalogItemsList = useMemo(() => {
+        const itemMap = new Map<string, string>();
+        const addToMap = (name: string) => {
+            if (!name) return;
+            const key = name.trim().toLowerCase();
+            if (!itemMap.has(key)) {
+                itemMap.set(key, name.trim());
+            }
+        };
 
-    const catalogItemsList = Array.from(new Set([...baseCatalog, ...historyItems, ...globalCatalogItems])).sort((a, b) => a.localeCompare(b));
+        // 1. Base Catalog
+        (POPULAR_ITEMS[selectedDept] || []).forEach(addToMap);
+
+        // 2. Global Catalog Items for this dept
+        catalogItems
+            .filter(item => item.department === selectedDept)
+            .forEach(item => addToMap(item.name));
+
+        // 3. History Items for this dept
+        project.items
+            .filter(item => item.department === selectedDept)
+            .forEach(item => addToMap(item.name));
+
+        return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
+    }, [selectedDept, project.items, catalogItems]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
