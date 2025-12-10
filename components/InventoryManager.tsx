@@ -9,7 +9,194 @@ import { ErrorBoundary } from './ErrorBoundary';
 export const InventoryManager: React.FC = () => {
     const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
 
-    // ... (lines 12-200 remain the same, I will target confirmSurplus mostly)
+    // Form State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [selectedForEmail, setSelectedForEmail] = useState<Set<string>>(new Set());
+    const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
+    // const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
+    const [surplusConfirmation, setSurplusConfirmation] = useState<{ item: any, action: SurplusAction } | null>(null);
+
+    // Check shooting end date
+    const shootingEndDate = project.shootingEndDate ? new Date(project.shootingEndDate) : null;
+    const isShootingFinished = shootingEndDate ? new Date() >= shootingEndDate : false;
+
+    // Expense Report State
+    const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [expenseItemName, setExpenseItemName] = useState<string>('');
+
+
+    // toggleExpenseSelection removed
+
+
+    const toggleExpenseSelection = (id: string) => {
+        setSelectedForExpense(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+
+    const groupStockItems = (items: typeof project.items) => {
+        const grouped: any[] = [];
+        const newItemsByName: Record<string, any> = {};
+        const startedItemsByName: Record<string, any> = {};
+
+        items.forEach(item => {
+            const startedQty = item.quantityStarted || 0;
+            const newQty = Math.max(0, item.quantityCurrent - startedQty);
+            const key = item.name + (item.surplusAction || 'NONE');
+
+            // Handle New Portion
+            if (newQty > 0) {
+                if (!newItemsByName[key]) {
+                    newItemsByName[key] = {
+                        ...item,
+                        quantityCurrent: 0,
+                        quantityStarted: 0,
+                        items: []
+                    };
+                }
+                newItemsByName[key].quantityCurrent += newQty;
+                newItemsByName[key].items.push(item);
+            }
+
+            // Handle Started Portion
+            if (startedQty > 0) {
+                if (!startedItemsByName[key]) {
+                    startedItemsByName[key] = {
+                        ...item,
+                        quantityCurrent: 0,
+                        quantityStarted: 0,
+                        isStartedView: true, // Flag to identify started view
+                        items: []
+                    };
+                }
+                startedItemsByName[key].quantityCurrent += startedQty;
+                startedItemsByName[key].quantityStarted += startedQty;
+                startedItemsByName[key].items.push(item);
+            }
+        });
+
+        // Add aggregated items
+        Object.values(newItemsByName).forEach(agg => grouped.push(agg));
+        Object.values(startedItemsByName).forEach(agg => grouped.push(agg));
+
+        return grouped.sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            // New first
+            if (!a.isStartedView && b.isStartedView) return -1;
+            if (a.isStartedView && !b.isStartedView) return 1;
+            return 0;
+        });
+    };
+
+    const updateQuantity = async (id: string, change: number) => {
+        const item = project.items.find(i => i.id === id);
+        if (!item) return;
+
+        const newQty = Math.max(0, item.quantityCurrent + change);
+        let newStatus = item.status;
+        if (newQty === 0) newStatus = ItemStatus.EMPTY;
+        else if (newQty < item.quantityInitial) newStatus = ItemStatus.USED;
+
+        const updatedItem = { ...item, quantityCurrent: newQty, status: newStatus };
+
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
+
+        if (updateItem) await updateItem(updatedItem);
+    };
+
+    const markAsBought = async (id: string) => {
+        const item = project.items.find(i => i.id === id);
+        if (!item) return;
+
+        const updatedItem = { ...item, isBought: true };
+
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
+
+        if (updateItem) await updateItem(updatedItem);
+        markNotificationAsReadByItemId(id);
+    };
+
+    const markAsPurchased = async (id: string) => {
+        const item = project.items.find(i => i.id === id);
+        if (!item) return;
+
+        const updatedItem = { ...item, purchased: true, isBought: false };
+
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
+
+        if (updateItem) await updateItem(updatedItem);
+        markNotificationAsReadByItemId(id);
+    };
+
+    const incrementStarted = async (id: string) => {
+        const item = project.items.find(i => i.id === id);
+        if (!item) return;
+
+        const currentStarted = item.quantityStarted || 0;
+        if (currentStarted < item.quantityCurrent) {
+            const updatedItem = { ...item, quantityStarted: currentStarted + 1, status: ItemStatus.USED };
+
+            setProject(prev => ({
+                ...prev,
+                items: prev.items.map(i => i.id === id ? updatedItem : i)
+            }));
+
+            if (updateItem) await updateItem(updatedItem);
+        }
+    };
+
+    const setSurplusAction = async (id: string, action: SurplusAction) => {
+        const item = project.items.find(i => i.id === id);
+        if (!item) return;
+
+        if (action !== SurplusAction.NONE) {
+            let actionName = 'Action inconnue';
+            if (action === SurplusAction.MARKETPLACE) actionName = 'Stock Virtuel';
+            else if (action === SurplusAction.DONATION) actionName = 'Dons';
+            else if (action === SurplusAction.SHORT_FILM) actionName = 'Court-Métrage';
+            else if (action === SurplusAction.RELEASED_TO_PROD) actionName = 'Libération Production';
+
+            addNotification(
+                `♻️ Surplus : ${item.name} (${item.department}) déplacé vers ${actionName} par ${user?.name || 'Département'}`,
+                'STOCK_MOVE',
+                'PRODUCTION'
+            );
+        }
+
+        const updatedItem = { ...item, surplusAction: action };
+
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
+
+        if (updateItem) await updateItem(updatedItem);
+    };
+
+    const handleSurplusClick = (item: any, action: SurplusAction) => {
+        // If item has started units AND new units (mixed stock), ask for confirmation
+        if ((item.quantityStarted || 0) > 0 && (item.quantityStarted || 0) < item.quantityCurrent) {
+            setSurplusConfirmation({ item, action });
+        } else {
+            setSurplusAction(item.id, action);
+        }
+    };
 
     const confirmSurplus = async (mode: 'ALL' | 'ONLY_NEW') => {
         if (!surplusConfirmation) return;
