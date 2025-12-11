@@ -84,36 +84,33 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
         setFormData(prev => {
             const newData = { ...prev, [field]: numValue };
 
-            // Logic: Calculate missing 3rd value based on 2 knowns
-            // TTC = HT + TVA
-
-            const ht = field === 'amountHT' ? numValue : (prev.amountHT || 0);
+            // Logic: Prioritize TTC (Total) as anchor if it exists.
             const ttc = field === 'amountTTC' ? numValue : (prev.amountTTC || 0);
+            const ht = field === 'amountHT' ? numValue : (prev.amountHT || 0);
             const tva = field === 'amountTVA' ? numValue : (prev.amountTVA || 0);
 
             if (field === 'amountHT') {
-                if (tva > 0) {
-                    // HT + TVA -> TTC
-                    newData.amountTTC = Number((ht + tva).toFixed(2));
-                } else if (ttc > 0) {
-                    // TTC - HT -> TVA
-                    newData.amountTVA = Number((Math.max(0, ttc - ht)).toFixed(2));
-                }
-            } else if (field === 'amountTTC') {
-                if (ht > 0) {
-                    // TTC - HT -> TVA
-                    newData.amountTVA = Number((Math.max(0, ttc - ht)).toFixed(2));
+                if (ttc > 0) {
+                    // If Total exists, HT change implies TVA adjustment (breaking down total)
+                    newData.amountTVA = Number(Math.max(0, ttc - numValue).toFixed(2));
                 } else if (tva > 0) {
-                    // TTC - TVA -> HT
-                    newData.amountHT = Number((Math.max(0, ttc - tva)).toFixed(2));
+                    // If only Tax exists, HT change implies building Total
+                    newData.amountTTC = Number((numValue + tva).toFixed(2));
                 }
             } else if (field === 'amountTVA') {
-                if (ht > 0) {
-                    // HT + TVA -> TTC
+                if (ttc > 0) {
+                    // If Total exists, TVA change implies HT adjustment
+                    newData.amountHT = Number(Math.max(0, ttc - numValue).toFixed(2));
+                } else if (ht > 0) {
+                    // If only Base exists, TVA change implies building Total
                     newData.amountTTC = Number((ht + numValue).toFixed(2));
-                } else if (ttc > 0) {
-                    // TTC - TVA -> HT
-                    newData.amountHT = Number((Math.max(0, ttc - numValue)).toFixed(2));
+                }
+            } else if (field === 'amountTTC') {
+                // If changing Total, adjust components if one exists
+                if (ht > 0) {
+                    newData.amountTVA = Number(Math.max(0, numValue - ht).toFixed(2));
+                } else if (tva > 0) {
+                    newData.amountHT = Number(Math.max(0, numValue - tva).toFixed(2));
                 }
             }
 
