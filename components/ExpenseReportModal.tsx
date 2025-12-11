@@ -73,17 +73,45 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
         }
     }, [isOpen, prefillItemName]);
 
-    // Auto-calculate HT when TTC or TVA changes
-    React.useEffect(() => {
-        const ttc = Number(formData.amountTTC) || 0;
-        const tva = Number(formData.amountTVA) || 0;
-        const ht = Math.max(0, Number((ttc - tva).toFixed(2)));
-
-        // Only update if different to avoid infinite loops or interfering with manual typing of other fields
-        if (formData.amountHT !== ht) {
-            setFormData(prev => ({ ...prev, amountHT: ht }));
+    // Auto-calculation Handlers
+    const handleAmountChange = (field: 'amountHT' | 'amountTTC' | 'amountTVA', value: string) => {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+            setFormData(prev => ({ ...prev, [field]: 0 }));
+            return;
         }
-    }, [formData.amountTTC, formData.amountTVA]);
+
+        setFormData(prev => {
+            const newData = { ...prev, [field]: numValue };
+
+            // Logic: 
+            // 1. If we change HT, and TVA exists -> Update TTC.
+            // 2. If we change HT, and TTC exists but no TVA -> Update TVA.
+            // 3. If we change TTC -> Update TVA (assuming HT is fixed base or we deduce tax).
+            // 4. If we change TVA -> Update TTC (add tax to base).
+
+            const ht = field === 'amountHT' ? numValue : (prev.amountHT || 0);
+            const ttc = field === 'amountTTC' ? numValue : (prev.amountTTC || 0);
+            const tva = field === 'amountTVA' ? numValue : (prev.amountTVA || 0);
+
+            if (field === 'amountHT') {
+                if (tva > 0) {
+                    newData.amountTTC = Number((ht + tva).toFixed(2));
+                } else if (ttc > 0) {
+                    newData.amountTVA = Number((ttc - ht).toFixed(2));
+                }
+            } else if (field === 'amountTTC') {
+                // If we set Total, usually we deduce Tax from it based on HT, or just diff
+                // Ideally we keep HT stable. So TVA = TTC - HT.
+                newData.amountTVA = Number((ttc - ht).toFixed(2));
+            } else if (field === 'amountTVA') {
+                // If we set Tax, usually we add it to HT to get TTC
+                newData.amountTTC = Number((ht + numValue).toFixed(2));
+            }
+
+            return newData;
+        });
+    };
 
     if (!isOpen) return null;
 
@@ -311,8 +339,8 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                     <input
                                         type="number"
                                         step="0.01"
-                                        value={formData.amountHT}
-                                        onChange={e => setFormData({ ...formData, amountHT: parseFloat(e.target.value) })}
+                                        value={formData.amountHT || ''}
+                                        onChange={(e) => handleAmountChange('amountHT', e.target.value)}
                                         className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white outline-none focus:border-eco-500"
                                     />
                                 </div>
@@ -321,8 +349,8 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                     <input
                                         type="number"
                                         step="0.01"
-                                        value={formData.amountTTC}
-                                        onChange={e => setFormData({ ...formData, amountTTC: parseFloat(e.target.value) })}
+                                        value={formData.amountTTC || ''}
+                                        onChange={(e) => handleAmountChange('amountTTC', e.target.value)}
                                         className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white font-bold text-lg focus:border-eco-500 outline-none"
                                         required
                                     />
@@ -332,8 +360,8 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                     <input
                                         type="number"
                                         step="0.01"
-                                        value={formData.amountTVA}
-                                        onChange={e => setFormData({ ...formData, amountTVA: parseFloat(e.target.value) })}
+                                        value={formData.amountTVA || ''}
+                                        onChange={(e) => handleAmountChange('amountTVA', e.target.value)}
                                         className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:border-eco-500 outline-none"
                                     />
                                 </div>
