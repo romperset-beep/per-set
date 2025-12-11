@@ -85,6 +85,7 @@ interface ProjectContextType {
   addBuyBackItem: (item: BuyBackItem) => void;
   toggleBuyBackReservation: (itemId: string, department: Department | 'PRODUCTION') => void;
   confirmBuyBackTransaction: (itemId: string) => Promise<void>;
+  deleteBuyBackItem: (itemId: string) => Promise<void>; // Added
   socialPosts: SocialPost[];
   addSocialPost: (post: SocialPost) => void;
   deleteSocialPost: (postId: string, photoUrl?: string) => Promise<void>; // Added
@@ -604,6 +605,19 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error("[BuyBack] Confirm Error:", err);
       setError(`Erreur confirmation: ${err.message}`);
       alert(`Erreur lors de la confirmation : ${err.message}`); // Added for visibility
+    }
+  };
+
+  const deleteBuyBackItem = async (itemId: string) => {
+    try {
+      const projectId = project.id;
+      const itemRef = doc(db, 'projects', projectId, 'buyBackItems', itemId);
+      await deleteDoc(itemRef);
+      addNotification("Article supprimé de la vente", "INFO", "PRODUCTION");
+    } catch (err: any) {
+      console.error("[BuyBack] Delete Error:", err);
+      setError(`Erreur suppression: ${err.message}`);
+      alert(`Erreur lors de la suppression : ${err.message}`);
     }
   };
 
@@ -1254,6 +1268,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       addBuyBackItem,
       toggleBuyBackReservation,
       confirmBuyBackTransaction,
+      deleteBuyBackItem,
       socialPosts,
       addSocialPost,
       deleteSocialPost, // Added

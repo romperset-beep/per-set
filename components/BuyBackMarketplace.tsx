@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department } from '../types';
-import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X } from 'lucide-react';
+import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2 } from 'lucide-react';
 import { SellItemModal } from './SellItemModal';
 
 export const BuyBackMarketplace: React.FC = () => {
-    const { buyBackItems, toggleBuyBackReservation, user, currentDept } = useProject();
+    const { buyBackItems, toggleBuyBackReservation, confirmBuyBackTransaction, deleteBuyBackItem, user, currentDept } = useProject();
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -101,6 +101,22 @@ export const BuyBackMarketplace: React.FC = () => {
                                             RÉSERVÉ
                                         </div>
                                     </div>
+                                )}
+
+                                {/* Delete Button for Seller or Admin */}
+                                {(user?.department === 'PRODUCTION' || user?.department === item.sellerDepartment) && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('Voulez-vous vraiment retirer cet article de la vente ?')) {
+                                                deleteBuyBackItem(item.id);
+                                            }
+                                        }}
+                                        className="absolute top-2 left-2 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg shadow-lg border border-red-400 transition-all opacity-0 group-hover:opacity-100"
+                                        title="Supprimer l'annonce"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 )}
                             </div>
 
