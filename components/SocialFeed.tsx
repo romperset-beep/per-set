@@ -22,8 +22,51 @@ export const SocialFeed: React.FC = () => {
     const [showSuggestions, setShowSuggestions] = useState(false);
 
     const [showGallery, setShowGallery] = useState(false); // Toggle for Gallery Mode
+    const [showRecentDiscussions, setShowRecentDiscussions] = useState(false); // Toggle for Recent Discussions
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Calculate Recent DM Partners
+    const myProfile = userProfiles.find(p => p.email === user?.email);
+    const recentPartners: { id: string, name: string, lastDate: string }[] = [];
+
+    if (myProfile) {
+        const processedIds = new Set<string>();
+
+        // Sort posts by date desc first
+        const sortedPosts = [...socialPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        sortedPosts.forEach(post => {
+            if (post.targetAudience === 'USER') {
+                let partnerId = '';
+                let partnerName = '';
+
+                // If I am the author, partner is target
+                if (post.authorId === myProfile.id || (!post.authorId && post.authorName === user?.name)) {
+                    if (post.targetUserId) {
+                        partnerId = post.targetUserId;
+                        // Find name from profile if possible
+                        const p = userProfiles.find(u => u.id === partnerId);
+                        partnerName = p ? `${p.firstName} ${p.lastName}` : 'Utilisateur Inconnu';
+                    }
+                }
+                // If I am the target, partner is author
+                else if (post.targetUserId === myProfile.id) {
+                    partnerId = post.authorId || ''; // Fallback for legacy
+                    partnerName = post.authorName;
+                }
+
+                if (partnerId && !processedIds.has(partnerId) && partnerId !== myProfile.id) {
+                    processedIds.add(partnerId);
+                    recentPartners.push({
+                        id: partnerId,
+                        name: partnerName,
+                        lastDate: post.date
+                    });
+                }
+            }
+        });
+    }
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         // ... (existing resize logic preserved)
@@ -190,11 +233,20 @@ export const SocialFeed: React.FC = () => {
         <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
             <header className="text-center space-y-4">
                 <div className="flex items-center justify-between">
-                    <div></div>
+                    {/* Recent Discussions Toggle */}
+                    <button
+                        onClick={() => setShowRecentDiscussions(!showRecentDiscussions)}
+                        className={`p-2 rounded-lg transition-colors ${showRecentDiscussions ? 'bg-pink-600 text-white' : 'bg-cinema-800 text-slate-400 hover:text-white'}`}
+                        title="Mes discussions récentes"
+                    >
+                        <Clock className="h-5 w-5" />
+                    </button>
+
                     <h2 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
                         <MessageSquare className="h-8 w-8 text-pink-500" />
                         Mur Social
                     </h2>
+
                     <button
                         onClick={() => setShowGallery(!showGallery)}
                         className={`p-2 rounded-lg transition-colors ${showGallery ? 'bg-pink-600 text-white' : 'bg-cinema-800 text-slate-400 hover:text-white'}`}
@@ -203,6 +255,53 @@ export const SocialFeed: React.FC = () => {
                         {showGallery ? <MessageSquare className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
                     </button>
                 </div>
+
+                {/* Recent Discussions List */}
+                {showRecentDiscussions && (
+                    <div className="bg-cinema-800 border border-pink-500/30 rounded-xl p-4 animate-in slide-in-from-top-2 text-left">
+                        <h3 className="text-sm font-bold text-pink-400 mb-3 flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Reprendre une discussion récente
+                        </h3>
+                        {recentPartners.length === 0 ? (
+                            <p className="text-slate-500 text-sm italic">Aucune conversation privée récente.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {recentPartners.map(partner => (
+                                    <button
+                                        key={partner.id}
+                                        onClick={() => {
+                                            setTargetAudience('USER');
+                                            setTargetUserId(partner.id);
+                                            setSearchTerm(partner.name);
+                                            setShowRecentDiscussions(false); // Close menu after selection
+                                        }}
+                                        className="flex items-center gap-3 p-3 rounded-lg bg-cinema-900 hover:bg-cinema-700 transition-colors border border-cinema-700 hover:border-pink-500/50 group"
+                                    >
+                                        <div className="h-8 w-8 rounded-full bg-pink-900/50 text-pink-400 flex items-center justify-center text-xs font-bold border border-pink-500/20 group-hover:border-pink-500">
+                                            {partner.name.charAt(0)}
+                                        </div>
+                                        <div className="flex flex-col items-start overflow-hidden">
+                                            <span className="text-sm font-medium text-slate-200 group-hover:text-white truncate w-full text-left">{partner.name}</span>
+                                            <span className="text-[10px] text-slate-500">Dernier msg: {new Date(partner.lastDate).toLocaleDateString()}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div className="mt-4 pt-3 border-t border-cinema-700/50">
+                            <button
+                                onClick={() => {
+                                    setTargetAudience('GLOBAL');
+                                    setShowRecentDiscussions(false);
+                                }}
+                                className="w-full text-center text-xs text-slate-400 hover:text-pink-400 py-1"
+                            >
+                                Retour au Mur Global
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {showGallery ? (
                     <div className="bg-pink-600/10 text-pink-400 px-4 py-2 rounded-lg text-sm inline-block">
