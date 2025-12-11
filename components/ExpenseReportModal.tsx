@@ -143,9 +143,9 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
         setPreviewUrl(URL.createObjectURL(selectedFile));
         setStep('REVIEW');
         setError(null);
-        setIsAnalyzing(true);
+        // setIsAnalyzing(true); // AI disabled for stability
 
-        // 2. Background Processing
+        // 2. Background Processing (Compression only)
         setTimeout(async () => {
             try {
                 let fileToProcess = selectedFile;
@@ -161,46 +161,21 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                 setFile(fileToProcess);
 
                 if (fileToProcess.size > 1024 * 1024) {
-                    setIsAnalyzing(false);
-                    setError("Image trop lourde pour l'IA, saisie manuelle requise.");
-                    return;
+                    // Non-blocking warning for user awareness
+                    // setError("Image volumineuse, compression appliquée.");
                 }
 
+                // AI ANALYSIS DISABLED TO PREVENT CRASHES
+                /*
                 const result = await analyzeReceipt(fileToProcess);
                 if (result.data) {
-                    setFormData(prev => {
-                        let tva = safeParseFloat(result.data.amountTVA) || prev.amountTVA || 0;
-                        let ttc = safeParseFloat(result.data.amountTTC) || prev.amountTTC || 0;
-                        let ht = safeParseFloat(result.data.amountHT) || prev.amountHT || 0;
-
-                        // Auto-calculate missing values from AI if we have at least 2
-                        if (ttc > 0 && tva > 0 && ht === 0) {
-                            ht = Number((ttc - tva).toFixed(2));
-                        } else if (ttc > 0 && ht > 0 && tva === 0) {
-                            tva = Number((ttc - ht).toFixed(2));
-                        } else if (ht > 0 && tva > 0 && ttc === 0) {
-                            ttc = Number((ht + tva).toFixed(2));
-                        }
-
-                        return {
-                            ...prev,
-                            merchantName: result.data.merchantName || prev.merchantName,
-                            date: result.data.date || prev.date,
-                            amountTTC: ttc,
-                            amountTVA: tva,
-                            amountHT: ht,
-                            items: [...(prev.items || []), ...(result.data.items || [])]
-                        };
-                    });
-                } else {
-                    console.warn("AI Analysis uncertain:", result.rawResponse);
+                   ...
                 }
+                */
+
             } catch (err) {
-                console.error("Background analysis failed:", err);
-                const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-                if (errorMessage.includes('429') || errorMessage.includes('Resource exhausted')) {
-                    setError("IA surchargée, saisie manuelle requise.");
-                }
+                console.error("File processing failed:", err);
+                setError("Erreur lors du traitement de l'image.");
             } finally {
                 setIsAnalyzing(false);
             }
@@ -281,7 +256,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                             <p className="text-slate-300">
                                 Prenez en photo votre ticket de caisse ou importez une image/PDF.
                                 <br />
-                                <span className="text-sm text-slate-500">L'IA analysera automatiquement les détails.</span>
+                                <span className="text-sm text-slate-500">Image compressée et jointe au dossier. Saisie des montants manuelle.</span>
                             </p>
 
                             <input
