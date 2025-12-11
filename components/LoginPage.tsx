@@ -85,9 +85,10 @@ export const LoginPage: React.FC = () => {
                 <div className="flex flex-col items-center w-full">
                     <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
                         <div className="flex justify-center mb-4">
-                            <LottieAnimation
-                                url="/animations/clapperboard.json"
-                                className="h-32 w-32"
+                            <img
+                                src="/logo.png"
+                                alt="A Better Set Logo"
+                                className="h-32 w-auto object-contain"
                             />
                         </div>
                         <h1 className="text-2xl font-bold text-white tracking-tight">A Better Set</h1>
