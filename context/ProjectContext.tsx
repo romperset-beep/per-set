@@ -20,7 +20,7 @@ import {
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db, auth } from '../services/firebase';
-import { signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
 import {
   collection,
   doc,
@@ -60,6 +60,7 @@ interface ProjectContextType {
   user: User | null;
   login: (email: string, pass: string) => Promise<void>;
   register: (email: string, pass: string, name: string, dept: Department | 'PRODUCTION') => Promise<void>; // Added
+  resetPassword: (email: string) => Promise<void>; // Added
   joinProject: (prod: string, film: string, start?: string, end?: string, type?: string) => Promise<void>;
   leaveProject: () => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
@@ -153,6 +154,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [lastLog, setLastLog] = useState<string>("En attente...");
 
   // Auto-login replaced by onAuthStateChanged listener below
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      addNotification("Email de réinitialisation envoyé !", "INFO", "PRODUCTION"); // Using INFO to global
+    } catch (err: any) {
+      console.error("Reset Password Error", err);
+      throw err;
+    }
+  };
 
   // Sync Project Metadata (Dates, Status, etc.)
   useEffect(() => {
@@ -1285,6 +1296,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       user,
       login,
       register,
+      resetPassword,
       logout,
       notifications: userNotifications,
       addNotification,
