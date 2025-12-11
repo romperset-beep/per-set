@@ -90,6 +90,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                                 <p className="text-sm text-slate-400">Accédez aux ventes de fin de tournage (Déco, Costumes, Prod).</p>
                             </div>
                         </li>
+                        <li className="flex items-start gap-3">
+                            <div className="mt-1 min-w-[20px]"><ShieldCheck className="h-5 w-5 text-green-400" /></div>
+                            <div>
+                                <h3 className="font-bold text-slate-200">Fiche de Renseignements</h3>
+                                <p className="text-sm text-slate-400">Vos infos vous suivent sur tous les projets (plus de paperasse !).</p>
+                            </div>
+                        </li>
                     </ul>
                 </div>
             </div>
