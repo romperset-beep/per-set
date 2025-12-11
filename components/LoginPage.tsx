@@ -15,14 +15,9 @@ export const LoginPage: React.FC = () => {
     type ViewState = 'landing' | 'onboarding' | 'auth' | 'selection';
     const [view, setView] = useState<ViewState>('landing');
 
-    // Check localStorage for "onboarding seen" flag
+    // Always start at landing page
     useEffect(() => {
-        const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v2');
-        if (hasSeenOnboarding) {
-            setView('auth');
-        } else {
-            setView('landing');
-        }
+        setView('landing');
     }, []);
 
     // Check if user needs to select a project (Logged in but no project ID)
@@ -40,7 +35,7 @@ export const LoginPage: React.FC = () => {
     };
 
     const handleOnboardingComplete = () => {
-        localStorage.setItem('hasSeenOnboarding_v2', 'true');
+        // localStorage.setItem('hasSeenOnboarding_v2', 'true'); // We want to show landing every time now
         setView('auth');
     };
 
