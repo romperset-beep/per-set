@@ -60,30 +60,43 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
     doc.setFontSize(8);
     doc.text('Document généré via A Better Set', pageWidth / 2, 280, { align: 'center' });
 
-    // -- Receipt Image (if available and CORS allows) --
+    // -- Receipt Image --
     if (report.receiptUrl) {
         try {
-            // New page for receipt
             doc.addPage();
+            doc.setFontSize(16);
             doc.text("Justificatif", 20, 20);
 
-            // Note: We can't easily add remote images due to CORS in client-side jsPDF without a proxy
-            // But if it's a blob/base64 it works. If it's a firebase URL, it might fail due to CORS.
-            // For now, we add the link.
-            doc.setTextColor(0, 0, 255);
-            doc.textWithLink('Cliquez ici pour voir le justificatif original', 20, 40, { url: report.receiptUrl });
+            // Attempt to fetch image as blob to bypass some CORS issues if on same domain/firebase
+            // This requires the server (Firebase Storage) to have CORS allowed for this domain.
+            const response = await fetch(report.receiptUrl, { mode: 'cors' });
+            if (!response.ok) throw new Error("Failed to fetch image");
+            const blob = await response.blob();
 
-            // Attempting to add image if it allows (unlikely without config)
-            // const img = new Image();
-            // img.src = report.receiptUrl;
-            // await img.decode();
-            // doc.addImage(img, 'JPEG', 20, 50, 170, 0); 
+            // Convert to Base64
+            const reader = new FileReader();
+            const base64Promise = new Promise<string>((resolve, reject) => {
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+            });
+            reader.readAsDataURL(blob);
+            const base64data = await base64Promise;
+
+            const imgProps = doc.getImageProperties(base64data);
+            const pdfWidth = doc.internal.pageSize.getWidth() - 40;
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            doc.addImage(base64data, 'JPEG', 20, 40, pdfWidth, pdfHeight);
+
         } catch (e) {
-            console.warn("Could not embed image", e);
+            console.warn("Could not embed image, adding link instead", e);
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 255);
+            doc.textWithLink('Cliquez ici pour voir le justificatif original (Ouvrir dans le navigateur)', 20, 40, { url: report.receiptUrl });
         }
     }
 
-    doc.save(`Frais_${report.date}_${report.merchantName}.pdf`);
+    doc.save(`Frais_${report.date.split('T')[0]}_${report.merchantName?.replace(/[^a-z0-9]/gi, '_')}.pdf`);
 };
 
 export const generateSummaryPDF = (reports: ExpenseReport[], userName: string, department: string) => {
