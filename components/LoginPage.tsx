@@ -31,7 +31,7 @@ export const LoginPage: React.FC = () => {
     }, [user, project]);
 
     const handleLandingStart = () => {
-        setView('onboarding');
+        setView('auth');
     };
 
     const handleOnboardingComplete = () => {
@@ -77,9 +77,9 @@ export const LoginPage: React.FC = () => {
                 <LandingPage onStart={handleLandingStart} />
             )}
 
-            {view === 'onboarding' && (
+            {/* {view === 'onboarding' && (
                 <OnboardingCarousel onComplete={handleOnboardingComplete} language={language} />
-            )}
+            )} */}
 
             {view === 'auth' && !user && (
                 <div className="flex flex-col items-center w-full">
