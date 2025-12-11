@@ -18,11 +18,12 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
     const { user, addExpenseReport } = useProject();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [step, setStep] = useState<'UPLOAD' | 'ANALYZING' | 'REVIEW' | 'SUCCESS'>('UPLOAD');
+    const [step, setStep] = useState<'UPLOAD' | 'REVIEW' | 'SUCCESS'>('UPLOAD');
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     // Form Data
     const [formData, setFormData] = useState<Partial<ExpenseReport>>({
@@ -41,6 +42,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
             setFile(null);
             setPreviewUrl(null);
             setError(null);
+            setIsAnalyzing(false);
             setFormData({
                 amountTTC: 0,
                 amountTVA: 0,
@@ -69,15 +71,19 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
         const selectedFile = e.target.files?.[0];
         if (!selectedFile) return;
 
-        // Compression for images
-        let fileToProcess = selectedFile;
-        // setStep('COMPRESSING'); // Could add a visible step, but keeping ANALYZING implies it
-        setStep('ANALYZING'); // Reuse analyzing state for visual simplicity or create a new one
+        // 1. Immediate UI Feedback: Show Preview & Form
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+        setStep('REVIEW');
         setError(null);
+        setIsAnalyzing(true);
 
-        // Small delay to allow browser to recover from camera switch (memory GC)
+        // 2. Background Processing
+        // Small delay to allow browser main thread to render the UI switch
         setTimeout(async () => {
             try {
+                let fileToProcess = selectedFile;
+
+                // Compress if image
                 if (selectedFile.type.startsWith('image/')) {
                     try {
                         fileToProcess = await compressImage(selectedFile);
@@ -86,35 +92,35 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                     }
                 }
 
+                // Update file reference to the compressed one (valid for upload)
                 setFile(fileToProcess);
-                setPreviewUrl(URL.createObjectURL(fileToProcess));
 
+                // Analyze
                 const result = await analyzeReceipt(fileToProcess);
                 if (result.data) {
                     setFormData(prev => ({
                         ...prev,
-                        merchantName: result.data.merchantName || '',
-                        date: result.data.date || new Date().toISOString().split('T')[0],
-                        amountTTC: result.data.amountTTC || 0,
-                        amountTVA: result.data.amountTVA || 0,
-                        // Merge detected items with prefilled item if any
+                        merchantName: result.data.merchantName || prev.merchantName,
+                        date: result.data.date || prev.date,
+                        amountTTC: result.data.amountTTC || prev.amountTTC,
+                        amountTVA: result.data.amountTVA || prev.amountTVA,
+                        // Merge detected items
                         items: [...(prev.items || []), ...(result.data.items || [])]
                     }));
-                    setStep('REVIEW');
                 } else {
-                    // Use the raw response or a specific error message if available
-                    throw new Error(result.rawResponse || "Impossible d'analyser le ticket.");
+                    // Silent failure or console log, user is already editing manually
+                    console.warn("AI Analysis uncertain:", result.rawResponse);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Background analysis failed:", err);
+                // We don't block the user with a big error, just maybe a toast or silent fail
+                // since they can manually edit.
                 const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-
-                if (errorMessage.includes('429') || errorMessage.includes('Resource exhausted') || errorMessage.includes('quota')) {
-                    setError("Quota IA dépassé. Veuillez réessayer plus tard ou utiliser une autre clé API.");
-                } else {
-                    setError(`Erreur analyse: ${errorMessage}`);
+                if (errorMessage.includes('429') || errorMessage.includes('Resource exhausted')) {
+                    setError("IA surchargée, saisie manuelle requise.");
                 }
-                setStep('REVIEW');
+            } finally {
+                setIsAnalyzing(false);
             }
         }, 500);
     };
@@ -216,13 +222,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                         </div>
                     )}
 
-                    {step === 'ANALYZING' && (
-                        <div className="text-center py-12 space-y-4">
-                            <Loader2 className="h-12 w-12 text-eco-500 animate-spin mx-auto" />
-                            <h4 className="text-xl font-bold text-white">Analyse en cours...</h4>
-                            <p className="text-slate-400">Nous extrayons les informations de votre ticket.</p>
-                        </div>
-                    )}
+
 
                     {step === 'REVIEW' && (
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -235,7 +235,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
 
                             <div className="flex gap-4">
                                 {previewUrl && (
-                                    <div className="w-1/3">
+                                    <div className="w-1/3 relative">
                                         {file?.type === 'application/pdf' ? (
                                             <div className="w-full h-32 bg-cinema-900 border border-cinema-600 rounded-lg flex flex-col items-center justify-center text-slate-400">
                                                 <FileText className="h-10 w-10 mb-2" />
@@ -244,11 +244,19 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                         ) : (
                                             <img src={previewUrl} alt="Ticket" className="w-full h-32 object-cover rounded-lg border border-cinema-600" />
                                         )}
+                                        {isAnalyzing && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg backdrop-blur-sm">
+                                                <Loader2 className="h-8 w-8 text-eco-400 animate-spin" />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 <div className="flex-1 space-y-3">
                                     <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Commerçant</label>
+                                        <div className="flex justify-between">
+                                            <label className="block text-xs text-slate-400 mb-1">Commerçant</label>
+                                            {isAnalyzing && <span className="text-xs text-eco-400 animate-pulse">Analyse IA...</span>}
+                                        </div>
                                         <input
                                             type="text"
                                             value={formData.merchantName}
