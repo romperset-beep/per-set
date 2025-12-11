@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Users, ArrowRight, TrendingUp, ShieldCheck, Leaf, ShoppingBag, MessageSquare, Clapperboard } from 'lucide-react';
+import { Building2, Users, ArrowRight, TrendingUp, ShieldCheck, Leaf, ShoppingBag, MessageSquare, Clapperboard, FileText, Package } from 'lucide-react';
 
 interface LandingPageProps {
     onStart: () => void;
@@ -70,24 +70,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
                     <ul className="space-y-4">
                         <li className="flex items-start gap-3">
-                            <div className="mt-1 min-w-[20px]"><ShoppingBag className="h-5 w-5 text-pink-400" /></div>
+                            <div className="mt-1 min-w-[20px]"><Package className="h-5 w-5 text-pink-400" /></div>
                             <div>
-                                <h3 className="font-bold text-slate-200">Bons Plans & Récup'</h3>
-                                <p className="text-sm text-slate-400">Accédez au "Bon Coin" du tournage. Achetez ou récupérez décors et costumes à prix réduit.</p>
+                                <h3 className="font-bold text-slate-200">Gestion Simplifiée</h3>
+                                <p className="text-sm text-slate-400">Commandez vos consommables et gérez vos stocks facilement.</p>
                             </div>
                         </li>
                         <li className="flex items-start gap-3">
-                            <div className="mt-1 min-w-[20px]"><ShieldCheck className="h-5 w-5 text-yellow-400" /></div>
+                            <div className="mt-1 min-w-[20px]"><FileText className="h-5 w-5 text-yellow-400" /></div>
                             <div>
-                                <h3 className="font-bold text-slate-200">Profil Unique</h3>
-                                <p className="text-sm text-slate-400">Plus besoin de renvoyer vos RIB et cartes d'identité. Votre profil sécurisé vous suit de projet en projet.</p>
+                                <h3 className="font-bold text-slate-200">Administratif Centralisé</h3>
+                                <p className="text-sm text-slate-400">Vos notes de frais et feuilles de service accessibles au même endroit.</p>
                             </div>
                         </li>
                         <li className="flex items-start gap-3">
-                            <div className="mt-1 min-w-[20px]"><MessageSquare className="h-5 w-5 text-cyan-400" /></div>
+                            <div className="mt-1 min-w-[20px]"><ShoppingBag className="h-5 w-5 text-cyan-400" /></div>
                             <div>
-                                <h3 className="font-bold text-slate-200">Mur Social & Actus</h3>
-                                <p className="text-sm text-slate-400">Restez connecté avec l'équipe, partagez des photos et suivez la vie du plateau.</p>
+                                <h3 className="font-bold text-slate-200">Achats & Seconde Vie</h3>
+                                <p className="text-sm text-slate-400">Accédez aux ventes de fin de tournage (Déco, Costumes, Prod).</p>
                             </div>
                         </li>
                     </ul>
