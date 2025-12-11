@@ -152,7 +152,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             {/* Header */}
             <div className="text-center mb-12 space-y-4">
                 <div className="inline-flex items-center justify-center p-4 bg-cinema-800 rounded-full border border-cinema-700 shadow-2xl mb-4">
-                    <Clapperboard className="h-12 w-12 text-pink-500" />
+                    <img
+                        src="/logo.png"
+                        alt="A Better Set Logo"
+                        className="h-12 w-auto object-contain"
+                    />
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
                     {t.title}
