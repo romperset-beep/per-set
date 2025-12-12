@@ -41,7 +41,7 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
-      Agis en tant qu'expert auditeur RSE spécialisé dans le secteur audiovisuel (AFNOR Spec 2308).
+      Agis en tant qu'expert auditeur RSE spécialisé dans le secteur audiovisuel (méthodologie Ecoprod / Carbon'Clap).
       Analyse l'inventaire de la production "${projectName}".
       
       Données d'inventaire :
@@ -57,10 +57,12 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
       - Taux de Valorisation (Réemploi/Recyclage) : ${recyclingRate}%
       
       Tâche :
-      1. Estime les émissions CO2 évitées (Scope 3) (co2SavedKg).
-      2. Estime les économies financières (moneySaved).
-      3. Assigne un Score de Durabilité (0-100).
-      4. Rédige une analyse professionnelle (aiAnalysis) EN FRANÇAIS. L'analyse DOIT être en français.
+      1. Catégorise chaque poste selon les 8 catégories Carbon'Clap : Production, Lieux de tournage, Déco, HMC, Déplacements, Régie, Moyens techniques, Post-production.
+      2. Estime les émissions CO2 évitées (Scope 3 - Achats & Déchets) (co2SavedKg).
+      3. Estime les économies financières (moneySaved).
+      4. Assigne un Score de Durabilité (0-100).
+      5. Rédige une analyse professionnelle (aiAnalysis) EN FRANÇAIS mentionnant l'alignement Carbon'Clap.
+      6. Retourne une répartition estimée du CO2 évité par catégorie Carbon'Clap (ecoprodBreakdown).
 
       Retourne UNIQUEMENT du JSON respectant ce schéma :
       {
@@ -68,7 +70,17 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
         "moneySaved": number,
         "co2SavedKg": number,
         "sustainabilityScore": number,
-        "aiAnalysis": string
+        "aiAnalysis": string,
+        "ecoprodBreakdown": {
+            "Production": number,
+            "Lieux de tournage": number,
+            "Déco": number,
+            "HMC": number,
+            "Déplacements": number,
+            "Régie": number,
+            "Moyens techniques": number,
+            "Post-production": number
+        }
       }
     `;
 

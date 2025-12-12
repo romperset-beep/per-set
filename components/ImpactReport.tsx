@@ -3,7 +3,7 @@ import { useProject } from '../context/ProjectContext';
 import { generateEcoImpactReport } from '../services/geminiService';
 import { ImpactMetrics, SurplusAction } from '../types';
 import { Loader2, Leaf, Share2, Award, Building, DollarSign, PackageOpen, ShoppingBag } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -178,9 +178,32 @@ export const ImpactReport: React.FC = () => {
             pdf: {
                 title: "Informe RSE - {project}",
                 text: "Aquí está el informe de impacto ecológico para el proyecto {project}."
+            },
+            ecoprod: {
+                title: "Répartition Carbon'Clap (Ecoprod)",
+                desc: "Estimation des émissions évitées selon la nomenclature standard Carbon'Clap (Scope 3 - Achats).",
+                legend: "CO2 Évité (kg)"
             }
         }
     }[language || 'fr'];
+
+    const t_en_ecoprod = {
+        title: "Carbon'Clap Breakdown (Ecoprod)",
+        desc: "Estimated avoided emissions according to Carbon'Clap standard nomenclature (Scope 3 - Purchasing).",
+        legend: "Avoided CO2 (kg)"
+    };
+    const t_es_ecoprod = {
+        title: "Desglose Carbon'Clap (Ecoprod)",
+        desc: "Estimación de emisiones evitadas según la nomenclatura estándar Carbon'Clap (Alcance 3 - Compras).",
+        legend: "CO2 Evitado (kg)"
+    };
+
+    // Quick fix for missing translations in existing objects without rewriting huge blocks
+    const tEco = language === 'en' ? t_en_ecoprod : language === 'es' ? t_es_ecoprod : t.ecoprod || {
+        title: "Répartition Carbon'Clap (Ecoprod)",
+        desc: "Estimation des émissions évitées selon la nomenclature standard Carbon'Clap (Scope 3 - Achats).",
+        legend: "CO2 Évité (kg)"
+    };
 
     useEffect(() => {
         const fetchMetrics = async () => {
@@ -458,6 +481,44 @@ export const ImpactReport: React.FC = () => {
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
+
+                    {/* Carbon'Clap Breakdown Section */}
+                    {metrics.ecoprodBreakdown && (
+                        <div className="bg-cinema-800 rounded-xl border border-cinema-700 p-6 h-96">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Leaf className="h-5 w-5 text-green-400" />
+                                    {tEco.title}
+                                </h3>
+                                <p className="text-sm text-slate-400">
+                                    {tEco.desc}
+                                </p>
+                            </div>
+                            <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={Object.entries(metrics.ecoprodBreakdown)
+                                            .map(([name, value]) => ({ name, value }))
+                                            .sort((a, b) => b.value - a.value)
+                                            .filter(d => d.value > 0)
+                                        }
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={true} vertical={false} />
+                                        <XAxis type="number" stroke="#94a3b8" fontSize={10} unit=" kg" />
+                                        <YAxis dataKey="name" type="category" stroke="#fff" fontSize={11} width={100} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                                            cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                                            formatter={(value: number) => [`${value.toFixed(1)} kg`, tEco.legend]}
+                                        />
+                                        <Bar dataKey="value" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Consumed Items Table */}
                     <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden col-span-full">

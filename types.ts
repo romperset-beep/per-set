@@ -75,6 +75,7 @@ export interface ImpactMetrics {
   recyclingRate: number; // New field for AFNOR Spec 2308
   sustainabilityScore: number; // 0-100
   aiAnalysis?: string;
+  ecoprodBreakdown?: Record<string, number>; // Carbon'Clap Categories
 }
 
 export enum ExpenseStatus {
