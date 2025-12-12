@@ -45,6 +45,7 @@ interface ProjectContextType {
   project: Project;
   setProject: React.Dispatch<React.SetStateAction<Project>>;
   updateProjectDetails: (updates: Partial<Project>) => Promise<void>;
+  updateEcoprodChecklist: (checklist: Record<string, boolean>) => Promise<void>;
 
   // Firestore Actions
   addItem: (item: ConsumableItem) => Promise<void>;
@@ -200,7 +201,22 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log("[ProjectSync] Updated successfully:", updates);
     } catch (err: any) {
       console.error("[ProjectSync] Error updating project:", err);
-      setError(`Erreur de sauvegarde : ${err.message}`);
+    }
+  };
+
+  const updateEcoprodChecklist = async (checklist: Record<string, boolean>) => {
+    try {
+      const projectId = project.id;
+      if (!projectId || projectId === 'default-project') return;
+
+      const projectRef = doc(db, 'projects', projectId);
+      // Optimistic
+      setProject(prev => ({ ...prev, ecoprodChecklist: checklist }));
+
+      await setDoc(projectRef, { ecoprodChecklist: checklist }, { merge: true });
+    } catch (err: any) {
+      console.error("Error updating Ecoprod checklist:", err);
+      setError(`Erreur sauvegarde audit: ${err.message}`);
     }
   };
 
@@ -410,6 +426,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       throw err;
     }
   };
+
+
 
   // Firestore Actions
   const addItem = async (item: ConsumableItem) => {
@@ -1282,6 +1300,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       project,
       setProject,
       updateProjectDetails,
+      updateEcoprodChecklist,
       joinProject,
       leaveProject,
       deleteProject, // Added

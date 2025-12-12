@@ -5,6 +5,7 @@ import { useProject } from '../context/ProjectContext';
 import { AddItemModal } from './AddItemModal';
 import { ExpenseReportModal } from './ExpenseReportModal';
 import { ErrorBoundary } from './ErrorBoundary';
+import { CateringWidget } from './CateringWidget';
 
 export const InventoryManager: React.FC = () => {
     const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
@@ -404,6 +405,13 @@ export const InventoryManager: React.FC = () => {
                     </button>
                 </div>
             </header>
+
+            {/* CATERING WIDGET (Régie & Prod) */}
+            {(currentDept === Department.REGIE || currentDept === 'PRODUCTION') && (
+                <div className="animate-in slide-in-from-top-4 mb-4">
+                    <CateringWidget />
+                </div>
+            )}
 
             <ErrorBoundary>
                 <AddItemModal

@@ -96,9 +96,14 @@ export const UserProfilePage: React.FC = () => {
                 // Update Firestore
                 const userRef = doc(db, 'users', auth.currentUser.uid);
 
+                // Sanitize formData to remove undefined values (Firestore rejects undefined)
+                const sanitizedData = Object.fromEntries(
+                    Object.entries(formData).map(([k, v]) => [k, v === undefined ? null : v])
+                );
+
                 // We use setDoc with merge to ensure we don't overwrite other important user fields like project history
                 await setDoc(userRef, {
-                    ...formData,
+                    ...sanitizedData,
                     // Ensure these are split correctly if not present in formData
                     firstName: formData.firstName || user.name.split(' ')[0],
                     lastName: formData.lastName || user.name.split(' ').slice(1).join(' ')
@@ -114,7 +119,7 @@ export const UserProfilePage: React.FC = () => {
                 alert("Fiche enregistrée avec succès !");
             } catch (err) {
                 console.error("Error saving profile:", err);
-                alert("Erreur lors de l'enregistrement.");
+                alert(`Erreur lors de l'enregistrement: ${(err as Error).message}`);
             }
         }
     };
@@ -191,6 +196,26 @@ ${formData.firstName} ${formData.lastName}`;
                         <Input label="Adresse" name="address" value={formData.address} onChange={handleChange} disabled={!isEditing} className="md:col-span-3" required />
                         <Input label="Code Postal" name="postalCode" value={formData.postalCode} onChange={handleChange} disabled={!isEditing} required />
                         <Input label="Ville" name="city" value={formData.city} onChange={handleChange} disabled={!isEditing} required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-1">Régime Alimentaire (Cantine)</label>
+                        <select
+                            name="dietaryHabits"
+                            value={formData.dietaryHabits || ''}
+                            onChange={handleChange}
+                            disabled={!isEditing}
+                            className={`w-full bg-cinema-900 border ${isEditing ? 'border-cinema-700' : 'border-transparent'} rounded-lg p-3 text-white focus:border-eco-500 outline-none transition-colors appearance-none`}
+                        >
+                            <option value="">Standard (Tout)</option>
+                            <option value="Végétarien">Végétarien</option>
+                            <option value="Végétalien (Vegan)">Végétalien (Vegan)</option>
+                            <option value="Sans Porc">Sans Porc</option>
+                            <option value="Sans Gluten">Sans Gluten</option>
+                            <option value="Sans Lactose">Sans Lactose</option>
+                            <option value="Halal">Halal</option>
+                            <option value="Casher">Casher</option>
+                        </select>
+                        <p className="text-xs text-slate-500 mt-1">Ces informations seront visibles par la Régie pour l'organisation des repas.</p>
                     </div>
                 </section>
 

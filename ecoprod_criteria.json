@@ -1,0 +1,174 @@
+```json
+[
+    {
+        "category": "D. Bureaux",
+        "criteria": [
+            {
+                "id": "D3",
+                "label": "Avez-vous mis en place des mesures pour réduire les déchets dans les bureaux ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "D4",
+                "label": "Des consignes de tri ont-elles été communiquées dans le cadre du traitement de vos déchets de bureau ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "D5",
+                "label": "Pour le nouveau matériel, la production a-t-elle acquis majoritairement des appareils reconditionnés, peu consommateurs d'énergie ou certifiés par un label ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "D6",
+                "label": "Si vous avez eu recours à des achats de fournitures de bureau, avez-vous privilégié en majorité des achats responsables ?",
+                "impact": "Medium"
+            }
+        ]
+    },
+    {
+        "category": "F. Décors, constructions et accessoires de tournage",
+        "criteria": [
+            {
+                "id": "F1",
+                "label": "Avez-vous majoritairement loué ou utilisé des éléments de décors, des objets décoratifs et autres accessoires déjà existants ?",
+                "impact": "High"
+            },
+            {
+                "id": "F2",
+                "label": "Pour les achats, avez-vous majoritairement acheté d'occasion des décors, des objets décoratifs et autres accessoires, ou choisi des marques ou des produits respectueux de l'environnement ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "F3",
+                "label": "La majorité des décors ont-ils été construits avec des matériaux réutilisés, réutilisables et/ou des blocs modulaires (assemblage/désassemblage) ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "F4",
+                "label": "Avez-vous évité les matériaux et substances nocives pour l'environnement lors de la fabrication et la transformation des décors ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "F5",
+                "label": "La production a-t-elle conservé, donné ou vendu la majorité de ses décors, objets décoratifs et autres accessoires ?",
+                "impact": "High"
+            },
+            {
+                "id": "F6",
+                "label": "Les débris de construction et autres déchets de décors ont-ils été triés et recyclés ?",
+                "impact": "Low"
+            }
+        ]
+    },
+    {
+        "category": "G. Habillage, Maquillage, Coiffure",
+        "criteria": [
+            {
+                "id": "G1",
+                "label": "Avez-vous majoritairement loué ou utilisé des costumes, vêtements et accessoires déjà existants ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "G2",
+                "label": "Pour les achats, avez-vous majoritairement acheté d'occasion des costumes, vêtements et accessoires, ou choisi des marques ou des produits respectueux de l'environnement ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "G3",
+                "label": "La majorité des costumes, des vêtements, et accessoires ont-ils été confectionnés avec des matières réutilisées et/ou réutilisables ? Avez-vous privilégié des matières labellisées ou d'origine locale ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "G4",
+                "label": "La production a-t-elle conservé, donné ou vendu la majorité de ses costumes, vêtements et accessoires ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "G5",
+                "label": "Avez-vous utilisé des produits de nettoyage et détergents non-toxiques et respectueux de l'environnement ?",
+                "impact": "Low"
+            },
+             {
+                "id": "G6",
+                "label": "Avez-vous utilisé majoritairement des produits biologiques et/ou avec des labels écologiques ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "G7",
+                "label": "Avez-vous limité le recours à des consommables et privilégié des produits non-emballés, biodégradables ou rechargeables ?",
+                "impact": "Medium"
+            }
+        ]
+    },
+    {
+        "category": "I. Régie",
+        "criteria": [
+            {
+                "id": "I1",
+                "label": "Avez-vous mis en place un plan de gestion responsable, de réduction et de tri des déchets produits durant le cycle de production sur tous les sites et studios utilisés ?",
+                "impact": "High"
+            },
+            {
+                "id": "I2",
+                "label": "Avez-vous sensibilisé vos équipes à la gestion des déchets, notamment au travers d'une signalisation qui rappelle les consignes de tri pour le compostage et/ou le recyclage ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "I3",
+                "label": "Avez-vous fait le suivi des volumes de l'intégralité des déchets de production ?",
+                "impact": "Medium"
+            },
+                 {
+                "id": "16",
+                "label": "Avez-vous mis en place des mesures de réduction drastique des produits ou contenants à usage unique et individuel ayant un fort impact environnemental ?",
+                "impact": "High"
+            },
+                  {
+                "id": "111",
+                "label": "Les excédents de nourriture ont-ils majoritairement été réutilisés, et/ou donnés aux membres de l'équipe, et/ou à des banques alimentaires ou organisations caritatives locales ? Les aliments qui n'ont pu être donnés ont-ils été triés et compostés ?",
+                "impact": "Medium"
+            }
+        ]
+    },
+    {
+        "category": "J. Moyens Techniques de Production",
+        "criteria": [
+            {
+                "id": "J7",
+                "label": "Avez-vous limité le recours aux consommables techniques (piles non rechargeables, gaffer, gélatines, polystyrène,...) ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "J8",
+                "label": "La production s'est-elle assurée du suivi et du bon tri et recyclage des piles (rechargeables ou non), plus globalement des Déchets d'Equipements Electriques et Electroniques (DEEE) et des déchets produits durant le tournage ?",
+                "impact": "High"
+            },
+            {
+                "id": "J9",
+                "label": "La production a-t-elle prohibé les effets spéciaux physiques risquant d'endommager l'environnement et/ou incluant la destruction de biens et de ressources ?",
+                "impact": "High"
+            }
+        ]
+    },
+         {
+        "category": "K. Post-Production et Régie Technique",
+        "criteria": [
+           {
+                "id": "K3",
+                "label": "La post-production a-t-elle mis en place des actions visant à réduire l'impact matériel de ses équipements techniques ?",
+                "impact": "Medium"
+            },
+            {
+                "id": "K4",
+                "label": "Avez-vous mis en place des actions pour limiter les volumes de données numériques traités ?",
+                "impact": "High"
+            },
+            {
+                "id": "K5",
+                "label": "Des techniques de stockage, d'archivage ou de conservation des données numériques qui limitent les impacts énergétiques ont-elles été choisies ?",
+                "impact": "High"
+            }
+        ]
+    }
+]
+```

@@ -11,7 +11,8 @@ import {
   MessageSquare,
   Euro,
   ArrowRightLeft,
-  ShieldCheck
+  ShieldCheck,
+  Utensils
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -35,7 +36,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     { id: 'expenses', label: t('sidebar.expenses'), icon: Euro },
     { id: 'social', label: t('sidebar.social'), icon: MessageSquare },
     { id: 'team', label: t('sidebar.team'), icon: Users },
-    { id: 'callsheets', label: 'Feuilles de Service', icon: FileText }, // Added
+    { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
+    { id: 'catering', label: 'Feuille Cantine', icon: Utensils }, // Added
     { id: 'profile', label: t('sidebar.profile'), icon: Settings },
     { id: 'admin', label: 'Administration', icon: ShieldCheck }, // Hidden by default filter
   ];
@@ -61,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     if (item.id === 'donations') return true; // Can see donations
     if (item.id === 'expenses') return true; // Can submit expenses
     if (item.id === 'team') return true; // Can see team
+    if (item.id === 'catering') return false; // Only Regie/Prod already covered above
 
     return false;
   });

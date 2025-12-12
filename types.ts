@@ -65,6 +65,33 @@ export interface Project {
   projectType?: string; // e.g., "Long Métrage", "Série", "Pub"
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   items: ConsumableItem[];
+  ecoprodChecklist?: Record<string, boolean>; // id -> isMet
+  carbonContext?: CarbonContext;
+  cateringLogs?: CateringLog[];
+  cateringValidations?: Record<string, boolean>; // date -> isValidated
+}
+
+export interface CateringLog {
+  id: string; // date_userId
+  date: string; // YYYY-MM-DD
+  userId?: string;
+  guestName?: string; // If manual add
+  department: Department | 'PRODUCTION';
+  hasEaten: boolean;
+  isVegetarian: boolean;
+  isManual: boolean;
+}
+
+export interface CarbonContext {
+  shootingDays: number;
+  teamSize: number;
+  transportMode: 'Train' | 'Avion' | 'Voiture' | 'Mixte';
+  energySource: 'Réseau' | 'Groupe Électrogène' | 'Mixte';
+  postcode?: string;
+  cateringVegPercent?: number; // 0-100
+  totalNights?: number;
+  locationRatio?: number; // % Studio
+  textilesEcoPercent?: number; // 0-100
 }
 
 export interface ImpactMetrics {
@@ -76,6 +103,13 @@ export interface ImpactMetrics {
   sustainabilityScore: number; // 0-100
   aiAnalysis?: string;
   ecoprodBreakdown?: Record<string, number>; // Carbon'Clap Categories
+}
+
+export interface EcoprodCriterion {
+  id: string;
+  category: string;
+  label: string;
+  impact: 'High' | 'Medium' | 'Low';
 }
 
 export enum ExpenseStatus {
@@ -145,6 +179,7 @@ export interface UserProfile {
   city: string;
   phone: string;
   familyStatus: string; // Situation familiale
+  dietaryHabits?: string; // e.g. "Végétarien", "Sans Gluten"
 
   // Admin Info
   ssn: string; // Numéro de sécurité sociale

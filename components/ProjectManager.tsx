@@ -1,6 +1,6 @@
 import React from 'react';
 import { Department, SurplusAction } from '../types';
-import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar, FileText, Receipt } from 'lucide-react';
+import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar, FileText, Receipt, Utensils } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
 interface ProjectManagerProps {
@@ -75,6 +75,23 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     </p>
                     <p className="text-xs text-slate-400 mt-1">Planning journalier</p>
                 </button>
+
+                {/* Catering Card (Régie & Prod) */}
+                {(currentDept === 'Régie' || currentDept === 'PRODUCTION') && (
+                    <button
+                        onClick={() => setActiveTab && setActiveTab('catering')}
+                        className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                    >
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-semibold opacity-70">Cantine</h3>
+                            <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
+                        </div>
+                        <p className="text-4xl font-bold mt-2 text-orange-400">
+                            {project.cateringLogs?.filter(l => l.date === new Date().toISOString().split('T')[0] && l.hasEaten).length || 0}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Repas d'aujourd'hui</p>
+                    </button>
+                )}
 
                 {/* 3. Note de Frais (NEW) */}
                 <button

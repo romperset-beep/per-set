@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { InventoryManager } from './components/InventoryManager';
+import { CateringWidget } from './components/CateringWidget';
 import { CircularEconomy } from './components/CircularEconomy';
 import { ImpactReport } from './components/ImpactReport';
 import { GlobalStock } from './components/GlobalStock';
@@ -78,6 +79,8 @@ const AppContent: React.FC = () => {
         return <UserProfilePage />;
       case 'team':
         return <TeamDirectory />;
+      case 'catering':
+        return <CateringWidget />;
       case 'callsheets':
         return <CallSheetView />;
       case 'admin':

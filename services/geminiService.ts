@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, Part } from "@google/generative-ai";
-import { ConsumableItem, ImpactMetrics, SurplusAction } from "../types";
+import { ConsumableItem, ImpactMetrics, SurplusAction, CarbonContext } from "../types";
 
 // Initialize Gemini API (Web SDK)
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -9,7 +9,7 @@ if (!apiKey) {
   console.warn("VITE_GEMINI_API_KEY is missing. AI features will be disabled.");
 }
 
-export const generateEcoImpactReport = async (items: ConsumableItem[], projectName: string): Promise<ImpactMetrics> => {
+export const generateEcoImpactReport = async (items: ConsumableItem[], projectName: string, context?: CarbonContext): Promise<ImpactMetrics> => {
   // 1. Pre-calculate deterministic metrics
   const surplusItems = items.filter(i => i.quantityCurrent > 0);
   const totalWeightKg = surplusItems.reduce((acc, item) => acc + (item.quantityCurrent * 0.5), 0);
@@ -56,12 +56,22 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
       - Poids total estimé : ${totalWeightKg} kg
       - Taux de Valorisation (Réemploi/Recyclage) : ${recyclingRate}%
       
+      Contexte Production (Estimations Scope 3) :
+      - Jours de Tournage : ${context?.shootingDays || "Non spécifié (utiliser moyenne 30j)"}
+      - Taille Équipe : ${context?.teamSize || "Non spécifié (utiliser moyenne 50 pers)"}
+      - Transport Principal : ${context?.transportMode || "Mixte"}
+      - Source Énergie : ${context?.energySource || "Mixte"}
+      - Restauration : ${context?.cateringVegPercent || 0}% Végétarien
+      - Hébergement : ${context?.totalNights || 0} nuitées totales
+      - Lieux : ${context?.locationRatio || 0}% Studio / ${100 - (context?.locationRatio || 0)}% Naturel
+      - HMC : ${context?.textilesEcoPercent || 0}% Eco-responsable (Second main/Loc)
+
       Tâche :
-      1. Catégorise chaque poste selon les 8 catégories Carbon'Clap : Production, Lieux de tournage, Déco, HMC, Déplacements, Régie, Moyens techniques, Post-production.
-      2. Estime les émissions CO2 évitées (Scope 3 - Achats & Déchets) (co2SavedKg).
-      3. Estime les économies financières (moneySaved).
-      4. Assigne un Score de Durabilité (0-100).
-      5. Rédige une analyse professionnelle (aiAnalysis) EN FRANÇAIS mentionnant l'alignement Carbon'Clap.
+      1. Catégorise chaque poste selon les 8 catégories Carbon'Clap.
+      2. Estime les émissions CO2 évitées. Utilise le contexte pour affiner (ex: % Végé réduit l'impact Régie, Train réduit Déplacements).
+      3. Estime les économies financières.
+      4. Assigne un Score de Durabilité (0-100). BONIFIE le score si le contexte est vertueux : +10-20 pts pour alimentation >50% Végé, +10-20 pts pour Train, +5-10 pts pour Énergie Réseau/Vert.
+      5. Rédige une analyse professionnelle (aiAnalysis) EN FRANÇAIS. MENTONNE EXPLICITEMENT l'impact des choix de contexte (Végé, Train, Studio...).
       6. Retourne une répartition estimée du CO2 évité par catégorie Carbon'Clap (ecoprodBreakdown).
 
       Retourne UNIQUEMENT du JSON respectant ce schéma :
