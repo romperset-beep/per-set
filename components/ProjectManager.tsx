@@ -168,7 +168,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                             onChange={(e) => setMemoTarget(e.target.value as any)}
                             className="bg-cinema-900 border border-cinema-600 text-xs rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-pink-500"
                         >
-                            <option value="DEPARTMENT">Mon Dept.</option>
+                            <option value="DEPARTMENT">Un Département</option>
                             <option value="GLOBAL">Tout le monde</option>
                             <option value="USER">Une personne</option>
                         </select>
