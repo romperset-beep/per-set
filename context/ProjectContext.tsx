@@ -110,7 +110,7 @@ interface ProjectContextType {
 
   // Global Catalog
   catalogItems: CatalogItem[];
-  catalogItems: CatalogItem[];
+
   addToCatalog: (name: string, dept: string) => Promise<void>;
 
   // Social Nav Control
@@ -159,18 +159,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [callSheets, setCallSheets] = useState<CallSheet[]>([]); // New State
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]); // Global Catalog
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [debugStatus, setDebugStatus] = useState<string>("");
-  const [lastLog, setLastLog] = useState<string>("En attente...");
-
-  const [error, setError] = useState<string | null>(null);
-  const [debugStatus, setDebugStatus] = useState<string>("");
-  const [lastLog, setLastLog] = useState<string>("En attente...");
-
   // Social View State (Lifted)
   const [socialAudience, setSocialAudience] = useState<'GLOBAL' | 'DEPARTMENT' | 'USER'>('GLOBAL');
   const [socialTargetDept, setSocialTargetDept] = useState<Department | 'PRODUCTION'>('PRODUCTION');
   const [socialTargetUserId, setSocialTargetUserId] = useState<string>('');
+
+
 
   const resetPassword = async (email: string) => {
     try {
@@ -1367,8 +1361,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLanguage,
       t,
       error,
-      testConnection,
-      debugStatus,
       testConnection,
       debugStatus,
       lastLog,

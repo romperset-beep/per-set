@@ -63,7 +63,138 @@ export const SocialFeed: React.FC = () => {
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    // ... (rest of logic) ...
+    // Calculate Recent DM Partners
+    const myProfile = userProfiles.find(p => p.email === user?.email);
+    const recentPartners: { id: string, name: string, lastDate: string }[] = [];
+
+    if (myProfile) {
+        const processedIds = new Set<string>();
+        const sortedPosts = [...socialPosts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        sortedPosts.forEach(post => {
+            if (post.targetAudience === 'USER') {
+                let partnerId = '';
+                let partnerName = '';
+
+                if (post.authorId === myProfile.id || (!post.authorId && post.authorName === user?.name)) {
+                    if (post.targetUserId) {
+                        partnerId = post.targetUserId;
+                        const p = userProfiles.find(u => u.id === partnerId);
+                        partnerName = p ? `${p.firstName} ${p.lastName}` : t.unknownUser;
+                    }
+                } else if (post.targetUserId === myProfile.id) {
+                    partnerId = post.authorId || '';
+                    partnerName = post.authorName;
+                }
+
+                if (partnerId && !processedIds.has(partnerId) && partnerId !== myProfile.id) {
+                    processedIds.add(partnerId);
+                    recentPartners.push({
+                        id: partnerId,
+                        name: partnerName,
+                        lastDate: post.date
+                    });
+                }
+            }
+        });
+    }
+
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setIsProcessing(true);
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                const img = new Image();
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const MAX_SIZE = 1024;
+                        if (width > height) {
+                            if (width > MAX_SIZE) {
+                                height *= MAX_SIZE / width;
+                                width = MAX_SIZE;
+                            }
+                        } else {
+                            if (height > MAX_SIZE) {
+                                width *= MAX_SIZE / height;
+                                height = MAX_SIZE;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) throw new Error("Canvas Context not found");
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        setPhoto(compressedBase64);
+                    } catch (error) {
+                        console.error("Compression ended in error:", error);
+                        alert("Erreur lors du traitement de l'image.");
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                };
+
+                img.onerror = () => {
+                    console.error("Image failed to load");
+                    alert("Impossible de lire ce format d'image (essayez JPG ou PNG).");
+                    setIsProcessing(false);
+                };
+
+                if (event.target?.result) {
+                    img.src = event.target.result as string;
+                }
+            };
+
+            reader.onerror = () => {
+                console.error("FileReader error");
+                setIsProcessing(false);
+            };
+
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleUserSelect = (user: { id: string, name: string }) => {
+        setTargetUserId(user.id);
+        setSearchTerm(user.name);
+        setShowSuggestions(false);
+    };
+
+    const filteredUsers = userProfiles.filter(p => {
+        const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return fullName.includes(searchTerm.toLowerCase());
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if ((!newPostContent.trim() && !photo) || isProcessing) return;
+
+        const myProfile = userProfiles.find(p => p.email === user?.email);
+
+        const newPost: SocialPost = {
+            id: `post_${Date.now()}`,
+            authorId: myProfile?.id,
+            authorName: user?.name || 'Anonyme',
+            authorDepartment: user?.department || 'PRODUCTION',
+            content: newPostContent,
+            photo: photo || undefined,
+            date: new Date().toISOString(),
+            likes: 0,
+            targetAudience,
+            targetDept: targetAudience === 'DEPARTMENT' ? targetDept : undefined,
+            targetUserId: targetAudience === 'USER' ? targetUserId : undefined
+        };
+
+        addSocialPost(newPost);
+        setNewPostContent('');
+        setPhoto(null);
+    };
 
     const visiblePosts = socialPosts.filter(post => {
         let allowed = false;
