@@ -103,67 +103,67 @@ export const CallSheetView: React.FC = () => {
     return (
         <div className="space-y-6 pb-20">
             {/* Header */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-stone-200/60">
+            <div className="flex justify-between items-center bg-cinema-800 p-4 rounded-xl shadow-sm border border-cinema-700">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-stone-100 rounded-lg">
-                        <FileText className="w-5 h-5 text-stone-600" />
+                    <div className="p-2 bg-cinema-700 rounded-lg">
+                        <FileText className="w-5 h-5 text-gray-300" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-stone-800">Feuilles de Service</h2>
-                        <p className="text-sm text-stone-500">Consultez et téléchargez les feuilles de service</p>
+                        <h2 className="text-lg font-bold text-white">Feuilles de Service</h2>
+                        <p className="text-sm text-gray-400">Consultez et téléchargez les feuilles de service</p>
                     </div>
                 </div>
             </div>
 
             {/* Upload Section (Restricted) */}
             {canUpload && (
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-stone-200/60">
-                    <h3 className="text-md font-semibold text-stone-800 mb-4 flex items-center gap-2">
+                <div className="bg-cinema-800 p-6 rounded-xl shadow-sm border border-cinema-700">
+                    <h3 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
                         <Upload className="w-4 h-4" /> Ajouter une feuille de service
                     </h3>
 
                     <form onSubmit={handleUpload} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-xs font-medium text-stone-500 mb-1">Date de la feuille</label>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Date de la feuille</label>
                                 <input
                                     type="date"
                                     required
                                     value={uploadDate}
                                     onChange={(e) => setUploadDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                                    className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-stone-500 mb-1">Nom (ex: J12 - Décor Appartement)</label>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Nom (ex: J12 - Décor Appartement)</label>
                                 <input
                                     type="text"
                                     required
                                     placeholder="Nom de la feuille de service"
                                     value={uploadName}
                                     onChange={(e) => setUploadName(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                                    className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-medium text-stone-500 mb-1">Fichier PDF</label>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Fichier PDF</label>
                             <div className="flex items-center gap-4">
                                 <input
                                     type="file"
                                     accept=".pdf"
                                     onChange={handleFileChange}
-                                    className="block w-full text-sm text-stone-500
+                                    className="block w-full text-sm text-gray-400
                                     file:mr-4 file:py-2 file:px-4
                                     file:rounded-full file:border-0
                                     file:text-sm file:font-semibold
-                                    file:bg-stone-100 file:text-stone-700
-                                    hover:file:bg-stone-200
+                                    file:bg-cinema-700 file:text-white
+                                    hover:file:bg-cinema-600
                                     cursor-pointer"
                                 />
                                 {file && (
-                                    <span className="text-xs text-green-600 font-medium whitespace-nowrap">
+                                    <span className="text-xs text-eco-400 font-medium whitespace-nowrap">
                                         {(file.size / 1024 / 1024).toFixed(2)} Mo
                                     </span>
                                 )}
@@ -171,7 +171,7 @@ export const CallSheetView: React.FC = () => {
                         </div>
 
                         {error && (
-                            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                            <div className="p-3 bg-red-900/30 text-red-400 text-sm rounded-lg border border-red-500/30">
                                 {error}
                             </div>
                         )}
@@ -182,8 +182,8 @@ export const CallSheetView: React.FC = () => {
                                 disabled={!file || isUploading}
                                 className={`px-6 py-2 rounded-xl text-white font-medium shadow-sm transition-all
                                     ${!file || isUploading
-                                        ? 'bg-stone-300 cursor-not-allowed'
-                                        : 'bg-stone-800 hover:bg-stone-900 shadow-md hover:shadow-lg'
+                                        ? 'bg-cinema-700 cursor-not-allowed text-gray-500'
+                                        : 'bg-eco-600 hover:bg-eco-500 shadow-md hover:shadow-lg'
                                     }`}
                             >
                                 {isUploading ? 'Envoi en cours...' : 'Publier la feuille'}
@@ -196,31 +196,31 @@ export const CallSheetView: React.FC = () => {
             {/* List */}
             <div className="space-y-3">
                 {callSheets.length === 0 ? (
-                    <div className="text-center py-12 bg-stone-50 rounded-xl border border-stone-100">
-                        <FileText className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-                        <p className="text-stone-500">Aucune feuille de service disponible pour le moment.</p>
+                    <div className="text-center py-12 bg-cinema-800 rounded-xl border border-cinema-700">
+                        <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                        <p className="text-gray-500">Aucune feuille de service disponible pour le moment.</p>
                     </div>
                 ) : (
                     callSheets.map((sheet) => (
-                        <div key={sheet.id} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div key={sheet.id} className="bg-cinema-800 p-4 rounded-xl border border-cinema-700 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="flex items-start gap-4">
-                                <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                                <div className="p-3 bg-red-900/20 text-red-500 rounded-xl">
                                     <FileText className="w-6 h-6" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-stone-800">{sheet.name}</h3>
-                                        <span className="text-xs px-2 py-0.5 bg-stone-100 text-stone-600 rounded-full border border-stone-200">
+                                        <h3 className="font-semibold text-white">{sheet.name}</h3>
+                                        <span className="text-xs px-2 py-0.5 bg-cinema-700 text-gray-300 rounded-full border border-cinema-600">
                                             {new Date(sheet.date).toLocaleDateString()}
                                         </span>
                                         {/* New Badge if recent (e.g. uploaded today) */}
                                         {new Date(sheet.uploadDate).toDateString() === new Date().toDateString() && (
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-bold">
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-red-900/30 text-red-400 rounded-full font-bold border border-red-500/30">
                                                 NOUVEAU
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-stone-500">
+                                    <p className="text-xs text-gray-500">
                                         Mise en ligne par {sheet.uploadedBy} le {new Date(sheet.uploadDate).toLocaleDateString()} à {new Date(sheet.uploadDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
@@ -231,7 +231,7 @@ export const CallSheetView: React.FC = () => {
                                     href={sheet.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors text-sm font-medium"
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-cinema-700 text-gray-200 rounded-lg hover:bg-cinema-600 transition-colors text-sm font-medium"
                                 >
                                     <Eye className="w-4 h-4" />
                                     Voir
@@ -241,7 +241,7 @@ export const CallSheetView: React.FC = () => {
                                     download // Note: download attribute often ignored for cross-origin, but good intent
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 transition-colors text-sm font-medium"
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-eco-600 text-white rounded-lg hover:bg-eco-500 transition-colors text-sm font-medium"
                                 >
                                     <Download className="w-4 h-4" />
                                     Télécharger
