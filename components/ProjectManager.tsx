@@ -76,89 +76,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-1">Planning journalier</p>
                 </button>
 
-                {/* Catering Card (Régie & Prod) */}
-                {(currentDept === 'Régie' || currentDept === 'PRODUCTION') && (
-                    <button
-                        onClick={() => setActiveTab && setActiveTab('catering')}
-                        className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
-                    >
-                        <div className="flex justify-between items-start">
-                            <h3 className="text-lg font-semibold opacity-70">Cantine</h3>
-                            <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <p className="text-4xl font-bold mt-2 text-orange-400">
-                            {project.cateringLogs?.filter(l => l.date === new Date().toISOString().split('T')[0] && l.hasEaten).length || 0}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Repas d'aujourd'hui</p>
-                    </button>
-                )}
-
-                {/* 3. Note de Frais (NEW) */}
-                <button
-                    onClick={() => setActiveTab && setActiveTab('expenses')}
-                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
-                >
-                    <div className="flex justify-between items-start">
-                        <h3 className="text-lg font-semibold opacity-70">Note de Frais</h3>
-                        <Receipt className="h-6 w-6 text-purple-400 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-4xl font-bold mt-2 text-purple-400">
-                        {currentDept === 'PRODUCTION'
-                            ? (expenseReports?.length || 0)
-                            : (expenseReports?.filter(r => r.submittedBy === user?.name).length || 0)
-                        }
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">Justificatifs & Remboursements</p>
-                </button>
-
-                {/* 4. Équipe */}
-                {currentDept === 'PRODUCTION' && (
-                    <button
-                        onClick={() => setActiveTab && setActiveTab('team')}
-                        className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
-                    >
-                        <div className="flex justify-between items-start">
-                            <h3 className="text-lg font-semibold opacity-70">Équipe</h3>
-                            <Users className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform" />
-                        </div>
-                        <p className="text-4xl font-bold mt-2 text-green-400">
-                            {userProfiles?.length || 0}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Annuaire & Fiches</p>
-                    </button>
-                )}
-
-                {/* 5. À Racheter */}
-                <button
-                    onClick={() => setActiveTab && setActiveTab('buyback')}
-                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
-                >
-                    <div className="flex justify-between items-start">
-                        <h3 className="text-lg font-semibold opacity-70">À Racheter</h3>
-                        <ShoppingBag className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-4xl font-bold mt-2 text-yellow-400">
-                        {buyBackItems?.filter(i => i.status === 'AVAILABLE').length || 0}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">Zone de réemploi interne</p>
-                </button>
-
-                {/* 6. Mur Social */}
-                <button
-                    onClick={() => setActiveTab && setActiveTab('social')}
-                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
-                >
-                    <div className="flex justify-between items-start">
-                        <h3 className="text-lg font-semibold opacity-70">Mur Social</h3>
-                        <MessageSquare className="h-6 w-6 text-pink-500 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <p className="text-4xl font-bold mt-2 text-pink-500">
-                        {unreadSocialCount}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">Nouveaux messages</p>
-                </button>
-
-                {/* 7. Les Heures (NEW) */}
+                {/* 3. Les Heures */}
                 <button
                     onClick={() => setActiveTab && setActiveTab('timesheet')}
                     className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
@@ -171,11 +89,6 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <div className="mt-2">
                         {(() => {
                             const now = new Date();
-                            // Logic duplicated from TimesheetWidget to get current week total quickly
-                            // A better way would be to expose this via context but let's keep it self-contained for now
-                            // Actually, calculating proper week ranges is complex. Let's just sum all recent logs for now?
-                            // Or better: Filter logs for current ISO week.
-
                             const getWeekNumber = (d: Date) => {
                                 d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
                                 d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -194,7 +107,6 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
 
                             const total = currentWeekLogs.reduce((acc, l) => acc + l.totalHours, 0);
 
-                            // HhMM formatter (duplicated)
                             const hours = Math.floor(total);
                             const minutes = Math.round((total - hours) * 60);
                             const formatted = `${hours}h${minutes > 0 ? minutes.toString().padStart(2, '0') : ''}`;
@@ -204,6 +116,88 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     </div>
 
                     <p className="text-xs text-slate-400 mt-1">Total Semaine en cours</p>
+                </button>
+
+                {/* 4. Catering Card (Régie & Prod) */}
+                {(currentDept === 'Régie' || currentDept === 'PRODUCTION') && (
+                    <button
+                        onClick={() => setActiveTab && setActiveTab('catering')}
+                        className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                    >
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-semibold opacity-70">Cantine</h3>
+                            <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
+                        </div>
+                        <p className="text-4xl font-bold mt-2 text-orange-400">
+                            {project.cateringLogs?.filter(l => l.date === new Date().toISOString().split('T')[0] && l.hasEaten).length || 0}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Repas d'aujourd'hui</p>
+                    </button>
+                )}
+
+                {/* 5. Note de Frais */}
+                <button
+                    onClick={() => setActiveTab && setActiveTab('expenses')}
+                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                >
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold opacity-70">Note de Frais</h3>
+                        <Receipt className="h-6 w-6 text-purple-400 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <p className="text-4xl font-bold mt-2 text-purple-400">
+                        {currentDept === 'PRODUCTION'
+                            ? (expenseReports?.length || 0)
+                            : (expenseReports?.filter(r => r.submittedBy === user?.name).length || 0)
+                        }
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Justificatifs & Remboursements</p>
+                </button>
+
+                {/* 6. Équipe */}
+                {currentDept === 'PRODUCTION' && (
+                    <button
+                        onClick={() => setActiveTab && setActiveTab('team')}
+                        className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                    >
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-semibold opacity-70">Équipe</h3>
+                            <Users className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform" />
+                        </div>
+                        <p className="text-4xl font-bold mt-2 text-green-400">
+                            {userProfiles?.length || 0}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Annuaire & Fiches</p>
+                    </button>
+                )}
+
+                {/* 7. À Racheter */}
+                <button
+                    onClick={() => setActiveTab && setActiveTab('buyback')}
+                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                >
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold opacity-70">À Racheter</h3>
+                        <ShoppingBag className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <p className="text-4xl font-bold mt-2 text-yellow-400">
+                        {buyBackItems?.filter(i => i.status === 'AVAILABLE').length || 0}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Zone de réemploi interne</p>
+                </button>
+
+                {/* 8. Mur Social */}
+                <button
+                    onClick={() => setActiveTab && setActiveTab('social')}
+                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                >
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold opacity-70">Mur Social</h3>
+                        <MessageSquare className="h-6 w-6 text-pink-500 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <p className="text-4xl font-bold mt-2 text-pink-500">
+                        {unreadSocialCount}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Nouveaux messages</p>
                 </button>
 
             </div>
