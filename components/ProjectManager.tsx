@@ -11,16 +11,54 @@ interface ProjectManagerProps {
 export const ProjectManager: React.FC<ProjectManagerProps> = ({
     setActiveTab,
 }) => {
-    const { project, setProject, updateProjectDetails, currentDept, setCurrentDept, setCircularView, buyBackItems, socialPosts, unreadSocialCount, userProfiles, user, t, error, testConnection, debugStatus, lastLog, expenseReports } = useProject();
+    const { project, setProject, updateProjectDetails, currentDept, setCurrentDept, setCircularView, buyBackItems, socialPosts, addSocialPost, unreadSocialCount, userProfiles, user, t, error, testConnection, debugStatus, lastLog, expenseReports } = useProject();
+
+
 
     // Filter items based on current view (Department vs Production)
     const filteredItems = currentDept === 'PRODUCTION'
         ? project.items
         : project.items.filter(i => i.department === currentDept);
 
+    // Memos Widget State
+    const [memoContent, setMemoContent] = React.useState('');
+    const [memoTarget, setMemoTarget] = React.useState<'GLOBAL' | 'DEPARTMENT' | 'USER'>('DEPARTMENT');
+    const [memoTargetDept, setMemoTargetDept] = React.useState<Department | 'PRODUCTION'>(user?.department || 'PRODUCTION');
+    const [memoTargetUserId, setMemoTargetUserId] = React.useState<string>('');
+    const [memoSearchTerm, setMemoSearchTerm] = React.useState('');
+    const [showMemoSuggestions, setShowMemoSuggestions] = React.useState(false);
+
+    const handleSendMemo = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!memoContent.trim() || !user || !addSocialPost) return;
+
+        const myProfile = userProfiles.find(p => p.email === user.email);
+
+        // Cast to any to avoid strict type checking issues if types.ts isn't fully updated in all contexts yet, 
+        // though we checked types.ts and it looked good.
+        // Actually, let's trust the types.
+        const newPost: any = {
+            id: `post_${Date.now()}`,
+            authorId: myProfile?.id,
+            authorName: user.name,
+            authorDepartment: user.department,
+            content: memoContent,
+            date: new Date().toISOString(),
+            likes: 0,
+            targetAudience: memoTarget,
+            targetDept: memoTarget === 'DEPARTMENT' ? memoTargetDept : undefined,
+            targetUserId: memoTarget === 'USER' ? memoTargetUserId : undefined
+        };
+
+        addSocialPost(newPost);
+        setMemoContent('');
+        alert('Mémo envoyé sur le Mur Social !');
+    };
+
     return (
         <div className="space-y-6">
             {/* Department Selection Header */}
+
             <div className="bg-cinema-800 rounded-xl p-6 border border-cinema-700 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-white">{t('sidebar.dashboard')}</h2>
@@ -118,7 +156,90 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <p className="text-xs text-slate-400 mt-1">Total Semaine en cours</p>
                 </button>
 
-                {/* 4. Catering Card (Régie & Prod) */}
+                {/* 4. Memos Widget (NEW) */}
+                <div className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 md:col-span-2 relative">
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-semibold opacity-70 flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-pink-500" />
+                            Mémos Rapides
+                        </h3>
+                        <select
+                            value={memoTarget}
+                            onChange={(e) => setMemoTarget(e.target.value as any)}
+                            className="bg-cinema-900 border border-cinema-600 text-xs rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-pink-500"
+                        >
+                            <option value="DEPARTMENT">Mon Dept.</option>
+                            <option value="GLOBAL">Tout le monde</option>
+                            <option value="USER">Une personne</option>
+                        </select>
+                    </div>
+
+                    <form onSubmit={handleSendMemo} className="space-y-3">
+                        {/* Secondary Target Selector */}
+                        {memoTarget === 'DEPARTMENT' && user?.department === 'PRODUCTION' && (
+                            <select
+                                value={memoTargetDept}
+                                onChange={(e) => setMemoTargetDept(e.target.value as any)}
+                                className="w-full bg-cinema-900 border border-cinema-600 rounded px-3 py-2 text-sm text-white mb-2"
+                            >
+                                {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
+                                <option value="PRODUCTION">PRODUCTION</option>
+                            </select>
+                        )}
+
+                        {memoTarget === 'USER' && (
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher..."
+                                    value={memoSearchTerm}
+                                    onChange={(e) => {
+                                        setMemoSearchTerm(e.target.value);
+                                        setShowMemoSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowMemoSuggestions(true)}
+                                    className="w-full bg-cinema-900 border border-cinema-600 rounded px-3 py-2 text-sm text-white"
+                                />
+                                {showMemoSuggestions && memoSearchTerm && (
+                                    <div className="absolute top-full left-0 w-full bg-cinema-800 border border-cinema-600 rounded-b-lg shadow-xl z-50 max-h-40 overflow-y-auto">
+                                        {userProfiles
+                                            .filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(memoSearchTerm.toLowerCase()))
+                                            .map(u => (
+                                                <div
+                                                    key={u.id}
+                                                    onClick={() => {
+                                                        setMemoTargetUserId(u.id);
+                                                        setMemoSearchTerm(`${u.firstName} ${u.lastName}`);
+                                                        setShowMemoSuggestions(false);
+                                                    }}
+                                                    className="px-3 py-2 hover:bg-cinema-700 cursor-pointer text-sm"
+                                                >
+                                                    {u.firstName} {u.lastName}
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <textarea
+                            value={memoContent}
+                            onChange={(e) => setMemoContent(e.target.value)}
+                            placeholder="Écrivez votre mémo ici..."
+                            className="w-full bg-cinema-900 border border-cinema-600 rounded-lg p-3 text-sm text-white resize-none h-24 focus:ring-1 focus:ring-pink-500 outline-none"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!memoContent.trim()}
+                            className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+                        >
+                            Envoyer
+                        </button>
+                    </form>
+                </div>
+
+                {/* 5. Catering Card (Régie & Prod) */}
                 {(currentDept === 'Régie' || currentDept === 'PRODUCTION') && (
                     <button
                         onClick={() => setActiveTab && setActiveTab('catering')}
