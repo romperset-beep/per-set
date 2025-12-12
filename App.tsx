@@ -27,7 +27,7 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
-  const { user, logout, unreadCount, project, setCurrentDept, updateProjectDetails } = useProject();
+  const { user, logout, unreadCount, unreadSocialCount, project, setCurrentDept, updateProjectDetails } = useProject();
 
   if (!user) {
     return <LoginPage />;
@@ -231,20 +231,26 @@ const AppContent: React.FC = () => {
               </div>
             </button>
 
-            {(user.department === 'PRODUCTION' || user.department === Department.REGIE) && (
-              <button
-                onClick={() => {
+            {/* Notification Bell (Global) */}
+            <button
+              onClick={() => {
+                if (unreadSocialCount > 0) {
+                  setActiveTab('social');
+                } else if ((user.department === 'PRODUCTION' || user.department === Department.REGIE) && unreadCount > 0) {
                   setActiveTab('inventory');
                   setCurrentDept('PRODUCTION');
-                }}
-                className="relative p-2 text-slate-400 hover:text-white transition-colors"
-              >
-                <Bell className="h-6 w-6" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-cinema-900"></span>
-                )}
-              </button>
-            )}
+                } else {
+                  // Default fallback if clicked with no notifs
+                  setActiveTab('social');
+                }
+              }}
+              className="relative p-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <Bell className="h-6 w-6" />
+              {(unreadCount > 0 && (user.department === 'PRODUCTION' || user.department === Department.REGIE)) || unreadSocialCount > 0 ? (
+                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-pink-500 rounded-full border-2 border-cinema-900 animate-pulse"></span>
+              ) : null}
+            </button>
 
             <button
               onClick={logout}
