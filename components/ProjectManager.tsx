@@ -1,6 +1,6 @@
 import React from 'react';
 import { Department, SurplusAction } from '../types';
-import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar, FileText, Receipt, Utensils, Clock } from 'lucide-react';
+import { Users, RefreshCw, GraduationCap, ShoppingBag, MessageSquare, Film, Calendar, FileText, Receipt, Utensils, Clock, Truck } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
 interface ProjectManagerProps {
@@ -69,8 +69,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <select
                         value={currentDept}
                         onChange={(e) => setCurrentDept(e.target.value)}
-                        disabled={user?.department !== 'PRODUCTION'}
-                        className={`bg-transparent text-white font-medium focus:outline-none ${user?.department === 'PRODUCTION' ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                        disabled={user?.department !== 'PRODUCTION' && user?.department !== Department.REGIE}
+                        className={`bg-transparent text-white font-medium focus:outline-none ${(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
                     >
                         <option value="PRODUCTION">VUE PRODUCTION (Admin)</option>
                         <option disabled>──────────</option>
@@ -198,6 +198,29 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                         })()}
                     </div>
                     <p className="text-xs text-slate-400 mt-1">Renforts cette semaine</p>
+                </button>
+
+                {/* 3.6 Logistics / Aller-Retour */}
+                <button
+                    onClick={() => setActiveTab && setActiveTab('logistics')}
+                    className="bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group"
+                >
+                    <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold opacity-70">Aller-Retour Matériel</h3>
+                        <Truck className="h-6 w-6 text-amber-400 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div className="mt-2 text-4xl font-bold text-amber-400">
+                        {(() => {
+                            const pending = (project.logistics || []).filter(l => {
+                                const d = new Date(l.date);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                return d >= today;
+                            }).length;
+                            return pending;
+                        })()}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">À venir</p>
                 </button>
 
                 {/* 4. Memo Rapide (Shortcut) */}

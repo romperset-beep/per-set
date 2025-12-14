@@ -55,7 +55,7 @@ export interface ConsumableItem {
   quantityStarted?: number; // Number of items currently opened/started
 }
 
-export type LogisticsType = 'pickup' | 'dropoff' | 'roundtrip';
+export type LogisticsType = 'pickup' | 'dropoff' | 'roundtrip' | 'pickup_set' | 'dropoff_set';
 
 export interface LogisticsRequest {
   id: string;

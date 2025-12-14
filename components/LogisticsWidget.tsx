@@ -139,7 +139,7 @@ export const LogisticsWidget: React.FC = () => {
     // --- RENDER ---
 
     // 1. PRODUCTION OVERVIEW
-    if (user?.department === 'PRODUCTION' && currentDept === 'PRODUCTION' && viewMode === 'OVERVIEW') {
+    if ((user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && currentDept === 'PRODUCTION' && viewMode === 'OVERVIEW') {
         const sortedWeeks = Object.entries(groupedByWeek).sort((a, b) => b[0].localeCompare(a[0]));
 
         return (
@@ -220,8 +220,17 @@ export const LogisticsWidget: React.FC = () => {
                                                                                 <Clock className="h-3.5 w-3.5 text-slate-400" />
                                                                                 {req.time}
                                                                                 <span className="text-slate-500 mx-1">•</span>
-                                                                                <span className={`uppercase text-xs font-bold ${req.type === 'pickup' ? 'text-green-400' : req.type === 'dropoff' ? 'text-blue-400' : 'text-purple-400'}`}>
-                                                                                    {req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : 'A/R'}
+                                                                                <span className={`uppercase text-xs font-bold ${req.type === 'pickup' ? 'text-green-400' :
+                                                                                    req.type === 'dropoff' ? 'text-blue-400' :
+                                                                                        req.type === 'pickup_set' ? 'text-lime-400' :
+                                                                                            req.type === 'dropoff_set' ? 'text-cyan-400' :
+                                                                                                'text-purple-400'
+                                                                                    }`}>
+                                                                                    {req.type === 'pickup' ? 'Enlèvement' :
+                                                                                        req.type === 'dropoff' ? 'Retour' :
+                                                                                            req.type === 'pickup_set' ? 'Enlèvement Plateau' :
+                                                                                                req.type === 'dropoff_set' ? 'Retour Plateau' :
+                                                                                                    'A/R'}
                                                                                 </span>
                                                                                 <span className="text-slate-500 mx-1">•</span>
                                                                                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
@@ -276,7 +285,7 @@ export const LogisticsWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {user?.department === 'PRODUCTION' && (
+                {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
                     <button
                         onClick={() => setViewMode('OVERVIEW')}
                         className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
@@ -305,7 +314,7 @@ export const LogisticsWidget: React.FC = () => {
                 {days.map((day) => {
                     const dateStr = day.toISOString().split('T')[0];
                     const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                    const requests = getRequests(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '');
+                    const requests = getRequests(dateStr, (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? currentDept : user?.department || '');
 
                     return (
                         <div key={dateStr} className={`bg-cinema-800 rounded-xl border ${isToday ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-cinema-700'} flex flex-col h-full min-h-[300px]`}>
@@ -324,8 +333,17 @@ export const LogisticsWidget: React.FC = () => {
                                         {requests.length > 0 ? requests.map(req => (
                                             <div key={req.id} className="bg-slate-700/30 p-2 rounded-lg border border-transparent hover:border-slate-600 transition-colors group relative">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${req.type === 'pickup' ? 'bg-green-500/20 text-green-400' : req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                                                        {req.type === 'pickup' ? 'Enlèv.' : req.type === 'dropoff' ? 'Retour' : 'A/R'}
+                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${req.type === 'pickup' ? 'bg-green-500/20 text-green-400' :
+                                                        req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
+                                                            req.type === 'pickup_set' ? 'bg-lime-500/20 text-lime-400' :
+                                                                req.type === 'dropoff_set' ? 'bg-cyan-500/20 text-cyan-400' :
+                                                                    'bg-purple-500/20 text-purple-400'
+                                                        }`}>
+                                                        {req.type === 'pickup' ? 'Enlèv.' :
+                                                            req.type === 'dropoff' ? 'Retour' :
+                                                                req.type === 'pickup_set' ? 'Enl. Plat.' :
+                                                                    req.type === 'dropoff_set' ? 'Ret. Plat.' :
+                                                                        'A/R'}
                                                     </span>
                                                     <span className="text-xs text-slate-300 font-mono">{req.time}</span>
                                                 </div>
@@ -397,6 +415,8 @@ export const LogisticsWidget: React.FC = () => {
                                 >
                                     <option value="pickup">Enlèvement (Chez Loueur)</option>
                                     <option value="dropoff">Retour (Chez Loueur)</option>
+                                    <option value="pickup_set">Enlèvement Plateau</option>
+                                    <option value="dropoff_set">Retour Plateau</option>
                                     <option value="roundtrip">Aller-Retour</option>
                                 </select>
                             </div>
