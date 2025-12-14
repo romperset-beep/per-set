@@ -38,8 +38,7 @@ const AppContent: React.FC = () => {
     t,
     project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
 
-  const elementRef = useRef(null);
-  const isVisible = useOnScreen(elementRef);
+
 
   // Global Notification Indicator
   // Logic: Inventory Items (unreadCount) OR Social Posts (unreadSocialCount) OR Notifications (unreadNotificationCount)
