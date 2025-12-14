@@ -1412,6 +1412,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       socialTargetDept, setSocialTargetDept,
       socialTargetUserId, setSocialTargetUserId
     }}>
+      {children}
     </ProjectContext.Provider >
   );
 };
