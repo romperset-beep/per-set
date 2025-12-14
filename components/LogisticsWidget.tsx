@@ -215,8 +215,8 @@ export const LogisticsWidget: React.FC = () => {
                                                                             </span>
                                                                         </div>
 
-                                                                        <div className="flex-1 space-y-1">
-                                                                            <div className="flex items-center gap-2 text-white font-medium">
+                                                                        <div className="flex-1 space-y-1 min-w-0">
+                                                                            <div className="flex flex-wrap items-center gap-2 text-white font-medium">
                                                                                 <Clock className="h-3.5 w-3.5 text-slate-400" />
                                                                                 {req.time}
                                                                                 <span className="text-slate-500 mx-1">•</span>

@@ -302,32 +302,19 @@ export const RenfortsWidget: React.FC = () => {
                                                                                 {isDeptExpanded && (
                                                                                     <div className="px-3 pb-3 pt-0 grid gap-2">
                                                                                         {staff.map(s => (
-                                                                                            <div key={s.id} className="bg-cinema-900/50 p-2 rounded border border-cinema-700/50 flex items-start gap-3">
-                                                                                                <div className="bg-slate-700/50 p-1.5 rounded-full">
-                                                                                                    <User className="h-3 w-3 text-slate-300" />
-                                                                                                </div>
-                                                                                                <div className="flex-1 min-w-0">
-                                                                                                    <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                                                                                                    <div className="flex flex-wrap gap-3 mt-1">
-                                                                                                        {s.phone && (
-                                                                                                            <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                                                                                                <Phone className="h-2.5 w-2.5" />
-                                                                                                                <a href={`tel:${s.phone} `} className="hover:text-indigo-400 underline decoration-dotted">{s.phone}</a>
-                                                                                                            </div>
-                                                                                                        )}
-                                                                                                        {s.email && (
-                                                                                                            <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                                                                                                <Mail className="h-2.5 w-2.5" />
-                                                                                                                <a href={`mailto:${s.email} `} className="hover:text-indigo-400 underline decoration-dotted truncate max-w-[150px]">{s.email}</a>
-                                                                                                            </div>
-                                                                                                        )}
+                                                                                            <div key={s.id} className="bg-cinema-900/50 p-2 rounded border border-cinema-700/50 flex items-center justify-between">
+                                                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                                                    <User className="h-5 w-5 text-indigo-400 shrink-0" />
+                                                                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                                                                        <span className="font-medium text-white truncate">{s.name}</span>
+                                                                                                        {s.phone && <span className="text-xs text-slate-400 truncate">{s.phone}</span>}
                                                                                                     </div>
                                                                                                 </div>
                                                                                                 <button
                                                                                                     onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept, s.id); }}
-                                                                                                    className="text-slate-600 hover:text-red-400 p-1"
+                                                                                                    className="p-2 text-slate-500 hover:text-red-400 transition-colors shrink-0"
                                                                                                 >
-                                                                                                    <X className="h-3 w-3" />
+                                                                                                    <X className="h-4 w-4" />
                                                                                                 </button>
                                                                                             </div>
                                                                                         ))}
@@ -340,14 +327,16 @@ export const RenfortsWidget: React.FC = () => {
                                                             )}
                                                         </div>
                                                     );
-                                                });
+                                                })
                                             })()}
                                         </div>
-                                    )}
+                                    )
+                                    }
                                 </div>
                             ))}
                         </div>
-                    )}
+                    )
+                    }
                 </div>
             </div>
         );
