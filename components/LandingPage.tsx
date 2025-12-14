@@ -147,7 +147,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
     const t = translations[language];
 
     return (
-        <div className="flex flex-col items-center justify-center w-full max-w-5xl mx-auto p-6 animate-in fade-in duration-700">
+        <div className="flex flex-col items-center justify-center w-full max-w-5xl mx-auto p-6">
 
             {/* Header */}
             <div className="text-center mb-12 space-y-4">

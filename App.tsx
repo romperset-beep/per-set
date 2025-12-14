@@ -327,8 +327,18 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Determine debug state if possible (hacky for root)
+  const [debugInfo, setDebugInfo] = useState<any>({});
+
+  // Attempt to read from storage directly for debug
+  const userStr = typeof window !== 'undefined' ? localStorage.getItem('aBetterSetUser') : null;
+
   return (
     <ProjectProvider>
+      <div style={{ position: 'fixed', top: 0, left: 0, zIndex: 99999, background: 'rgba(0,0,0,0.8)', color: '#0f0', padding: '10px', fontSize: '10px', pointerEvents: 'none' }}>
+        <p>ROOT HUD</p>
+        <p>LocalStorage User: {userStr ? 'YES' : 'NO'}</p>
+      </div>
       <AppContent />
     </ProjectProvider>
   );
