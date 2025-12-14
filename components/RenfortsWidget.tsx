@@ -5,7 +5,16 @@ import { Department, Reinforcement, ReinforcementDetail } from '../types';
 import { Users, ChevronLeft, ChevronRight, UserPlus, X, Calendar, Phone, Mail, User, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 
 export const RenfortsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, addNotification } = useProject();
+    const { project, updateProjectDetails, user, currentDept, addNotification, notifications, markAsRead } = useProject();
+
+    React.useEffect(() => {
+        if (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) {
+            const unreadRenforts = notifications.filter(n => !n.read && (n.message.toLowerCase().includes('renfort') || n.targetDept === 'PRODUCTION'));
+            if (unreadRenforts.length > 0) {
+                unreadRenforts.forEach(n => markAsRead(n.id));
+            }
+        }
+    }, [user, notifications, markAsRead]);
 
     // --- Common Helpers ---
     const getStaffList = (r: Reinforcement): ReinforcementDetail[] => {
