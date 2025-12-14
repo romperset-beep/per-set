@@ -134,9 +134,25 @@ export const CateringWidget: React.FC = () => {
 
     const getWeekLabel = (weekStr: string) => {
         const [year, week] = weekStr.split('-').map(Number);
-        // Approximation of week start date for display
-        // Simple label for now
-        return `Semaine ${week} (${year})`;
+
+        // Calculate Monday of the ISO week
+        const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
+        const dow = simple.getUTCDay();
+        const monday = simple;
+        if (dow <= 4)
+            monday.setUTCDate(simple.getUTCDate() - simple.getUTCDay() + 1);
+        else
+            monday.setUTCDate(simple.getUTCDate() + 8 - simple.getUTCDay());
+
+        // Sunday is Monday + 6 days
+        const sunday = new Date(monday);
+        sunday.setUTCDate(monday.getUTCDate() + 6);
+
+        const formatDate = (d: Date) => {
+            return `${d.getUTCDate().toString().padStart(2, '0')}/${(d.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+        };
+
+        return `Semaine du ${formatDate(monday)} au ${formatDate(sunday)}`;
     };
 
     // Weekly Stats Calculation

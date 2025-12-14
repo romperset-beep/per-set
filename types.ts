@@ -125,6 +125,7 @@ export interface TimeLog {
   hasShortenedMeal: boolean; // If true, deduct 30m instead of 1h
   isContinuousDay?: boolean; // Added: Journée Continue (20 mins paid break included, usually)
   breakDuration?: number; // Added: Pause in minutes (manual override)
+  pauseTime?: string; // Added: HH:mm Time of the pause
   note?: string; // Added: User manual note
 
   // Detailed User Info for Export

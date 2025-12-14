@@ -16,6 +16,7 @@ export const TimesheetWidget: React.FC = () => {
     const [hasShortenedMeal, setHasShortenedMeal] = useState(false);
     const [isContinuousDay, setIsContinuousDay] = useState(false); // New
     const [breakDuration, setBreakDuration] = useState<number>(0); // New
+    const [pauseTime, setPauseTime] = useState(''); // New: Time of pause
     const [note, setNote] = useState(''); // New
     const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string }>({}); // New
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
@@ -96,6 +97,7 @@ export const TimesheetWidget: React.FC = () => {
             hasShortenedMeal,
             isContinuousDay,
             breakDuration,
+            pauseTime, // Save pause time
             note, // Save note
 
             // User Details from Profile
@@ -227,7 +229,7 @@ export const TimesheetWidget: React.FC = () => {
                 }));
             }
 
-            const headers = ['Date', 'Nom', 'Prénom', 'Fonction', 'Département', 'Début', 'Fin', 'Repas (Début)', 'Repas Écourté', 'Journée Continue', 'Pause (min)', 'Note', 'Heures Totales'];
+            const headers = ['Date', 'Nom', 'Prénom', 'Fonction', 'Département', 'Début', 'Fin', 'Repas (Début)', 'Repas Écourté', 'Journée Continue', 'Pause (min)', 'Heure Pause', 'Note', 'Heures Totales'];
             const rows = logs.map(log => {
                 // Determine best available data
                 const profile = profileMap[log.userId];
@@ -249,6 +251,7 @@ export const TimesheetWidget: React.FC = () => {
                     log.hasShortenedMeal ? 'OUI' : 'NON',
                     log.isContinuousDay ? 'OUI' : 'NON',
                     log.breakDuration || 0,
+                    log.pauseTime || '', // Added
                     `"${(log.note || '').replace(/"/g, '""')}"`, // Escape quotes
                     formatHours(log.totalHours)
                 ];
@@ -431,21 +434,34 @@ export const TimesheetWidget: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Pause (Min) */}
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Pause (min)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        placeholder="0"
-                                        value={breakDuration || ''}
-                                        onChange={(e) => setBreakDuration(Number(e.target.value))}
-                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none"
-                                    />
+                                {/* Pause (Min) and Pause Time */}
+                                <div className="col-span-2 lg:col-span-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1">Pause (min)</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                placeholder="0"
+                                                value={breakDuration || ''}
+                                                onChange={(e) => setBreakDuration(Number(e.target.value))}
+                                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1">Heure de Pause</label>
+                                            <input
+                                                type="time"
+                                                value={pauseTime}
+                                                onChange={(e) => setPauseTime(e.target.value)}
+                                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Note Input */}
-                                <div className="col-span-2 lg:col-span-3">
+                                <div className="col-span-2 lg:col-span-1">
                                     <label className="block text-xs font-bold text-slate-500 mb-1">Note (Optionnel)</label>
                                     <input
                                         type="text"
@@ -540,9 +556,13 @@ export const TimesheetWidget: React.FC = () => {
                                                                 {!log.isContinuousDay && (
                                                                     <span>{log.hasShortenedMeal ? 'Repas -30m' : 'Repas -1h'}</span>
                                                                 )}
-                                                                {log.breakDuration ? (
-                                                                    <span className="text-red-500 font-bold">Pause -{log.breakDuration}m</span>
-                                                                ) : null}
+                                                                {log.breakDuration && log.breakDuration > 0 && (
+                                                                    <div className="text-red-400 flex items-center gap-1">
+                                                                        <StopCircle className="h-3 w-3" />
+                                                                        Pause -{log.breakDuration}m
+                                                                        {log.pauseTime && <span className="text-xs text-slate-500 ml-1">({log.pauseTime})</span>}
+                                                                    </div>
+                                                                )}
                                                                 {log.note && (
                                                                     <div className="group relative">
                                                                         <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200 cursor-help max-w-[150px] truncate block">
