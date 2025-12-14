@@ -29,12 +29,16 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
+  /* Notification State */
+  const [showNotifications, setShowNotifications] = useState(false);
   const {
     user,
     currentDept,
     unreadCount,
     unreadSocialCount,
     unreadNotificationCount,
+    notifications, // Added
+    markAsRead, // Added
     logout,
     t,
     project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
@@ -44,6 +48,44 @@ const AppContent: React.FC = () => {
   // Global Notification Indicator
   // Logic: Inventory Items (unreadCount) OR Social Posts (unreadSocialCount) OR Notifications (unreadNotificationCount)
   const hasUnread = unreadCount > 0 || unreadSocialCount > 0 || unreadNotificationCount > 0;
+
+  // Filter notifications for display (Only unread? Or recent? Let's show unread + recent 5)
+  // Actually, user wants to see "Red Dot" gone. So show unread first.
+  const displayNotifications = React.useMemo(() => {
+    // Filter relevant like ProjectContext does but sorted
+    const relevant = notifications.filter(n => {
+      if (user?.department === 'PRODUCTION' || user?.department === 'Régie') return true;
+      return n.targetDept === user?.department || n.targetDept === undefined;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return relevant.slice(0, 10); // Show top 10
+  }, [notifications, user]);
+
+  const handleNotificationClick = (n: any) => {
+    markAsRead(n.id);
+    setShowNotifications(false);
+
+    // Routing Logic
+    const msg = n.message.toLowerCase();
+    if (msg.includes('renfort')) {
+      setActiveTab('renforts');
+    } else if (msg.includes('transport') || msg.includes('course')) {
+      setActiveTab('logistics');
+    } else if (msg.includes('frais') || msg.includes('dépense')) {
+      setActiveTab('expenses');
+    } else if (msg.includes('social') || n.itemId?.startsWith('post_')) { // Assuming social notifs use this type
+      setActiveTab('social');
+    } else {
+      // Default fallback
+      setActiveTab('renforts');
+    }
+  };
+
+  const markAllNofiticationsRead = () => {
+    displayNotifications.forEach(n => {
+      if (!n.read) markAsRead(n.id);
+    });
+    setShowNotifications(false);
+  };
 
   if (!user) {
     return <LoginPage />;
@@ -252,49 +294,60 @@ const AppContent: React.FC = () => {
             </button>
 
             {/* Notification Bell (Global) */}
-            <button
-              onClick={() => {
-                // Priority: Social > Notifications > Inventory
-                if (unreadSocialCount > 0) {
-                  const latestUnread = socialPosts.find(p => {
-                    const viewKey = `lastReadSocial_${p.id}`;
-                    return !localStorage.getItem(viewKey);
-                  });
+            {/* Notification Bell (Global) */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-slate-400 hover:text-white transition-colors"
+                title="Notifications"
+              >
+                <Bell className="h-6 w-6" />
+                {hasUnread && (
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-pink-500 rounded-full border-2 border-cinema-900 animate-pulse"></span>
+                )}
+              </button>
 
-                  if (latestUnread?.targetDept === 'GLOBAL' || !latestUnread) {
-                    setSocialAudience('GLOBAL');
-                  } else if (latestUnread.targetDept === user.department) {
-                    setSocialAudience('DEPARTMENT');
-                    setSocialTargetDept(user.department);
-                  } else {
-                    setSocialAudience('USER');
-                  }
-                  setActiveTab('social');
-                } else if (unreadNotificationCount > 0) {
-                  // For generic notifications (often Renforts now), default to Renforts or standard tab
-                  // As 'Renforts' is the new feature driving this, let's open it if user is Prod?
-                  // Or generically opening Social -> Notifications tab if it existed.
-                  // For now, let's assume if it's Prod, go to Renforts widget. 
-                  // Or if not Prod, go to Renforts?
-                  // Actually, notifications are used for Renforts mainly now.
-                  setActiveTab('renforts');
-                } else if (unreadCount > 0) {
-                  // Inventory
-                  setActiveTab('inventory');
-                  if (user.department === 'PRODUCTION' || user.department === Department.REGIE) {
-                    setCurrentDept('PRODUCTION'); // Overview
-                  } else {
-                    setCurrentDept(user.department);
-                  }
-                }
-              }}
-              className="relative p-2 text-slate-400 hover:text-white transition-colors"
-            >
-              <Bell className="h-6 w-6" />
-              {(unreadCount > 0 && (user.department === 'PRODUCTION' || user.department === Department.REGIE)) || unreadSocialCount > 0 || unreadNotificationCount > 0 ? (
-                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-pink-500 rounded-full border-2 border-cinema-900 animate-pulse"></span>
-              ) : null}
-            </button>
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-cinema-800 border border-cinema-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-3 border-b border-cinema-700 flex justify-between items-center bg-cinema-900/50">
+                    <h3 className="font-bold text-white text-sm">Notifications</h3>
+                    {unreadNotificationCount > 0 && (
+                      <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {displayNotifications.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 text-sm">
+                        Aucune notification récente.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-cinema-700/50">
+                        {displayNotifications.map((n: any) => (
+                          <button
+                            key={n.id}
+                            onClick={() => handleNotificationClick(n)}
+                            className={`w-full text-left p-3 hover:bg-white/5 transition-colors flex gap-3 ${!n.read ? 'bg-blue-500/5' : ''}`}
+                          >
+                            <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${!n.read ? 'bg-blue-500' : 'bg-transparent'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-slate-400'}`}>
+                                {n.message}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-1">
+                                {new Date(n.date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={logout}
