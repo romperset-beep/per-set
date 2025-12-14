@@ -190,7 +190,7 @@ export const RenfortsWidget: React.FC = () => {
 
         return (
             <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-8">
-                <div className="flex items-center gap-4 bg-cinema-800 p-6 rounded-xl border border-cinema-700">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 bg-cinema-800 p-6 rounded-xl border border-cinema-700">
                     <div className="p-3 bg-indigo-500/20 rounded-xl text-indigo-400">
                         <Users className="h-8 w-8" />
                     </div>
@@ -199,10 +199,10 @@ export const RenfortsWidget: React.FC = () => {
                         <p className="text-slate-400">Vue d'overview par Semaine et Département</p>
 
                     </div>
-                    <div className="ml-auto">
+                    <div className="w-full md:w-auto md:ml-auto mt-4 md:mt-0">
                         <button
                             onClick={() => setViewMode('MY_TEAM')}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <UserPlus className="h-4 w-4" />
                             Gérer mes Renforts
