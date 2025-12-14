@@ -2,30 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction } from '../types';
 import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, TouchSensor, MouseSensor } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-
-// --- Sortable Wrapper ---
-const SortableWidget = ({ id, children }: { id: string, children: React.ReactNode }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 10 : 1,
-        opacity: isDragging ? 0.8 : 1,
-        touchAction: 'none' // Important for mobile DnD
-    };
-
-    return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="h-full">
-            {children}
-        </div>
-    );
-};
 
 // --- Widget Components ---
 
@@ -271,29 +249,6 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
         }
     }, [user?.dashboardOrder]); // Do NOT depend on user object deep change, just dashboardOrder
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), // Distance prevents click trigger
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), // Hold to drag on mobile
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
-    const handleDragEnd = async (event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id) {
-            const oldIndex = widgetOrder.indexOf(active.id as string);
-            const newIndex = widgetOrder.indexOf(over?.id as string);
-            const newOrder = arrayMove(widgetOrder, oldIndex, newIndex);
-
-            setWidgetOrder(newOrder);
-
-            // Persist using Context (LocalStorage)
-            if (updateUser) {
-                updateUser({ dashboardOrder: newOrder });
-            }
-        }
-    };
-
     // Render helper
     const renderWidget = (id: string) => {
         // Permissions checks
@@ -341,29 +296,18 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 </div>
             </div>
 
-            {/* Draggable Grid */}
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext
-                    items={widgetOrder}
-                    strategy={rectSortingStrategy}
-                >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {widgetOrder.map((id) => {
-                            const widget = renderWidget(id);
-                            if (!widget) return null; // Logic to hide unauthorized widgets
-                            return (
-                                <SortableWidget key={id} id={id}>
-                                    {widget}
-                                </SortableWidget>
-                            );
-                        })}
-                    </div>
-                </SortableContext>
-            </DndContext>
+            {/* Grid without DnD Context */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {widgetOrder.map((id) => {
+                    const widget = renderWidget(id);
+                    if (!widget) return null; // Logic to hide unauthorized widgets
+                    return (
+                        <div key={id} className="h-full">
+                            {widget}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
