@@ -450,12 +450,14 @@ export const RenfortsWidget: React.FC = () => {
 
                                     {/* Enhanced Add Input */}
                                     {addingToDate === dateStr && (
-                                        <div className="mt-2 animate-in fade-in slide-in-from-bottom-2 bg-cinema-900/80 p-3 rounded-lg border border-indigo-500/50 shadow-lg relative z-10">
+                                        <div
+                                            className="mt-2 animate-in fade-in slide-in-from-bottom-2 bg-cinema-900/80 p-3 rounded-lg border border-indigo-500/50 shadow-lg relative z-10"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             <div className="space-y-2 mb-3">
                                                 <div className="relative">
                                                     <User className="h-3 w-3 absolute left-2 top-2.5 text-slate-500" />
                                                     <input
-                                                        autoFocus
                                                         type="text"
                                                         placeholder="Nom (Requis)"
                                                         className="w-full bg-cinema-800 border border-cinema-700 rounded px-2 py-1.5 pl-7 text-xs text-white focus:outline-none focus:border-indigo-500"
