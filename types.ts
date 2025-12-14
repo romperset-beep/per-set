@@ -269,6 +269,7 @@ export interface User {
   projectType?: string; // Added to User to persist selection across sessions
   currentProjectId?: string; // Added for robust syncing
   projectHistory?: ProjectSummary[];
+  dashboardOrder?: string[]; // Added for customizable dashboard
 }
 
 export interface CallSheet {
