@@ -16,7 +16,8 @@ import {
   ItemStatus,
   SurplusAction,
   CallSheet,
-  CatalogItem
+  CatalogItem,
+  LogisticsRequest // Added
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db, auth } from '../services/firebase';
@@ -113,6 +114,10 @@ interface ProjectContextType {
   catalogItems: CatalogItem[];
 
   addToCatalog: (name: string, dept: string) => Promise<void>;
+
+  // Logistics
+  addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
+  deleteLogisticsRequest: (requestId: string) => Promise<void>;
 
   // Social Nav Control
   socialAudience: 'GLOBAL' | 'DEPARTMENT' | 'USER';
@@ -1292,6 +1297,31 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => unsubscribe();
   }, [project.name]);
 
+
+
+  // --- LOGISTICS IMPL ---
+  const addLogisticsRequest = async (request: LogisticsRequest) => {
+    const currentInfo = project.logistics || [];
+    const newLogistics = [...currentInfo, request];
+
+    // Trigger Notification
+    if (user?.department !== 'PRODUCTION') {
+      addNotification(
+        `Demande transport (${request.type}) pour ${request.department} le ${new Date(request.date).toLocaleDateString()}`,
+        'INFO',
+        'PRODUCTION'
+      );
+    }
+
+    await updateProjectDetails({ logistics: newLogistics });
+  };
+
+  const deleteLogisticsRequest = async (requestId: string) => {
+    const currentInfo = project.logistics || [];
+    const newLogistics = currentInfo.filter(r => r.id !== requestId);
+    await updateProjectDetails({ logistics: newLogistics });
+  };
+
   const updateUserProfile = (profile: UserProfile) => {
     // Legacy local update, keeping it as is but it's less useful now with sync
     setUserProfiles(prev => {
@@ -1360,6 +1390,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Catalog
       catalogItems,
       addToCatalog,
+
+      // Logistics
+      addLogisticsRequest,
+      deleteLogisticsRequest,
 
       userProfiles,
       updateUserProfile,

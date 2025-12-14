@@ -55,6 +55,20 @@ export interface ConsumableItem {
   quantityStarted?: number; // Number of items currently opened/started
 }
 
+export type LogisticsType = 'pickup' | 'dropoff' | 'roundtrip';
+
+export interface LogisticsRequest {
+  id: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  department: Department | 'PRODUCTION';
+  type: LogisticsType;
+  location: string;
+  description: string;
+  contact?: string;
+  status?: 'pending' | 'approved' | 'completed';
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -71,6 +85,7 @@ export interface Project {
   cateringValidations?: Record<string, boolean>; // date -> isValidated
   timeLogs?: TimeLog[];
   reinforcements?: Reinforcement[];
+  logistics?: LogisticsRequest[];
 }
 
 export interface ReinforcementDetail {

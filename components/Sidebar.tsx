@@ -13,7 +13,8 @@ import {
   ArrowRightLeft,
   ShieldCheck,
   Utensils,
-  Clock
+  Clock,
+  Truck // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -55,6 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
         { id: 'timesheet', label: 'Les Heures', icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
+        { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' }, // Added
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'PRODUCTION'] },
         { id: 'expenses', label: t('sidebar.expenses'), icon: Euro },
       ]
@@ -81,6 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     if (item.id === 'callsheets') return true;
     if (item.id === 'timesheet') return true;
     if (item.id === 'renforts') return true;
+    if (item.id === 'logistics') return true; // Added
 
     // Super Admin
     if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
