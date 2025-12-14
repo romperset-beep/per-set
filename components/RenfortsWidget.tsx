@@ -8,11 +8,19 @@ export const RenfortsWidget: React.FC = () => {
     const { project, updateProjectDetails, user, currentDept, addNotification, notifications, markAsRead } = useProject();
 
     React.useEffect(() => {
-        if (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) {
-            // Broaden to clear ALL unread notifications for this user context, 
-            // since the Bell redirects here for any generic notification.
-            const unread = notifications.filter(n => !n.read && (n.targetDept === 'PRODUCTION' || n.targetDept === user.department));
+        // Clear notifications when viewing this tab.
+        // We filter for notifications related to "Renfort" OR general production notifications if user is prod.
+        if (notifications.length > 0) {
+            const unread = notifications.filter(n =>
+                !n.read && (
+                    n.message.toLowerCase().includes('renfort') ||
+                    n.type === 'RENFORT' ||
+                    (user?.department === 'PRODUCTION' && n.targetDept === 'PRODUCTION') ||
+                    (user?.department === Department.REGIE && n.targetDept === 'PRODUCTION') // Regie also sees Prod overview
+                )
+            );
             if (unread.length > 0) {
+                console.log("RenfortsWidget: Clearing notifications", unread);
                 unread.forEach(n => markAsRead(n.id));
             }
         }
