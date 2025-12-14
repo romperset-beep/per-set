@@ -76,6 +76,7 @@ interface ProjectContextType {
   unreadCount: number;
   unreadSocialCount: number;
   unreadMarketplaceCount: number;
+  unreadNotificationCount: number;
   markSocialAsRead: () => void;
   markMarketplaceAsRead: () => void;
 
@@ -1338,6 +1339,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       unreadCount,
       unreadSocialCount,
       unreadMarketplaceCount,
+      unreadNotificationCount: userNotifications.filter(n => !n.read).length,
       markSocialAsRead,
       markMarketplaceAsRead,
       expenseReports,

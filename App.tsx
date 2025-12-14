@@ -28,7 +28,22 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
-  const { user, logout, unreadCount, unreadSocialCount, project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
+  const {
+    user,
+    currentDept,
+    unreadCount,
+    unreadSocialCount,
+    unreadNotificationCount,
+    logout,
+    t,
+    project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
+
+  const elementRef = useRef(null);
+  const isVisible = useOnScreen(elementRef);
+
+  // Global Notification Indicator
+  // Logic: Inventory Items (unreadCount) OR Social Posts (unreadSocialCount) OR Notifications (unreadNotificationCount)
+  const hasUnread = unreadCount > 0 || unreadSocialCount > 0 || unreadNotificationCount > 0;
 
   if (!user) {
     return <LoginPage />;
@@ -237,59 +252,44 @@ const AppContent: React.FC = () => {
             {/* Notification Bell (Global) */}
             <button
               onClick={() => {
+                // Priority: Social > Notifications > Inventory
                 if (unreadSocialCount > 0) {
-                  // Smart Navigation: Find the most recent unread post to determine where to go
-                  // We need the same logic as 'unreadSocialCount' to find the posts
-                  const myProfile = userProfiles.find(up => up.email === user.email);
-                  // Approximate check: just find the latest unread post relevant to me
-                  // Ideally we would loop but for simplicity let's default to GLOBAL or find last one.
-                  // Let's rely on the user to switch if mixed, or try to be smart.
                   const latestUnread = socialPosts.find(p => {
-                    // Only consider unread relative to localStorage (not accessible here easily without state, but we know count > 0)
-                    // Better: Just set default to GLOBAL unless we are sure.
-                    // Actually, if I receive a Dept message, I want to go to Dept view.
-                    if (!p.targetAudience) return false;
-                    return true;
+                    const viewKey = `lastReadSocial_${p.id}`;
+                    return !localStorage.getItem(viewKey);
                   });
 
-                  // If user has unread messages, prioritize the most restrictive view
-                  // We can't easily know precisely WHICH one is unread without duplicating the logic or exposing it.
-                  // Hack: If unreadSocialCount > 0, we can try to guess or just default to Global?
-                  // USER REQ: "seul ce département puisse voir". If I'm in Global, I WON'T SEE IT anymore.
-                  // So I MUST switch view if the unread message is Dept.
-
-                  // Let's force "DEPARTMENT" view if my department has messages?
-                  // Or simpler: reset to GLOBAL daily?
-
-                  // For now, let's keep it simple: If I click, I go to Social.
-                  // BUT, if I don't see the message, it's bad.
-                  // Let's Try to detect if I have Departmental messages.
-                  const hasDeptMessages = socialPosts.some(p => p.targetAudience === 'DEPARTMENT' && p.targetDept === user.department && new Date(p.date).getTime() > (Number(localStorage.getItem('lastReadSocial')) || 0));
-                  const hasPrivateMessages = socialPosts.some(p => p.targetAudience === 'USER' && p.targetUserId === myProfile?.id && new Date(p.date).getTime() > (Number(localStorage.getItem('lastReadSocial')) || 0));
-
-                  if (hasPrivateMessages) {
-                    setSocialAudience('USER');
-                    // Ideally set the userId of the sender, but we can't easily get it here without iteration.
-                    // The Recent Discussions list handles it.
-                  } else if (hasDeptMessages) {
-                    setSocialAudience('DEPARTMENT');
-                    setSocialTargetDept(user.department as any);
-                  } else {
+                  if (latestUnread?.targetDept === 'GLOBAL' || !latestUnread) {
                     setSocialAudience('GLOBAL');
+                  } else if (latestUnread.targetDept === user.department) {
+                    setSocialAudience('DEPARTMENT');
+                    setSocialTargetDept(user.department);
+                  } else {
+                    setSocialAudience('USER');
                   }
-
                   setActiveTab('social');
-                } else if ((user.department === 'PRODUCTION' || user.department === Department.REGIE) && unreadCount > 0) {
+                } else if (unreadNotificationCount > 0) {
+                  // For generic notifications (often Renforts now), default to Renforts or standard tab
+                  // As 'Renforts' is the new feature driving this, let's open it if user is Prod?
+                  // Or generically opening Social -> Notifications tab if it existed.
+                  // For now, let's assume if it's Prod, go to Renforts widget. 
+                  // Or if not Prod, go to Renforts?
+                  // Actually, notifications are used for Renforts mainly now.
+                  setActiveTab('renforts');
+                } else if (unreadCount > 0) {
+                  // Inventory
                   setActiveTab('inventory');
-                  setCurrentDept('PRODUCTION');
-                } else {
-                  setActiveTab('social');
+                  if (user.department === 'PRODUCTION' || user.department === 'Régie' || user.department === 'REGIE') {
+                    setCurrentDept('PRODUCTION'); // Overview
+                  } else {
+                    setCurrentDept(user.department);
+                  }
                 }
               }}
               className="relative p-2 text-slate-400 hover:text-white transition-colors"
             >
               <Bell className="h-6 w-6" />
-              {(unreadCount > 0 && (user.department === 'PRODUCTION' || user.department === Department.REGIE)) || unreadSocialCount > 0 ? (
+              {(unreadCount > 0 && (user.department === 'PRODUCTION' || user.department === Department.REGIE)) || unreadSocialCount > 0 || unreadNotificationCount > 0 ? (
                 <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-pink-500 rounded-full border-2 border-cinema-900 animate-pulse"></span>
               ) : null}
             </button>
