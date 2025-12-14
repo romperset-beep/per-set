@@ -448,60 +448,6 @@ export const RenfortsWidget: React.FC = () => {
                                         })()}
                                     </div>
 
-                                    {/* Enhanced Add Input */}
-                                    {addingToDate === dateStr && (
-                                        <div
-                                            className="mt-2 animate-in fade-in slide-in-from-bottom-2 bg-cinema-900/80 p-3 rounded-lg border border-indigo-500/50 shadow-lg relative z-10"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <div className="space-y-2 mb-3">
-                                                <div className="relative">
-                                                    <User className="h-3 w-3 absolute left-2 top-2.5 text-slate-500" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Nom (Requis)"
-                                                        className="w-full bg-cinema-800 border border-cinema-700 rounded px-2 py-1.5 pl-7 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                                        value={newName}
-                                                        onChange={e => setNewName(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <Phone className="h-3 w-3 absolute left-2 top-2.5 text-slate-500" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Téléphone"
-                                                        className="w-full bg-cinema-800 border border-cinema-700 rounded px-2 py-1.5 pl-7 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                                        value={newPhone}
-                                                        onChange={e => setNewPhone(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <Mail className="h-3 w-3 absolute left-2 top-2.5 text-slate-500" />
-                                                    <input
-                                                        type="email"
-                                                        placeholder="Email"
-                                                        className="w-full bg-cinema-800 border border-cinema-700 rounded px-2 py-1.5 pl-7 text-xs text-white focus:outline-none focus:border-indigo-500"
-                                                        value={newEmail}
-                                                        onChange={e => setNewEmail(e.target.value)}
-                                                        onKeyDown={e => {
-                                                            if (e.key === 'Enter') handleAddReinforcement(dateStr);
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="flex gap-2 justify-end">
-                                                <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }} className="text-xs text-slate-400 hover:text-white px-2 py-1">Annuler</button>
-                                                <button
-                                                    onClick={() => handleAddReinforcement(dateStr)}
-                                                    disabled={!newName.trim()}
-                                                    className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    OK
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Mini Add Button */}
                                     {addingToDate !== dateStr && getReinforcements(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '').length > 0 && (
@@ -519,6 +465,94 @@ export const RenfortsWidget: React.FC = () => {
                     );
                 })}
             </div>
+            {/* Modal for Adding Renfort */}
+            {addingToDate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
+                >
+                    <div
+                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md p-6 space-y-6"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-white">Ajouter un Renfort</h3>
+                            <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }} className="text-slate-400 hover:text-white">
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-indigo-300 text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(addingToDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Nom Complet <span className="text-red-400">*</span></label>
+                                <div className="relative">
+                                    <User className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="Ex: Thomas Dubreuil"
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                        value={newName}
+                                        onChange={e => setNewName(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Téléphone</label>
+                                    <div className="relative">
+                                        <Phone className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                        <input
+                                            type="tel"
+                                            placeholder="06 12..."
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                            value={newPhone}
+                                            onChange={e => setNewPhone(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Email</label>
+                                    <div className="relative">
+                                        <Mail className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                        <input
+                                            type="email"
+                                            placeholder="contact@..."
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                            value={newEmail}
+                                            onChange={e => setNewEmail(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' && newName.trim()) handleAddReinforcement(addingToDate);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 justify-end pt-2">
+                            <button
+                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
+                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => handleAddReinforcement(addingToDate)}
+                                disabled={!newName.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                            >
+                                Valider le Renfort
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
