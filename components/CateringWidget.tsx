@@ -349,7 +349,7 @@ export const CateringWidget: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex flex-wrap justify-center md:justify-end items-center gap-4 w-full md:w-auto">
                     {/* View Toggle for Production & Régie */}
                     {isRegie && (
                         <div className="bg-cinema-900 rounded-lg p-1 flex gap-1 border border-cinema-700">
