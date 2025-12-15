@@ -433,66 +433,68 @@ export const CateringWidget: React.FC = () => {
             {/* WEEKLY VIEW TABLE */}
             {viewMode === 'weekly' ? (
                 <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden animate-in fade-in">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-cinema-900/50 border-b border-cinema-700 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                <th className="px-6 py-4">Semaine</th>
-                                <th className="px-6 py-4 text-center">Total Repas</th>
-                                <th className="px-6 py-4 text-center">Dont Végétariens</th>
-                                <th className="px-6 py-4 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-cinema-700">
-                            {weeklyStats.length > 0 ? weeklyStats.map((week) => (
-                                <tr key={week.key} className="hover:bg-cinema-700/30 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-white text-lg">{week.label}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="text-xl font-bold text-white">{week.total}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="text-xl font-bold text-eco-400">{week.veggie}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex justify-center gap-4">
-                                            <button
-                                                onClick={() => {
-                                                    // Filter logs for this week
-                                                    const logsForWeek = (project.cateringLogs || []).filter(l => {
-                                                        if (!l.hasEaten) return false; // Only export EATEN meals for the report? User said "Feuilles Cantine", implies list of meals.
-                                                        const d = new Date(l.date);
-                                                        const { week: w, year: y } = getWeekNumber(d);
-                                                        return `${y}-${w}` === week.key;
-                                                    });
-                                                    downloadWeeklyReport(week.key, logsForWeek);
-                                                }}
-                                                className="text-eco-400 hover:text-eco-300 text-sm font-bold flex items-center gap-1 hover:underline"
-                                            >
-                                                <Download className="h-4 w-4" />
-                                                CSV
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedDate(week.firstDate);
-                                                    setViewMode('daily');
-                                                }}
-                                                className="text-blue-400 hover:text-blue-300 text-sm font-bold hover:underline"
-                                            >
-                                                Voir Détail
-                                            </button>
-                                        </div>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-cinema-900/50 border-b border-cinema-700 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    <th className="px-6 py-4">Semaine</th>
+                                    <th className="px-6 py-4 text-center">Total Repas</th>
+                                    <th className="px-6 py-4 text-center">Dont Végétariens</th>
+                                    <th className="px-6 py-4 text-center">Actions</th>
                                 </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                                        Aucune donnée enregistrée pour le moment.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-cinema-700">
+                                {weeklyStats.length > 0 ? weeklyStats.map((week) => (
+                                    <tr key={week.key} className="hover:bg-cinema-700/30 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-white text-lg">{week.label}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="text-xl font-bold text-white">{week.total}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="text-xl font-bold text-eco-400">{week.veggie}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex justify-center gap-4">
+                                                <button
+                                                    onClick={() => {
+                                                        // Filter logs for this week
+                                                        const logsForWeek = (project.cateringLogs || []).filter(l => {
+                                                            if (!l.hasEaten) return false; // Only export EATEN meals for the report? User said "Feuilles Cantine", implies list of meals.
+                                                            const d = new Date(l.date);
+                                                            const { week: w, year: y } = getWeekNumber(d);
+                                                            return `${y}-${w}` === week.key;
+                                                        });
+                                                        downloadWeeklyReport(week.key, logsForWeek);
+                                                    }}
+                                                    className="text-eco-400 hover:text-eco-300 text-sm font-bold flex items-center gap-1 hover:underline"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    CSV
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedDate(week.firstDate);
+                                                        setViewMode('daily');
+                                                    }}
+                                                    className="text-blue-400 hover:text-blue-300 text-sm font-bold hover:underline"
+                                                >
+                                                    Voir Détail
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                                            Aucune donnée enregistrée pour le moment.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : (
                 <>

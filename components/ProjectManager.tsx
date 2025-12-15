@@ -128,12 +128,18 @@ const RenfortsWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const LogisticsWidget = ({ onClick }: { onClick: () => void }) => {
-    const { project } = useProject();
+    const { project, currentDept } = useProject();
     const pending = (project.logistics || []).filter(l => {
         const d = new Date(l.date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return d >= today;
+        if (d < today) return false;
+
+        // Production & Régie see all
+        if (currentDept === 'PRODUCTION' || currentDept === 'Régie') return true;
+
+        // Others see only their requests
+        return l.department === currentDept;
     }).length;
 
     return (
