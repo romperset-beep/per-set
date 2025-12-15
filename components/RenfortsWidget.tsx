@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department, Reinforcement, ReinforcementDetail } from '../types';
-import { Users, ChevronLeft, ChevronRight, UserPlus, X, Calendar, Phone, Mail, User, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, UserPlus, X, Calendar, Phone, Mail, User, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
 
 export const RenfortsWidget: React.FC = () => {
     const { project, updateProjectDetails, user, currentDept, addNotification, notifications, markAsRead } = useProject();
@@ -190,6 +190,63 @@ export const RenfortsWidget: React.FC = () => {
         await updateProjectDetails({ reinforcements: newReinforcements });
     };
 
+    // --- CSV EXPORT (Global) ---
+    const downloadReinforcementsCSV = () => {
+        const reinforcements = project.reinforcements || [];
+        if (reinforcements.length === 0) return alert("Aucun renfort à exporter.");
+
+        // 1. Flatten Data
+        const rows: any[] = [];
+        reinforcements.forEach(r => {
+            const { week, year } = getISOWeek(new Date(r.date));
+            const staff = getStaffList(r);
+            staff.forEach(s => {
+                rows.push({
+                    week: `${year}-W${week}`,
+                    date: r.date, // Formatted later or raw
+                    dept: r.department,
+                    name: s.name,
+                    phone: s.phone || '',
+                    email: s.email || ''
+                });
+            });
+        });
+
+        // 2. Sort: Week DESC > Date ASC > Dept ASC
+        rows.sort((a, b) => {
+            if (a.week !== b.week) return b.week.localeCompare(a.week);
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.dept.localeCompare(b.dept);
+        });
+
+        // 3. Build CSV
+        const header = ['Semaine', 'Date', 'Département', 'Nom', 'Téléphone', 'Email'];
+        const csvContent = [
+            header.join(','),
+            ...rows.map(row => [
+                row.week,
+                row.date,
+                row.dept,
+                `"${row.name}"`, // Quote names to be safe
+                `"${row.phone}"`,
+                `"${row.email}"`
+            ].join(','))
+        ].join('\n');
+
+        // 4. Download
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Renforts_Global_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('style', 'visibility:hidden');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
     // --- RENDER ---
 
     // 1. PRODUCTION VIEW (Hierarchical)
@@ -205,9 +262,16 @@ export const RenfortsWidget: React.FC = () => {
                     <div>
                         <h2 className="text-2xl font-bold text-white">Renforts Global</h2>
                         <p className="text-slate-400">Vue d'overview par Semaine et Département</p>
-
                     </div>
-                    <div className="w-full md:w-auto md:ml-auto mt-4 md:mt-0">
+
+                    <div className="w-full md:w-auto md:ml-auto mt-4 md:mt-0 flex gap-4">
+                        <button
+                            onClick={downloadReinforcementsCSV}
+                            className="bg-cinema-900 border border-cinema-700 hover:bg-cinema-700 text-eco-400 font-bold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden md:inline">Export CSV</span>
+                        </button>
                         <button
                             onClick={() => setViewMode('MY_TEAM')}
                             className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"

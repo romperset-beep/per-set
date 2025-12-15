@@ -257,10 +257,19 @@ export const TimesheetWidget: React.FC = () => {
                 ];
             });
 
-            const csvContent = [
+            let csvContent = [
                 headers.join(','),
                 ...rows.map(r => r.join(','))
             ].join('\n');
+
+            // Add Total Hours Summary Row
+            const totalHours = logs.reduce((acc, log) => acc + log.totalHours, 0);
+            const formattedTotal = formatHours(totalHours);
+            const firstDate = logs.length > 0 ? new Date(logs.sort((a, b) => a.date.localeCompare(b.date))[0].date) : new Date();
+            const dateStr = firstDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+
+            // Append explicit summary line at the bottom
+            csvContent += `\n\nTotal heures semaine du ${dateStr} : ${formattedTotal} heures`;
 
             const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
