@@ -24,7 +24,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 async function analyzePdf() {
     try {
-        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/CinéStock/A Better Set/pav-salaires-mini-1er-juillet-2025-v2.pdf";
+        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/CinéStock/A Better Set/A Better Set/CINEMA_Salaires-mini_11-avril-2025.pdf";
         if (!fs.existsSync(filePath)) {
             console.error("PDF file not found at:", filePath);
             process.exit(1);
@@ -34,16 +34,27 @@ async function analyzePdf() {
         const base64Data = fileBuffer.toString("base64");
 
         const prompt = `
-            Tu es un assistant.
-            TACHE : 
-            Extrait UNIQUEMENT la grille des salaires "EMPLOIS DE CATEGORIE B - CDD d'usage" (Intermittents).
-            Nous avons déjà le début (A à C).
-            Extrait la suite à partir de la lettre D (ou "Coiffeur" / "Chef") jusqu'à la fin de l'alphabet (Z).
+            Tu es un expert en paie cinéma.
+            ANALYSE le PDF fourni (Salaires Cinéma).
             
-            Format souhaité par ligne :
-            Nom du poste | Catégorie | Niveau | Salaire 35h | Salaire 39h | Salaire 7h | Salaire 8h
+            OBJECTIF : Extraire UNIQUEMENT la grille de salaire pour l'**ANNEXE III** (Films petit budget / Titre III).
+            IGNORE Annexe I et II.
             
-            Ne sors PAS les salaires mensuels. Sors les taux hebdo et journaliers.
+            Extrait TOUS les postes (Techniciens, Ouvriers, Cadres - Intermittents) de A à Z.
+            
+            FORMAT DE SORTIE ATTENDU (JSON STRICT) :
+            {
+              "annexe3": [
+                { "title": "Nom du poste", "rates": { "baseDaily": 123.45, "baseWeekly": 456.78 } }
+              ]
+            }
+            
+            RÈGLES :
+            - "baseDaily" : Salaire journalier.
+            - "baseWeekly" : Salaire hebdomadaire.
+            - Si valeur manquante, null.
+            - Copie les chiffres exacts (1 234,56).
+            - Output ONLY valid JSON.
         `;
 
         const result = await model.generateContent([

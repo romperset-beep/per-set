@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { TimeLog } from '../types';
 import { db, auth } from '../services/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins } from 'lucide-react';
-import { calculateUSPAGross } from '../utils/payrollUtils';
+import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs } from '../utils/payrollUtils';
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
@@ -24,6 +25,18 @@ export const TimesheetWidget: React.FC = () => {
     const [travelHoursInside, setTravelHoursInside] = useState<number>(0);
     const [travelHoursOutside, setTravelHoursOutside] = useState<number>(0);
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
+
+    // Dynamic Job List based on Convention
+    const availableJobs = useMemo(() => {
+        if (project.projectType === 'Long Métrage' && project.convention) {
+            const cinemaJobs = getAvailableJobs(project.convention);
+            if (cinemaJobs.length > 0) return cinemaJobs;
+        }
+        if (project.projectType === 'Publicité') {
+            return getAvailableJobs('Publicité');
+        }
+        return USPA_JOBS;
+    }, [project.projectType, project.convention]);
 
     // Fetch User Profile for current user (to get Role/Name details)
     React.useEffect(() => {
@@ -85,7 +98,7 @@ export const TimesheetWidget: React.FC = () => {
         if (!callTime || !endTime || !user) return;
 
         const totalHours = calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration);
-        const logId = `${date}_${user.email}`;
+        const logId = `${date}_${user.email} `;
 
         const newLog: TimeLog = {
             id: logId,
@@ -165,11 +178,11 @@ export const TimesheetWidget: React.FC = () => {
             return {
                 week: weekNum,
                 year: weekStart.getFullYear(), // Just for grouping key mostly
-                label: `Semaine ${weekNum}`,
+                label: `Semaine ${weekNum} `,
                 startDate: weekStart,
                 endDate: weekEnd,
                 isRelative: true,
-                key: `S${weekNum}` // Simple key
+                key: `S${weekNum} ` // Simple key
             };
         }
 
@@ -195,7 +208,7 @@ export const TimesheetWidget: React.FC = () => {
             startDate: monday,
             endDate: sunday,
             isRelative: false,
-            key: `${d.getUTCFullYear()}-W${weekNo}`
+            key: `${d.getUTCFullYear()} -W${weekNo} `
         };
     };
 
@@ -279,7 +292,7 @@ export const TimesheetWidget: React.FC = () => {
     const formatHours = (decimalHours: number) => {
         const hours = Math.floor(decimalHours);
         const minutes = Math.round((decimalHours - hours) * 60);
-        return `${hours}h${minutes > 0 ? minutes.toString().padStart(2, '0') : ''}`;
+        return `${hours}h${minutes > 0 ? minutes.toString().padStart(2, '0') : ''} `;
     };
 
     const downloadCSV = async (logs: TimeLog[], filename: string) => {
@@ -592,7 +605,7 @@ export const TimesheetWidget: React.FC = () => {
                                 </div>
 
                                 {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
-                                {(project.projectType === 'Téléfilm' || project.projectType === 'Plateforme' || project.projectType === 'Série TV') && (
+                                {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
                                     <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 flex justify-between items-center gap-2">
                                         <div className="flex items-center gap-2">
                                             <Coins className="h-4 w-4 text-emerald-400" />
@@ -607,20 +620,26 @@ export const TimesheetWidget: React.FC = () => {
                                                     // Try to find job from profile role
                                                     // @ts-ignore
                                                     const jobTitle = userProfileData.role || user?.role || 'Régisseur Général';
-                                                    const job = getJobByTitle(jobTitle) || USPA_JOBS[0];
 
-                                                    const est = calculateUSPAGross({
+                                                    // Search in availableJobs (Cinema or USPA)
+                                                    // @ts-ignore
+                                                    const job = availableJobs.find(j => j.title === jobTitle) || availableJobs[0];
+
+                                                    const est = calculateEstimatedSalary({
                                                         job,
                                                         hoursWorked: hours,
-                                                        contractType: 'JOUR',
+                                                        contractType: 'JOUR', // Default assumption
                                                         travelHoursInside: travelHoursInside || 0,
                                                         travelHoursOutside: travelHoursOutside || 0,
-                                                        isContinuousDay: isContinuousDay
+                                                        isContinuousDay: isContinuousDay,
+                                                        convention: project.convention
                                                     });
                                                     return `${est.grossAmount.toFixed(2)} €`;
                                                 })()}
                                             </span>
-                                            <div className="text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">Convention USPA</div>
+                                            <div className="text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">
+                                                {project.convention || 'Convention USPA'}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

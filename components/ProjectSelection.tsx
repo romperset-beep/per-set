@@ -36,6 +36,8 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
             let finalConvention = formData.convention;
             if (['Téléfilm', 'Plateforme', 'Série TV'].includes(formData.projectType)) {
                 finalConvention = 'USPA'; // Auto-set USPA
+            } else if (formData.projectType === 'Publicité') {
+                finalConvention = 'Publicité'; // Auto-set Publicité
             }
 
             await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate, formData.projectType, finalConvention);
