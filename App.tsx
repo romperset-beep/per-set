@@ -19,16 +19,18 @@ import { CallSheetView } from './components/CallSheetView';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { LoginPage } from './components/LoginPage';
 import { ProjectSelection } from './components/ProjectSelection';
+import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
-import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2 } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
 import { Department } from './types';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
   const {
@@ -67,20 +69,47 @@ const AppContent: React.FC = () => {
     setShowNotifications(false);
 
     // Routing Logic
+    // Routing Logic
     const msg = n.message.toLowerCase();
+
+    // 1. Reinforcements
     if (msg.includes('renfort')) {
       setActiveTab('renforts');
-    } else if (msg.includes('transport') || msg.includes('course')) {
+
+      // 2. Logistics & Transport
+    } else if (msg.includes('transport') || msg.includes('course') || msg.includes('logistique')) {
       setActiveTab('logistics');
-    } else if (msg.includes('frais') || msg.includes('dépense')) {
+
+      // 3. Expenses
+    } else if (msg.includes('frais') || msg.includes('dépense') || msg.includes('remboursement')) {
       setActiveTab('expenses');
-    } else if (msg.includes('social') || n.itemId?.startsWith('post_')) { // Assuming social notifs use this type
+
+      // 4. Social Wall
+    } else if (msg.includes('social') || msg.includes('message') || n.itemId?.startsWith('post_')) {
       setActiveTab('social');
-    } else if (msg.includes('vendre') || msg.includes('vente') || msg.includes('transaction')) {
+
+      // 5. BuyBack / Marketplace (Achat/Vente)
+    } else if (
+      msg.includes('vendre') ||
+      msg.includes('vente') ||
+      msg.includes('transaction') ||
+      msg.includes('achat') ||
+      msg.includes('rachat')
+    ) {
       setActiveTab('buyback');
+
+      // 6. Inventory (New Items)
+    } else if (msg.includes('article') || msg.includes('stock') || msg.includes('inventaire')) {
+      setActiveTab('inventory');
+
+      // 7. Call Sheets
+    } else if (msg.includes('feuille de service') || msg.includes('call sheet')) {
+      setActiveTab('callsheets');
+
     } else {
-      // Default fallback
-      setActiveTab('renforts');
+      // Default fallback (Dashboard or stay)
+      // setActiveTab('dashboard'); // Safer default?
+      setActiveTab('renforts'); // Current fallback, maybe change if "unknown"
     }
   };
 
@@ -193,14 +222,22 @@ const AppContent: React.FC = () => {
               <Menu className="h-6 w-6" />
             </button>
             <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-white font-bold text-lg">{user.filmTitle}</h2>
+              <button
+                onClick={() => user?.department === 'PRODUCTION' && setIsConfigModalOpen(true)}
+                className={`flex items-center gap-3 text-left group ${user?.department === 'PRODUCTION' ? 'cursor-pointer' : 'cursor-default'}`}
+              >
+                <h2 className={`text-white font-bold text-lg ${user?.department === 'PRODUCTION' ? 'group-hover:text-blue-400 transition-colors' : ''}`}>
+                  {user.filmTitle}
+                </h2>
                 {project.projectType && (
                   <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
                     {project.projectType}
                   </span>
                 )}
-              </div>
+                {user?.department === 'PRODUCTION' && (
+                  <Settings className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </button>
               <div className="flex items-center gap-2 text-xs text-slate-400 uppercase tracking-wider">
                 <span className="truncate max-w-[150px] md:max-w-none">{user.productionName}</span>
                 {/* Date Display & Edit Logic */}
@@ -391,6 +428,12 @@ const AppContent: React.FC = () => {
           {renderContent()}
         </div>
       </main >
+
+      {/* Configuration Modal */}
+      <ProjectConfigurationModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+      />
     </div >
   );
 };

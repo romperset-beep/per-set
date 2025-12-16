@@ -243,15 +243,19 @@ export const CateringWidget: React.FC = () => {
 
     // Summary Calculations (Daily)
     const stats = useMemo(() => {
-        const total = dailyLogs.filter(l => l.hasEaten).length;
-        const veggie = dailyLogs.filter(l => l.hasEaten && l.isVegetarian).length;
+        // Use reduce for explicit boolean checking
+        const total = dailyLogs.reduce((acc, l) => acc + (l.hasEaten ? 1 : 0), 0);
+        const veggie = dailyLogs.reduce((acc, l) => acc + (l.hasEaten && l.isVegetarian ? 1 : 0), 0);
+
         const byDept: Record<string, { total: number, veggie: number }> = {};
 
-        dailyLogs.filter(l => l.hasEaten).forEach(log => {
-            const dept = log.department || 'Autre';
-            if (!byDept[dept]) byDept[dept] = { total: 0, veggie: 0 };
-            byDept[dept].total++;
-            if (log.isVegetarian) byDept[dept].veggie++;
+        dailyLogs.forEach(l => {
+            if (l.hasEaten) {
+                const dept = l.department || 'Autre';
+                if (!byDept[dept]) byDept[dept] = { total: 0, veggie: 0 };
+                byDept[dept].total++;
+                if (l.isVegetarian) byDept[dept].veggie++;
+            }
         });
 
         return { total, veggie, byDept };
@@ -619,11 +623,11 @@ export const CateringWidget: React.FC = () => {
                                                     <td className="px-2 py-3 md:px-6 md:py-4 text-center">
                                                         <button
                                                             onClick={() => handleToggleMeal(row, 'hasEaten')}
-                                                            disabled={!isRegie}
+                                                            disabled={!isRegie || isValidated}
                                                             className={`p-1.5 md:p-2 rounded-lg transition-all ${row.hasEaten
                                                                 ? 'bg-green-600 text-white shadow-lg shadow-green-600/20 md:scale-110'
                                                                 : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
-                                                                } ${!isRegie && 'opacity-50 cursor-not-allowed'}`}
+                                                                } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
                                                         >
                                                             <Check className="h-4 w-4 md:h-5 md:w-5" />
                                                         </button>
@@ -631,11 +635,11 @@ export const CateringWidget: React.FC = () => {
                                                     <td className="px-2 py-3 md:px-6 md:py-4 text-center">
                                                         <button
                                                             onClick={() => handleToggleMeal(row, 'isVegetarian')}
-                                                            disabled={!isRegie}
+                                                            disabled={!isRegie || isValidated}
                                                             className={`p-1.5 md:p-2 rounded-lg transition-all ${row.isVegetarian
                                                                 ? 'bg-eco-600 text-white shadow-lg shadow-eco-600/20'
                                                                 : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
-                                                                } ${!isRegie && 'opacity-50 cursor-not-allowed'}`}
+                                                                } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
                                                         >
                                                             <Leaf className="h-4 w-4 md:h-5 md:w-5" />
                                                         </button>

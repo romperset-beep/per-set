@@ -349,61 +349,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 </div>
             </div>
 
-            {/* Project Settings (Strictly Production Only - excluded Régie) */}
-            {user?.department === 'PRODUCTION' && (
-                <div className="bg-cinema-800 rounded-xl p-6 border border-cinema-700 shadow-lg animate-in fade-in slide-in-from-bottom-2">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-400" />
-                        Configuration du Projet
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Type de Projet</label>
-                            <select
-                                value={project.projectType || ''}
-                                onChange={(e) => {
-                                    const newType = e.target.value;
-                                    let newConvention = '';
-                                    if (newType === 'Publicité') newConvention = 'Publicité';
-                                    else if (['Téléfilm', 'Plateforme', 'Série TV'].includes(newType)) newConvention = 'USPA';
-
-                                    updateProjectDetails({ projectType: newType, convention: newConvention });
-                                }}
-                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors cursor-pointer hover:border-cinema-600"
-                            >
-                                <option value="">Non défini</option>
-                                <option value="Long Métrage">Long Métrage</option>
-                                <option value="Téléfilm">Téléfilm</option>
-                                <option value="Plateforme">Plateforme</option>
-                                <option value="Série TV">Série TV</option>
-                                <option value="Court Métrage">Court Métrage</option>
-                                <option value="Publicité">Publicité</option>
-                                <option value="Documentaire">Documentaire</option>
-                                <option value="Shooting Photo">Shooting Photo</option>
-                                <option value="Clip">Clip</option>
-                                <option value="Événementiel">Événementiel</option>
-                            </select>
-                        </div>
-
-                        {/* Convention Selector (Visible if Long Feature is selected) */}
-                        {project.projectType === 'Long Métrage' && (
-                            <div className="animate-in fade-in slide-in-from-left-2">
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Convention Collective</label>
-                                <select
-                                    value={project.convention || ''}
-                                    onChange={(e) => updateProjectDetails({ convention: e.target.value })}
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors cursor-pointer hover:border-cinema-600"
-                                >
-                                    <option value="">Non définie</option>
-                                    <option value="Annexe 1">Annexe I (Gros Budget)</option>
-                                    <option value="Annexe 2">Annexe II (Moyen Budget)</option>
-                                    <option value="Annexe 3">Annexe III (Petit Budget)</option>
-                                </select>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* Project Settings moved to Header Modal */}
 
             {/* Draggable Grid */}
             <DndContext

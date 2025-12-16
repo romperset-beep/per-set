@@ -247,6 +247,8 @@ export const RenfortsWidget: React.FC = () => {
         }
     };
 
+    const [viewingStaff, setViewingStaff] = useState<ReinforcementDetail | null>(null);
+
     // --- RENDER ---
 
     // 1. PRODUCTION VIEW (Hierarchical)
@@ -306,9 +308,6 @@ export const RenfortsWidget: React.FC = () => {
                                     {/* Level 2: Days (Expanded) */}
                                     {prodSelectedWeek === weekKey && (
                                         <div className="bg-cinema-900/30 border-t border-cinema-700 pl-4 md:pl-8">
-                                            {/* Generate all 7 days for this week to show even empty ones? User said "on voit les jours avec nom dept". Let's show existing days or all? "quand on clique sur une semaine on voit les jours".
-                                                Let's show Mon-Sun of that week.
-                                            */}
                                             {(() => {
                                                 const daysList = [];
                                                 for (let i = 0; i < 7; i++) {
@@ -320,7 +319,8 @@ export const RenfortsWidget: React.FC = () => {
                                                     const dateStr = dateObj.toISOString().split('T')[0];
                                                     // Count for this day
                                                     const dayReinforcements = (project.reinforcements || []).filter(r => r.date === dateStr);
-                                                    if (dayReinforcements.length === 0) return null; // Or show empty? "on voit les jours avec le nom des departements". If no dept, hide day? Or show generic. Hiding empty days is cleaner.
+                                                    if (dayReinforcements.length === 0) return null; // Or show empty? "on voit les jours avec nom dept". Let's show existing days or all? "quand on clique sur une semaine on voit les jours".
+                                                    // Let's show Mon-Sun of that week.
 
                                                     const isExpanded = prodExpandedDays.includes(dateStr);
                                                     const dayCount = dayReinforcements.reduce((acc, r) => acc + getStaffList(r).length, 0);
@@ -347,54 +347,63 @@ export const RenfortsWidget: React.FC = () => {
                                                             {/* Level 3: Departments */}
                                                             {isExpanded && (
                                                                 <div className="pl-8 pr-4 pb-2 space-y-2">
-                                                                    {Object.values(Department).map(dept => {
-                                                                        const deptItem = dayReinforcements.find(r => r.department === dept);
-                                                                        const staff = deptItem ? getStaffList(deptItem) : [];
-                                                                        if (staff.length === 0) return null;
+                                                                    {(() => {
+                                                                        // Fix for "Ghost Reinforcements": 
+                                                                        // Calculate unique departments present in the data for this day.
+                                                                        // This ensures custom departments or 'PRODUCTION' (not in enum) are displayed.
+                                                                        const activeDepts = Array.from(new Set(dayReinforcements.map(r => r.department))).sort();
 
-                                                                        const deptKey = `${dateStr}_${dept} `;
-                                                                        const isDeptExpanded = prodExpandedDepts.includes(deptKey);
+                                                                        return activeDepts.map(dept => {
+                                                                            // dept is string here (Department | 'PRODUCTION')
+                                                                            const deptItem = dayReinforcements.find(r => r.department === dept);
+                                                                            const staff = deptItem ? getStaffList(deptItem) : [];
+                                                                            if (staff.length === 0) return null;
 
-                                                                        return (
-                                                                            <div key={dept} className="bg-cinema-800 rounded-lg border border-cinema-700">
-                                                                                <button
-                                                                                    onClick={() => toggleProdDept(deptKey)}
-                                                                                    className="w-full flex items-center justify-between p-3 hover:bg-cinema-700/50 transition-colors rounded-lg"
-                                                                                >
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="text-sm font-bold text-indigo-300 uppercase">{dept}</span>
-                                                                                    </div>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="text-xs font-bold text-white">{staff.length}</span>
-                                                                                        <Users className="h-3 w-3 text-slate-400" />
-                                                                                    </div>
-                                                                                </button>
+                                                                            const deptKey = `${dateStr}_${dept} `;
+                                                                            const isDeptExpanded = prodExpandedDepts.includes(deptKey);
 
-                                                                                {/* Level 4: Names (Contacts) */}
-                                                                                {isDeptExpanded && (
-                                                                                    <div className="px-3 pb-3 pt-0 grid gap-2">
-                                                                                        {staff.map(s => (
-                                                                                            <div key={s.id} className="bg-cinema-900/50 p-2 rounded border border-cinema-700/50 flex items-center justify-between">
-                                                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                                                                    <User className="h-5 w-5 text-indigo-400 shrink-0" />
-                                                                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                                                                        <span className="font-medium text-white truncate">{s.name}</span>
-                                                                                                        {s.phone && <span className="text-xs text-slate-400 truncate">{s.phone}</span>}
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                                <button
-                                                                                                    onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept, s.id); }}
-                                                                                                    className="p-2 text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                                                                            return (
+                                                                                <div key={dept} className="bg-cinema-800 rounded-lg border border-cinema-700">
+                                                                                    <button
+                                                                                        onClick={() => toggleProdDept(deptKey)}
+                                                                                        className="w-full flex items-center justify-between p-3 hover:bg-cinema-700/50 transition-colors rounded-lg"
+                                                                                    >
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-sm font-bold text-indigo-300 uppercase">{dept}</span>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-xs font-bold text-white">{staff.length}</span>
+                                                                                            <Users className="h-3 w-3 text-slate-400" />
+                                                                                        </div>
+                                                                                    </button>
+
+                                                                                    {/* Level 4: Names (Contacts) - UPDATED: Clickable, High Contrast */}
+                                                                                    {isDeptExpanded && (
+                                                                                        <div className="px-3 pb-3 pt-0 grid gap-2">
+                                                                                            {staff.map(s => (
+                                                                                                <div
+                                                                                                    key={s.id}
+                                                                                                    onClick={() => setViewingStaff(s)}
+                                                                                                    className="bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer flex items-center justify-between shadow-sm group/card"
                                                                                                 >
-                                                                                                    <X className="h-4 w-4" />
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                                                        <User className="h-4 w-4 text-indigo-300 shrink-0" />
+                                                                                                        <span className="font-semibold text-white truncate">{s.name}</span>
+                                                                                                    </div>
+                                                                                                    <button
+                                                                                                        onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
+                                                                                                        className="p-1.5 text-slate-400 hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                                                                                    >
+                                                                                                        <X className="h-4 w-4" />
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        });
+                                                                    })()}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -402,19 +411,82 @@ export const RenfortsWidget: React.FC = () => {
                                                 })
                                             })()}
                                         </div>
-                                    )
-                                    }
+                                    )}
                                 </div>
                             ))}
                         </div>
-                    )
-                    }
+                    )}
                 </div>
+
+                {/* RE-USING DETAILS MODAL HERE IF NEEDED, OR ITS GLOBAL */}
+                {viewingStaff && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setViewingStaff(null)}
+                    >
+                        <div
+                            className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-sm p-6 space-y-6 animate-in fade-in zoom-in-95"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{viewingStaff.name}</h3>
+                                    <p className="text-sm text-slate-400">Détails du renfort</p>
+                                </div>
+                                <button onClick={() => setViewingStaff(null)} className="text-slate-400 hover:text-white">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
+                                    {viewingStaff.phone ? (
+                                        <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                            <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                                <Phone className="h-4 w-4" />
+                                            </div>
+                                            <span className="font-medium">{viewingStaff.phone}</span>
+                                        </a>
+                                    ) : (
+                                        <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                            <div className="p-2 bg-cinema-800 rounded-full">
+                                                <Phone className="h-4 w-4" />
+                                            </div>
+                                            <span className="italic">Pas de téléphone</span>
+                                        </div>
+                                    )}
+
+                                    {viewingStaff.email ? (
+                                        <a href={`mailto:${viewingStaff.email}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                            <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                                <Mail className="h-4 w-4" />
+                                            </div>
+                                            <span className="font-medium truncate">{viewingStaff.email}</span>
+                                        </a>
+                                    ) : (
+                                        <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                            <div className="p-2 bg-cinema-800 rounded-full">
+                                                <Mail className="h-4 w-4" />
+                                            </div>
+                                            <span className="italic">Pas d'email</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setViewingStaff(null)}
+                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
 
-    // 2. DEPARTMENT VIEW (Original Matrix)
+    // 2. DEPARTMENT VIEW (Original Matrix) - UPDATED
     return (
         <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
             {/* Header */}
@@ -462,13 +534,13 @@ export const RenfortsWidget: React.FC = () => {
                     const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
                     return (
-                        <div key={dateStr} className={`bg - cinema - 800 rounded - xl border ${isToday ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-cinema-700'} flex flex - col h - full min - h - [300px]`}>
+                        <div key={dateStr} className={`bg-cinema-800 rounded-xl border ${isToday ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-cinema-700'} flex flex-col h-full min-h-[300px]`}>
                             {/* Day Header */}
-                            <div className={`p - 3 text - center border - b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'} `}>
-                                <div className={`text - sm font - bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'} `}>
+                            <div className={`p-3 text-center border-b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
+                                <div className={`text-sm font-bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
                                     {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
                                 </div>
-                                <div className={`text - xl font - bold ${isToday ? 'text-white' : 'text-slate-200'} `}>
+                                <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
                                     {day.getDate()}
                                 </div>
                             </div>
@@ -484,26 +556,16 @@ export const RenfortsWidget: React.FC = () => {
 
                                             return staffList.length > 0 ? (
                                                 staffList.map((s) => (
-                                                    <div key={s.id} className="bg-slate-700/30 px-3 py-2 rounded-lg flex justify-between items-start border border-transparent hover:border-slate-600 transition-colors group">
-                                                        <div>
-                                                            <div className="text-sm text-slate-200 font-medium">{s.name}</div>
-                                                            <div className="flex flex-col mt-1 gap-0.5">
-                                                                {s.phone && (
-                                                                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                                                        <Phone className="h-2.5 w-2.5" /> {s.phone}
-                                                                    </div>
-                                                                )}
-                                                                {s.email && (
-                                                                    <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                                                                        <Mail className="h-2.5 w-2.5" /> {s.email}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                                    <div
+                                                        key={s.id}
+                                                        onClick={() => setViewingStaff(s)}
+                                                        className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group"
+                                                    >
+                                                        <div className="text-sm text-white font-bold truncate pr-2">{s.name}</div>
 
                                                         <button
-                                                            onClick={() => handleRemoveReinforcement(dateStr, targetDept as string, s.id)}
-                                                            className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                            className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                         >
                                                             <X className="h-4 w-4" />
                                                         </button>
@@ -537,6 +599,72 @@ export const RenfortsWidget: React.FC = () => {
                     );
                 })}
             </div>
+
+            {/* DETAILS MODAL FOR STANDARD VIEW */}
+            {viewingStaff && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => setViewingStaff(null)}
+                >
+                    <div
+                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-sm p-6 space-y-6 animate-in fade-in zoom-in-95"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{viewingStaff.name}</h3>
+                                <p className="text-sm text-slate-400">Détails du renfort</p>
+                            </div>
+                            <button onClick={() => setViewingStaff(null)} className="text-slate-400 hover:text-white">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
+                                {viewingStaff.phone ? (
+                                    <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                        <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">{viewingStaff.phone}</span>
+                                    </a>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                        <div className="p-2 bg-cinema-800 rounded-full">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <span className="italic">Pas de téléphone</span>
+                                    </div>
+                                )}
+
+                                {viewingStaff.email ? (
+                                    <a href={`mailto:${viewingStaff.email}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                        <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                            <Mail className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium truncate">{viewingStaff.email}</span>
+                                    </a>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                        <div className="p-2 bg-cinema-800 rounded-full">
+                                            <Mail className="h-4 w-4" />
+                                        </div>
+                                        <span className="italic">Pas d'email</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setViewingStaff(null)}
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors"
+                        >
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Modal for Adding Renfort */}
             {addingToDate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
