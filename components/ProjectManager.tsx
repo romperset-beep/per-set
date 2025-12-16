@@ -361,7 +361,14 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                             <label className="block text-xs font-bold text-slate-500 mb-1">Type de Projet</label>
                             <select
                                 value={project.projectType || ''}
-                                onChange={(e) => updateProjectDetails({ projectType: e.target.value })}
+                                onChange={(e) => {
+                                    const newType = e.target.value;
+                                    let newConvention = '';
+                                    if (newType === 'Publicité') newConvention = 'Publicité';
+                                    else if (['Téléfilm', 'Plateforme', 'Série TV'].includes(newType)) newConvention = 'USPA';
+
+                                    updateProjectDetails({ projectType: newType, convention: newConvention });
+                                }}
                                 className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors cursor-pointer hover:border-cinema-600"
                             >
                                 <option value="">Non défini</option>
