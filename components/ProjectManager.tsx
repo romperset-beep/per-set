@@ -377,6 +377,23 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                                 <option value="Événementiel">Événementiel</option>
                             </select>
                         </div>
+
+                        {/* Convention Selector (Visible if Long Feature is selected) */}
+                        {project.projectType === 'Long Métrage' && (
+                            <div className="animate-in fade-in slide-in-from-left-2">
+                                <label className="block text-xs font-bold text-slate-500 mb-1">Convention Collective</label>
+                                <select
+                                    value={project.convention || ''}
+                                    onChange={(e) => updateProjectDetails({ convention: e.target.value })}
+                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors cursor-pointer hover:border-cinema-600"
+                                >
+                                    <option value="">Non définie</option>
+                                    <option value="Annexe 1">Annexe I (Gros Budget)</option>
+                                    <option value="Annexe 2">Annexe II (Moyen Budget)</option>
+                                    <option value="Annexe 3">Annexe III (Petit Budget)</option>
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

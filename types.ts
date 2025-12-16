@@ -77,6 +77,7 @@ export interface Project {
   shootingStartDate?: string;
   shootingEndDate?: string;
   projectType?: string; // e.g., "Long Métrage", "Série", "Pub"
+  convention?: string; // e.g., "Cinéma - Annexe 1", "USPA"
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   items: ConsumableItem[];
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
@@ -281,6 +282,7 @@ export interface User {
   startDate?: string;
   endDate?: string;
   projectType?: string; // Added to User to persist selection across sessions
+  convention?: string; // Added to persist selection
   currentProjectId?: string; // Added for robust syncing
   projectHistory?: ProjectSummary[];
   dashboardOrder?: string[]; // Added for customizable dashboard

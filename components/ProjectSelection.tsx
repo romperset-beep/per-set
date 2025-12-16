@@ -22,7 +22,8 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         filmTitle: user?.filmTitle || '',
         startDate: user?.startDate || '',
         endDate: user?.endDate || '',
-        projectType: user?.projectType || '' // Added
+        projectType: user?.projectType || '',
+        convention: '' // Added
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +32,13 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
 
         setIsLoading(true);
         try {
-            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate, formData.projectType);
+            // Determine default convention if implicit
+            let finalConvention = formData.convention;
+            if (['Téléfilm', 'Plateforme', 'Série TV'].includes(formData.projectType)) {
+                finalConvention = 'USPA'; // Auto-set USPA
+            }
+
+            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate, formData.projectType, finalConvention);
             onProjectSelected();
         } catch (err) {
             console.error(err);
@@ -44,7 +51,9 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         if (!user?.productionName || !user?.filmTitle) return;
         setIsLoading(true);
         try {
-            await joinProject(user.productionName, user.filmTitle, user.startDate, user.endDate, user.projectType);
+            // Retrieve stored convention from user profile/project context potentially
+            // @ts-ignore
+            await joinProject(user.productionName, user.filmTitle, user.startDate, user.endDate, user.projectType, user.convention);
             onProjectSelected();
         } catch (err) {
             console.error(err);
@@ -246,6 +255,23 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                             <option value="Événementiel">Événementiel</option>
                         </select>
                     </div>
+
+                    {/* Convention Selector for Cinema */}
+                    {formData.projectType === 'Long Métrage' && (
+                        <div className="relative group animate-in fade-in slide-in-from-top-1 duration-500">
+                            <label className="text-xs text-slate-400 mb-1 block ml-1">Convention Collective</label>
+                            <select
+                                value={formData.convention}
+                                onChange={(e) => setFormData({ ...formData, convention: e.target.value })}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-eco-500 focus:outline-none transition-all appearance-none"
+                            >
+                                <option value="">Choisir l'Annexe...</option>
+                                <option value="Annexe 1">Annexe I (Gros Budget)</option>
+                                <option value="Annexe 2">Annexe II (Moyen Budget)</option>
+                                <option value="Annexe 3">Annexe III (Petit Budget)</option>
+                            </select>
+                        </div>
+                    )}
 
                     {(user?.department === 'PRODUCTION') && (
                         <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
