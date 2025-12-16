@@ -162,8 +162,8 @@ export const ExpenseReports: React.FC = () => {
                         <Download className="h-4 w-4" />
                     </button>
 
-                    {/* Delete Action (Cancel) */}
-                    {report.status === ExpenseStatus.PENDING && report.submittedBy === user?.name && (
+                    {/* Delete Action (Restricted: Pending or Rejected only) */}
+                    {(report.submittedBy === user?.name || isAdmin) && report.status !== ExpenseStatus.APPROVED && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

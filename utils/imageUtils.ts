@@ -154,3 +154,78 @@ export const compressImage = async (file: File, maxWidth = 800, quality = 0.6): 
 
     return compressed;
 };
+
+/**
+ * Applies a "Scan Effect" to an image (Grayscale + High Contrast).
+ * @param file The original image file.
+ * @returns A Promise resolving to the processed File object.
+ */
+export const applyScanEffect = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/')) return file;
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                resolve(file);
+                return;
+            }
+
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Contrast factor (approx high contrast)
+            // Value 0-255. 128 is neutral. >128 increases contrast.
+            const contrast = 50;
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+            for (let i = 0; i < data.length; i += 4) {
+                // Grayscale (Luma coding)
+                const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+
+                // Apply Contrast to the grayscale value
+                // Color = factor * (val - 128) + 128
+                let newValue = factor * (gray - 128) + 128;
+
+                // Clamp 0-255
+                newValue = Math.max(0, Math.min(255, newValue));
+
+                data[i] = newValue;     // R
+                data[i + 1] = newValue; // G
+                data[i + 2] = newValue; // B
+                // Alpha (data[i+3]) remains unchanged
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    resolve(file);
+                    return;
+                }
+                const newFile = new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+                resolve(newFile);
+            }, 'image/jpeg', 0.8); // High quality for text readability
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+        };
+
+        img.src = objectUrl;
+    });
+};

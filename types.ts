@@ -183,6 +183,7 @@ export interface ExpenseReport {
   items: string[]; // List of item names or IDs
   status: ExpenseStatus;
   receiptUrl?: string; // Base64 or URL
+  receiptBase64?: string; // Store small images directly for PDF export
 
   // Context Data
   submittedBy: string; // User Name

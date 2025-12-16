@@ -5,7 +5,7 @@ import { analyzeReceipt } from '../services/geminiService';
 import { ExpenseReport, ExpenseStatus } from '../types';
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { compressImage } from '../utils/imageUtils';
+import { compressImage, applyScanEffect } from '../utils/imageUtils';
 
 interface ExpenseReportModalProps {
     isOpen: boolean;
@@ -149,13 +149,18 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
 
                 if (selectedFile.type.startsWith('image/')) {
                     try {
+                        // 1. Compress
                         fileToProcess = await compressImage(selectedFile);
+                        // 2. Scan Effect (Grayscale + Contrast)
+                        fileToProcess = await applyScanEffect(fileToProcess);
                     } catch (e) {
-                        console.warn("Compression failed, using original", e);
+                        console.warn("Image processing failed, using original", e);
                     }
                 }
 
                 setFile(fileToProcess);
+                // Update preview with processed image
+                setPreviewUrl(URL.createObjectURL(fileToProcess));
 
                 if (fileToProcess.size > 1024 * 1024) {
                     // Non-blocking warning for user awareness
@@ -204,8 +209,18 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
         try {
             let finalReceiptUrl = previewUrl;
 
+            let receiptBase64: string | undefined;
+
             // Upload file to Firebase Storage if it's a new file (not just a preview URL)
             if (file) {
+                // 1. Convert to Base64 for PDF embedding (Bypass CORS)
+                receiptBase64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                });
+
+                // 2. Upload to Storage (Backup/Link)
                 const fileExt = file.name.split('.').pop();
                 const fileName = `expense_${Date.now()}.${fileExt}`;
                 const storagePath = `production/${user.productionName}/${user.name}/expenses/${fileName}`;
@@ -213,6 +228,9 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
 
                 await uploadBytes(storageRef, file);
                 finalReceiptUrl = await getDownloadURL(storageRef);
+            } else if (previewUrl?.startsWith('blob:')) {
+                // Critical Safety Check: Never save a blob URL
+                throw new Error("L'image n'a pas été traitée correctement. Veuillez réessayer.");
             }
 
             const newReport: ExpenseReport = {
@@ -225,6 +243,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                 items: formData.items || [],
                 status: ExpenseStatus.PENDING,
                 receiptUrl: finalReceiptUrl || undefined,
+                receiptBase64: receiptBase64, // Store local base64
                 submittedBy: user.name,
                 department: user.department,
                 productionName: user.productionName,
@@ -443,11 +462,16 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-eco-600 hover:bg-eco-500 text-white py-3 rounded-xl font-bold transition-colors"
+                                    disabled={isUploading || isAnalyzing}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-colors ${isUploading || isAnalyzing ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-eco-600 hover:bg-eco-500 text-white'}`}
                                 >
                                     {isUploading ? (
                                         <span className="flex items-center justify-center gap-2">
                                             <Loader2 className="h-4 w-4 animate-spin" /> Envoi...
+                                        </span>
+                                    ) : isAnalyzing ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Analyse...
                                         </span>
                                     ) : (
                                         "Valider"

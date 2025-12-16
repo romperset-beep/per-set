@@ -60,39 +60,53 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
     doc.setFontSize(8);
     doc.text('Document généré via A Better Set', pageWidth / 2, 280, { align: 'center' });
 
-    // -- Receipt Image --
+    // -- Receipt Link & Image --
     if (report.receiptUrl) {
+        // 1. Always add the link (User Request)
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 255);
+        const linkText = 'Cliquez ici pour voir le justificatif original (Navigateur)';
+        doc.textWithLink(linkText, 20, amountY + 40, { url: report.receiptUrl });
+
         try {
+            // 2. Embed Image on Page 2
             doc.addPage();
             doc.setFontSize(16);
-            doc.text("Justificatif", 20, 20);
+            doc.setTextColor(0, 0, 0);
+            doc.text("Justificatif (Scan)", 20, 20);
 
-            // Attempt to fetch image as blob to bypass some CORS issues if on same domain/firebase
-            // This requires the server (Firebase Storage) to have CORS allowed for this domain.
-            const response = await fetch(report.receiptUrl, { mode: 'cors' });
-            if (!response.ok) throw new Error("Failed to fetch image");
-            const blob = await response.blob();
+            let base64data = report.receiptBase64;
 
-            // Convert to Base64
-            const reader = new FileReader();
-            const base64Promise = new Promise<string>((resolve, reject) => {
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-            });
-            reader.readAsDataURL(blob);
-            const base64data = await base64Promise;
+            // If no stored base64, try to fetch (Fallback)
+            if (!base64data && report.receiptUrl) {
+                // Fetch with cache-busting to avoid CORS issues with cached opaque responses
+                const fetchUrl = `${report.receiptUrl}${report.receiptUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                const response = await fetch(fetchUrl, { mode: 'cors' });
+                if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+                const blob = await response.blob();
 
-            const imgProps = doc.getImageProperties(base64data);
-            const pdfWidth = doc.internal.pageSize.getWidth() - 40;
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                // Convert to Base64
+                const reader = new FileReader();
+                base64data = await new Promise<string>((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            }
 
-            doc.addImage(base64data, 'JPEG', 20, 40, pdfWidth, pdfHeight);
+            if (base64data) {
+                const imgProps = doc.getImageProperties(base64data);
+                const pdfWidth = doc.internal.pageSize.getWidth() - 40;
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                doc.addImage(base64data, 'JPEG', 20, 40, pdfWidth, pdfHeight);
+            }
 
         } catch (e) {
-            console.warn("Could not embed image, adding link instead", e);
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 255);
-            doc.textWithLink('Cliquez ici pour voir le justificatif original (Ouvrir dans le navigateur)', 20, 40, { url: report.receiptUrl });
+            console.warn("Could not embed image in PDF:", e);
+            doc.setFontSize(10);
+            doc.setTextColor(255, 0, 0);
+            doc.text("(L'image n'a pas pu être intégrée automatiquement - voir le lien ci-dessus)", 20, 40);
         }
     }
 
