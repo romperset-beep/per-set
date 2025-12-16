@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { TimeLog } from '../types';
-import { db, auth } from '../services/firebase'; // Added
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'; // Updated
-import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2 } from 'lucide-react'; // Added Loader2
+import { db, auth } from '../services/firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins } from 'lucide-react';
+import { calculateUSPAGross } from '../utils/payrollUtils';
+import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
     const { project, updateProjectDetails, user } = useProject();
@@ -19,6 +21,8 @@ export const TimesheetWidget: React.FC = () => {
     const [pauseTime, setPauseTime] = useState(''); // New: Time of pause
     const [note, setNote] = useState(''); // New
     const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string }>({}); // New
+    const [travelHoursInside, setTravelHoursInside] = useState<number>(0);
+    const [travelHoursOutside, setTravelHoursOutside] = useState<number>(0);
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
 
     // Fetch User Profile for current user (to get Role/Name details)
@@ -62,9 +66,9 @@ export const TimesheetWidget: React.FC = () => {
         let duration = endMin - startMin;
 
         // Deductions
-        // 1. Meal: If NOT continuous day, always deduct.
-        //    If continuous day, normally NO deduction, BUT if a meal time is entered, we MUST deduct it.
-        if (!continuous || meal) {
+        // 1. Meal: Always deduct if entered (Effective work time logic).
+        // The "Paid Break" for continuous day is handled in Salary Calculation, not here.
+        if (meal) {
             const mealDeduction = shortMeal ? 30 : 60;
             duration -= mealDeduction;
         }
@@ -96,6 +100,8 @@ export const TimesheetWidget: React.FC = () => {
             breakDuration,
             pauseTime, // Save pause time
             note, // Save note
+            travelHoursInside,
+            travelHoursOutside,
 
             // User Details from Profile
             userFirstName: userProfileData.firstName || user.name.split(' ')[0],
@@ -584,6 +590,40 @@ export const TimesheetWidget: React.FC = () => {
                                         {formatHours(calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration))}
                                     </span>
                                 </div>
+
+                                {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
+                                {(project.projectType === 'Téléfilm' || project.projectType === 'Plateforme' || project.projectType === 'Série TV') && (
+                                    <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 flex justify-between items-center gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Coins className="h-4 w-4 text-emerald-400" />
+                                            <span className="text-slate-400 text-xs font-bold uppercase">Estim. Brut (Jour) :</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-emerald-400 font-bold text-lg">
+                                                {(() => {
+                                                    const hours = calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration);
+                                                    if (hours <= 0) return '- €';
+
+                                                    // Try to find job from profile role
+                                                    // @ts-ignore
+                                                    const jobTitle = userProfileData.role || user?.role || 'Régisseur Général';
+                                                    const job = getJobByTitle(jobTitle) || USPA_JOBS[0];
+
+                                                    const est = calculateUSPAGross({
+                                                        job,
+                                                        hoursWorked: hours,
+                                                        contractType: 'JOUR',
+                                                        travelHoursInside: travelHoursInside || 0,
+                                                        travelHoursOutside: travelHoursOutside || 0,
+                                                        isContinuousDay: isContinuousDay
+                                                    });
+                                                    return `${est.grossAmount.toFixed(2)} €`;
+                                                })()}
+                                            </span>
+                                            <div className="text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">Convention USPA</div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -712,7 +752,8 @@ export const TimesheetWidget: React.FC = () => {
                         )}
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };

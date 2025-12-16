@@ -5,6 +5,7 @@ import { Save, Upload, FileText, CheckCircle, Trash2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../services/firebase';
+import { USPA_JOBS } from '../data/uspaRates';
 
 export const UserProfilePage: React.FC = () => {
     const { user, userProfiles, updateUserProfile } = useProject();
@@ -187,7 +188,25 @@ ${formData.firstName} ${formData.lastName}`;
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input label="Nom" name="lastName" value={formData.lastName} onChange={handleChange} disabled={!isEditing} required />
                         <Input label="Prénom" name="firstName" value={formData.firstName} onChange={handleChange} disabled={!isEditing} required />
-                        <Input label="Fonction" name="role" value={formData.role} onChange={handleChange} disabled={!isEditing} required />
+
+                        {/* Job Select */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Fonction (Convention USPA)</label>
+                            <select
+                                name="role"
+                                value={formData.role || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-eco-500 focus:outline-none appearance-none disabled:opacity-50"
+                                required
+                            >
+                                <option value="">Sélectionnez votre poste...</option>
+                                {USPA_JOBS.map(job => (
+                                    <option key={job.id} value={job.title}>{job.title}</option>
+                                ))}
+                                <option value="Autre">Autre / Non Listé</option>
+                            </select>
+                        </div>
                         <Input label="Email" name="email" value={formData.email} onChange={handleChange} disabled={true} />
                         <Input label="Téléphone" name="phone" value={formData.phone} onChange={handleChange} disabled={!isEditing} required />
                         <Input label="Situation Familiale" name="familyStatus" value={formData.familyStatus} onChange={handleChange} disabled={!isEditing} />

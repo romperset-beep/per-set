@@ -24,7 +24,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 async function analyzePdf() {
     try {
-        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/CinéStock/A Better Set/FA208219_20251212_120544.pdf";
+        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/CinéStock/A Better Set/pav-salaires-mini-1er-juillet-2025-v2.pdf";
         if (!fs.existsSync(filePath)) {
             console.error("PDF file not found at:", filePath);
             process.exit(1);
@@ -34,31 +34,16 @@ async function analyzePdf() {
         const base64Data = fileBuffer.toString("base64");
 
         const prompt = `
-            Tu es un expert en certification RSE pour le cinéma.
-            Analyse ce document PDF (qui est le Référentiel Label Ecoprod).
-            
+            Tu es un assistant.
             TACHE : 
-            Extrait TOUTES les questions / critères d'audit présents dans ce document, organisés par catégorie (ex: "Bureaux", "Tournage", "Régie", etc.).
-            Pour chaque critère, détermine son niveau d'impact (High, Medium, Low) basé sur l'importance donnée dans le texte (ou estime-le si non explicite).
+            Extrait UNIQUEMENT la grille des salaires "EMPLOIS DE CATEGORIE B - CDD d'usage" (Intermittents).
+            Nous avons déjà le début (A à C).
+            Extrait la suite à partir de la lettre D (ou "Coiffeur" / "Chef") jusqu'à la fin de l'alphabet (Z).
             
-            FORMAT JSON OBLIGATOIRE :
-            [
-                {
-                    "category": "Nom de la Catégorie",
-                    "criteria": [
-                        { 
-                            "id": "Code (ex: F1, G2...)", 
-                            "label": "La question exacte posée (sans préfixe)", 
-                            "impact": "High" | "Medium" | "Low" 
-                        }
-                    ]
-                }
-            ]
+            Format souhaité par ligne :
+            Nom du poste | Catégorie | Niveau | Salaire 35h | Salaire 39h | Salaire 7h | Salaire 8h
             
-            - IGNORE les textes purement introductifs.
-            - Recopie fidèlement le texte de la question pour le "label".
-            - S'il y a des codes (A1, B2...), utilise-les comme ID. Sinon, invente un ID court unique.
-            - Retourne UNIQUEMENT le JSON valid. Pas de markdown.
+            Ne sors PAS les salaires mensuels. Sors les taux hebdo et journaliers.
         `;
 
         const result = await model.generateContent([

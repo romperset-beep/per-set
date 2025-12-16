@@ -127,6 +127,8 @@ export interface TimeLog {
   breakDuration?: number; // Added: Pause in minutes (manual override)
   pauseTime?: string; // Added: HH:mm Time of the pause
   note?: string; // Added: User manual note
+  travelHoursInside?: number; // Added: Heures de voyage DANS l'horaire
+  travelHoursOutside?: number; // Added: Heures de voyage HORS horaire
 
   // Detailed User Info for Export
   userFirstName?: string;

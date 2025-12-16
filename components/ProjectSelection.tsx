@@ -235,6 +235,8 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                         >
                             <option value="">Sélectionner le type...</option>
                             <option value="Long Métrage">Long Métrage</option>
+                            <option value="Téléfilm">Téléfilm</option>
+                            <option value="Plateforme">Plateforme</option>
                             <option value="Série TV">Série TV</option>
                             <option value="Court Métrage">Court Métrage</option>
                             <option value="Publicité">Publicité</option>
