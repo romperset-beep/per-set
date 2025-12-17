@@ -204,9 +204,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         // console.log("[ProjectSync] Metadata received:", data);
 
         setProject(prev => {
+          // EXCLUDE 'items' from metadata sync. Items are handled by subcollection listener.
+          const { items, ...restData } = data;
+
           const newProject = {
             ...prev,
-            ...data,
+            ...restData,
             id: projectId
           };
 
@@ -228,12 +231,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const projectId = project.id;
       if (!projectId || projectId === 'default-project') return;
 
+      // EXCLUDE types 'items' to prevent overwriting subcollection with potentially stale array
+      const { items, ...safeUpdates } = updates;
+
       const projectRef = doc(db, 'projects', projectId);
       // Optimistic update
-      setProject(prev => ({ ...prev, ...updates }));
+      setProject(prev => ({ ...prev, ...safeUpdates }));
 
-      await setDoc(projectRef, updates, { merge: true });
-      console.log("[ProjectSync] Updated successfully:", updates);
+      await setDoc(projectRef, safeUpdates, { merge: true });
+      console.log("[ProjectSync] Updated successfully:", safeUpdates);
     } catch (err: any) {
       console.error("[ProjectSync] Error updating project:", err);
     }
