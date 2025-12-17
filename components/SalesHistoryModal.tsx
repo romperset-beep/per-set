@@ -1,7 +1,8 @@
 import React from 'react';
 import { BuyBackItem } from '../types';
 import { useProject } from '../context/ProjectContext';
-import { X, Printer, Download } from 'lucide-react';
+import { X, Printer, Download, FileText } from 'lucide-react';
+import { InvoiceModal } from './InvoiceModal';
 
 interface SalesHistoryModalProps {
     isOpen: boolean;
@@ -10,7 +11,8 @@ interface SalesHistoryModalProps {
 }
 
 export const SalesHistoryModal: React.FC<SalesHistoryModalProps> = ({ isOpen, onClose, items }) => {
-    const { language } = useProject();
+    const { language, user } = useProject();
+    const [invoiceItem, setInvoiceItem] = React.useState<BuyBackItem | null>(null);
 
     const t = {
         fr: {
@@ -117,7 +119,8 @@ export const SalesHistoryModal: React.FC<SalesHistoryModalProps> = ({ isOpen, on
                                 <th className="p-3">{t.table.item}</th>
                                 <th className="p-3">{t.table.seller}</th>
                                 <th className="p-3">{t.table.buyer}</th>
-                                <th className="p-3 text-right rounded-tr-lg">{t.table.price}</th>
+                                <th className="p-3 text-right">{t.table.price}</th>
+                                <th className="p-3 text-center rounded-tr-lg w-16"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-cinema-700 text-sm text-slate-300 print:text-black print:divide-gray-300">
@@ -151,6 +154,15 @@ export const SalesHistoryModal: React.FC<SalesHistoryModalProps> = ({ isOpen, on
                                         </td>
                                         <td className="p-3 text-right font-bold text-green-400 print:text-black">
                                             {item.price} €
+                                        </td>
+                                        <td className="p-3 text-center print:hidden">
+                                            <button
+                                                onClick={() => setInvoiceItem(item)}
+                                                className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors"
+                                                title="Générer Facture"
+                                            >
+                                                <FileText className="h-4 w-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -189,6 +201,13 @@ export const SalesHistoryModal: React.FC<SalesHistoryModalProps> = ({ isOpen, on
                     }
                 `}</style>
             </div>
-        </div>
+
+            <InvoiceModal
+                isOpen={!!invoiceItem}
+                onClose={() => setInvoiceItem(null)}
+                item={invoiceItem}
+                filmTitle={user?.filmTitle || 'Projet Sans Titre'}
+            />
+        </div >
     );
 };

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department } from '../types';
-import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2 } from 'lucide-react';
+import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2, FileText } from 'lucide-react';
 import { SellItemModal } from './SellItemModal';
 import { SalesHistoryModal } from './SalesHistoryModal';
+import { InvoiceModal } from './InvoiceModal';
 
 export const BuyBackMarketplace: React.FC = () => {
     const { buyBackItems, toggleBuyBackReservation, confirmBuyBackTransaction, deleteBuyBackItem, user, currentDept } = useProject();
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false); // Added
+    const [invoiceItem, setInvoiceItem] = useState<any | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     if (!buyBackItems) {
@@ -192,6 +194,16 @@ export const BuyBackMarketplace: React.FC = () => {
                                                     <span>Confirmer Récupération</span>
                                                 </button>
                                             )}
+                                            {/* Invoice Button (Production) */}
+                                            {user?.department === 'PRODUCTION' && (
+                                                <button
+                                                    onClick={() => setInvoiceItem(item)}
+                                                    className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 transition-all"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                    <span>Facture</span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
@@ -206,9 +218,20 @@ export const BuyBackMarketplace: React.FC = () => {
                                     )}
 
                                     {item.status === 'SOLD' && (
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-cinema-900/50 text-slate-500 border border-cinema-700 cursor-default">
-                                            <CheckSquare className="h-4 w-4" />
-                                            Vendu / Récupéré
+                                        <div className="flex flex-col gap-2 w-full sm:w-auto">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-cinema-900/50 text-slate-500 border border-cinema-700 cursor-default">
+                                                <CheckSquare className="h-4 w-4" />
+                                                Vendu / Récupéré
+                                            </div>
+                                            {user?.department === 'PRODUCTION' && (
+                                                <button
+                                                    onClick={() => setInvoiceItem(item)}
+                                                    className="flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 transition-all"
+                                                >
+                                                    <FileText className="h-4 w-4" />
+                                                    <span>Facture</span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -220,6 +243,12 @@ export const BuyBackMarketplace: React.FC = () => {
 
             <SellItemModal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} />
             <SalesHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} items={buyBackItems} />
+            <InvoiceModal
+                isOpen={!!invoiceItem}
+                onClose={() => setInvoiceItem(null)}
+                item={invoiceItem}
+                filmTitle={user?.filmTitle || 'Projet Sans Titre'}
+            />
 
             {/* Full Screen Image Modal */}
             {selectedImage && (
