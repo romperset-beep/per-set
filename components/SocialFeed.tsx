@@ -337,83 +337,124 @@ export const SocialFeed: React.FC = () => {
                 <div className="bg-cinema-800 rounded-xl p-6 border border-cinema-700 shadow-lg">
                     <form onSubmit={handleSubmit} className="space-y-4">
 
-                        {/* Audience Selector */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            <select
-                                value={targetAudience}
-                                onChange={(e) => setTargetAudience(e.target.value as any)}
-                                className="bg-cinema-900 text-white border border-cinema-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none"
-                            >
-                                <option value="GLOBAL">{t.global}</option>
-                                <option value="DEPARTMENT">{t.department}</option>
-                                <option value="USER">{t.user}</option>
-                            </select>
-
-                            {/* Department Selector */}
-                            {targetAudience === 'DEPARTMENT' && (
-                                <select
-                                    value={targetDept}
-                                    onChange={(e) => setTargetDept(e.target.value as any)}
-                                    className="bg-cinema-900 text-white border border-cinema-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none animate-in fade-in slide-in-from-left-2"
+                        {/* Target Selection - 3 Tiles (Copied from MemoWidget) */}
+                        <div className="space-y-4 mb-6">
+                            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider block text-left">Destinataire</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setTargetAudience('DEPARTMENT')}
+                                    className={`p-3 rounded-xl border transition-all text-left group relative overflow-hidden ${targetAudience === 'DEPARTMENT'
+                                        ? 'bg-pink-600/20 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                                        : 'bg-cinema-900 border-cinema-700 text-slate-400 hover:bg-cinema-700'
+                                        }`}
                                 >
-                                    {Object.values(Department).map(dept => (
-                                        <option key={dept} value={dept}>{dept}</option>
-                                    ))}
-                                    <option value="PRODUCTION">{t.production}</option>
-                                </select>
-                            )}
-
-                            {/* User Selector (Searchable) */}
-                            {targetAudience === 'USER' && (
-                                <div className="relative animate-in fade-in slide-in-from-left-2 w-64 z-20">
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder={t.searchUser}
-                                            className="w-full bg-cinema-900 text-white border border-cinema-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none pl-8"
-                                            value={searchTerm}
-                                            onChange={(e) => {
-                                                setSearchTerm(e.target.value);
-                                                setTargetUserId(''); // Clear ID when typing
-                                                setShowSuggestions(true);
-                                            }}
-                                            onFocus={() => setShowSuggestions(true)}
-                                        />
-                                        <User className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                                    <div className={`absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity ${targetAudience === 'DEPARTMENT' ? 'text-pink-500' : 'text-slate-500'}`}>
+                                        <Users className="h-12 w-12" />
                                     </div>
+                                    <span className="font-bold block mb-1 text-sm">{t.department}</span>
+                                    <span className="text-[10px] opacity-70 block">Message ciblé</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTargetAudience('GLOBAL')}
+                                    className={`p-3 rounded-xl border transition-all text-left group relative overflow-hidden ${targetAudience === 'GLOBAL'
+                                        ? 'bg-pink-600/20 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                                        : 'bg-cinema-900 border-cinema-700 text-slate-400 hover:bg-cinema-700'
+                                        }`}
+                                >
+                                    <div className={`absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity ${targetAudience === 'GLOBAL' ? 'text-pink-500' : 'text-slate-500'}`}>
+                                        <Users className="h-12 w-12" />
+                                    </div>
+                                    <span className="font-bold block mb-1 text-sm">{t.global}</span>
+                                    <span className="text-[10px] opacity-70 block">Mur Global</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTargetAudience('USER')}
+                                    className={`p-3 rounded-xl border transition-all text-left group relative overflow-hidden ${targetAudience === 'USER'
+                                        ? 'bg-pink-600/20 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                                        : 'bg-cinema-900 border-cinema-700 text-slate-400 hover:bg-cinema-700'
+                                        }`}
+                                >
+                                    <div className={`absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity ${targetAudience === 'USER' ? 'text-pink-500' : 'text-slate-500'}`}>
+                                        <User className="h-12 w-12" />
+                                    </div>
+                                    <span className="font-bold block mb-1 text-sm">{t.user}</span>
+                                    <span className="text-[10px] opacity-70 block">Message Privé</span>
+                                </button>
+                            </div>
 
-                                    {/* Suggestions Dropdown */}
-                                    {showSuggestions && searchTerm && (
-                                        <div className="absolute top-full left-0 w-full mt-1 bg-cinema-800 border border-cinema-700 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
-                                            {filteredUsers.length > 0 ? (
-                                                filteredUsers.map(p => (
-                                                    <button
-                                                        key={p.id}
-                                                        type="button"
-                                                        onClick={() => handleUserSelect({
-                                                            id: p.id,
-                                                            name: `${p.firstName} ${p.lastName}`
-                                                        })}
-                                                        className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-cinema-700 hover:text-white transition-colors flex items-center gap-2 border-b border-cinema-700/50 last:border-0"
-                                                    >
-                                                        <div className="bg-cinema-900 h-6 w-6 rounded-full flex items-center justify-center text-xs">
-                                                            {p.firstName.charAt(0)}
-                                                        </div>
-                                                        <span>{p.firstName} {p.lastName}</span>
-                                                        {p.department !== 'PRODUCTION' && (
-                                                            <span className="text-xs text-slate-500 ml-auto">{p.department}</span>
-                                                        )}
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <div className="px-3 py-2 text-sm text-slate-500 text-center">
-                                                    {t.noResult}
-                                                </div>
-                                            )}
+                            {/* Conditional Selectors */}
+                            <div className="space-y-4 min-h-[60px]">
+                                {targetAudience === 'DEPARTMENT' && (
+                                    <div className="animate-in fade-in slide-in-from-top-2">
+                                        <label className="text-xs text-slate-400 mb-1 block text-left">Choisir le département cible</label>
+                                        <select
+                                            value={targetDept}
+                                            onChange={(e) => setTargetDept(e.target.value as any)}
+                                            className="w-full bg-cinema-900 border border-cinema-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 outline-none"
+                                        >
+                                            <option value="" disabled>Sélectionner...</option>
+                                            {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
+                                            <option value="PRODUCTION">{t.production}</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                {targetAudience === 'USER' && (
+                                    <div className="relative animate-in fade-in slide-in-from-top-2">
+                                        <label className="text-xs text-slate-400 mb-1 block text-left">Rechercher un destinataire</label>
+                                        <div className="relative">
+                                            <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-500" />
+                                            <input
+                                                type="text"
+                                                placeholder={t.searchUser}
+                                                value={searchTerm}
+                                                onChange={(e) => {
+                                                    setSearchTerm(e.target.value);
+                                                    setTargetUserId('');
+                                                    setShowSuggestions(true);
+                                                }}
+                                                onFocus={() => setShowSuggestions(true)}
+                                                className="w-full bg-cinema-900 border border-cinema-600 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-pink-500 outline-none"
+                                            />
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                        {/* Suggestions Dropdown */}
+                                        {showSuggestions && searchTerm && (
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-cinema-800 border border-cinema-700 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50 text-left">
+                                                {filteredUsers.length > 0 ? (
+                                                    filteredUsers.map(p => (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => handleUserSelect({
+                                                                id: p.id,
+                                                                name: `${p.firstName} ${p.lastName}`
+                                                            })}
+                                                            className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-cinema-700 hover:text-white transition-colors flex items-center gap-3 border-b border-cinema-700/50 last:border-0"
+                                                        >
+                                                            <div className="bg-cinema-900 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border border-cinema-600">
+                                                                {p.firstName.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium">{p.firstName} {p.lastName}</div>
+                                                                {p.department !== 'PRODUCTION' && (
+                                                                    <div className="text-xs text-slate-500">{p.department}</div>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                                        {t.noResult}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="flex gap-4">
