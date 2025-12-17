@@ -201,13 +201,22 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const unsubscribe = onSnapshot(projectRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log("[ProjectSync] Metadata received:", data);
-        setProject(prev => ({
-          ...prev,
-          ...data,
-          // Ensure ID stays consistent
-          id: projectId
-        }));
+        // console.log("[ProjectSync] Metadata received:", data);
+
+        setProject(prev => {
+          const newProject = {
+            ...prev,
+            ...data,
+            id: projectId
+          };
+
+          // Deep equality check to prevent loops/re-renders
+          if (JSON.stringify(prev) === JSON.stringify(newProject)) {
+            return prev;
+          }
+          console.log("[ProjectSync] Project updated (content changed)");
+          return newProject;
+        });
       }
     });
 
@@ -235,14 +244,21 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const projectId = project.id;
       if (!projectId || projectId === 'default-project') return;
 
-      const projectRef = doc(db, 'projects', projectId);
-      // Optimistic
-      setProject(prev => ({ ...prev, ecoprodChecklist: checklist }));
+      // Sanitize checklist to remove keys with dots (Firestore crash prevention)
+      const sanitizedChecklist = Object.fromEntries(
+        Object.entries(checklist).map(([k, v]) => [k.replace(/\./g, '_'), v])
+      );
 
-      await setDoc(projectRef, { ecoprodChecklist: checklist }, { merge: true });
+      const projectRef = doc(db, 'projects', projectId);
+
+      // Optimistic
+      setProject(prev => ({ ...prev, ecoprodChecklist: sanitizedChecklist }));
+
+      await setDoc(projectRef, { ecoprodChecklist: sanitizedChecklist }, { merge: true });
     } catch (err: any) {
       console.error("Error updating Ecoprod checklist:", err);
-      setError(`Erreur sauvegarde audit: ${err.message}`);
+      // Don't set global error to avoid blocking UI, just log
+      // setError(`Erreur sauvegarde audit: ${err.message}`);
     }
   };
 
