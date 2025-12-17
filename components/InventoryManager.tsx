@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ItemStatus, SurplusAction, Department } from '../types';
-import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { AddItemModal } from './AddItemModal';
 import { ExpenseReportModal } from './ExpenseReportModal';
@@ -16,6 +16,8 @@ export const InventoryManager: React.FC = () => {
     const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
     // const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
     const [surplusConfirmation, setSurplusConfirmation] = useState<{ item: any, action: SurplusAction } | null>(null);
+    const [transferConfirmation, setTransferConfirmation] = useState<{ item: any } | null>(null);
+    const [targetDept, setTargetDept] = useState<Department | 'PRODUCTION'>('PRODUCTION');
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
     const toggleDeptExpansion = (dept: string) => {
@@ -320,6 +322,28 @@ export const InventoryManager: React.FC = () => {
             );
         }
         setSurplusConfirmation(null);
+    };
+
+    const handleTransfer = async () => {
+        if (!transferConfirmation || !targetDept) return;
+        const item = transferConfirmation.item;
+
+        // Update the item's department in Firestore
+        await updateItem({ id: item.id, department: targetDept });
+
+        // Update local state
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === item.id ? { ...i, department: targetDept } : i)
+        }));
+
+        addNotification(
+            `Transfert de stock : ${currentDept} vous a transféré "${item.name}"`,
+            'INFO',
+            targetDept
+        );
+
+        setTransferConfirmation(null);
     };
 
     const toggleEmailSelection = (id: string) => {
@@ -823,6 +847,22 @@ export const InventoryManager: React.FC = () => {
                                                         </button>
                                                     )
                                                 )}
+                                                {/* Transfer Button - Only for current dept items */}
+                                                <button
+                                                    onClick={() => setTransferConfirmation({ item })}
+                                                    className="p-2 text-blue-400 hover:text-white hover:bg-blue-600/20 rounded-lg transition-colors"
+                                                    title="Transférer à un autre département"
+                                                >
+                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => setSurplusConfirmation({ item, action: SurplusAction.DONATION })}
+                                                    className="p-2 text-slate-400 hover:text-white hover:bg-cinema-700/50 rounded-lg transition-colors"
+                                                    title="Gérer le surplus"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
 
                                                 {/* Quantity Controls */}
                                                 <div className="flex items-center gap-4 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
@@ -860,6 +900,51 @@ export const InventoryManager: React.FC = () => {
                     ))
                 )}
             </div>
+            {/* Transfer Confirmation Modal */}
+            {transferConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
+                        <div className="text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
+                                <ArrowRightLeft className="h-6 w-6 text-blue-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white">Transférer cet article ?</h3>
+                            <p className="text-slate-400 mt-2 text-sm">
+                                Vous allez transférer <strong>{transferConfirmation.item.name}</strong>.
+                                <br />Veuillez choisir le département destinataire :
+                            </p>
+                        </div>
+
+                        <div>
+                            <select
+                                value={targetDept}
+                                onChange={(e) => setTargetDept(e.target.value as Department | 'PRODUCTION')}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                                <option value="PRODUCTION">PRODUCTION</option>
+                                {Object.values(Department).filter(d => d !== currentDept).map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => setTransferConfirmation(null)}
+                                className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleTransfer}
+                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

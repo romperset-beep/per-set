@@ -97,7 +97,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState(1);
-    const [selectedDept, setSelectedDept] = useState<Department>(Department.CAMERA);
+    // const [selectedDept, setSelectedDept] = useState<Department>(Department.CAMERA); // Removed: Use currentDept
     const [suggestion, setSuggestion] = useState<string | null>(null);
     const [loadingSuggestion, setLoadingSuggestion] = useState(false);
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -132,7 +132,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
     }, [project.items, catalogItems]);
 
-    // Get suggestions for current department catalog with deduplication
+    // Get ALL suggestions for Global Catalog (Flattend & Sorted)
     const catalogItemsList = useMemo(() => {
         const itemMap = new Map<string, string>();
         const addToMap = (name: string) => {
@@ -143,21 +143,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
             }
         };
 
-        // 1. Base Catalog
-        (POPULAR_ITEMS[selectedDept] || []).forEach(addToMap);
+        // 1. Base Catalog (All Departments)
+        Object.values(POPULAR_ITEMS).forEach(items => items.forEach(addToMap));
 
-        // 2. Global Catalog Items for this dept
-        catalogItems
-            .filter(item => item.department === selectedDept)
-            .forEach(item => addToMap(item.name));
+        // 2. Global Catalog Items (All)
+        catalogItems.forEach(item => addToMap(item.name));
 
-        // 3. History Items for this dept
-        project.items
-            .filter(item => item.department === selectedDept)
-            .forEach(item => addToMap(item.name));
+        // 3. History Items (All)
+        project.items.forEach(item => addToMap(item.name));
 
         return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
-    }, [selectedDept, project.items, catalogItems]);
+    }, [project.items, catalogItems]);
 
     // Filter suggestions when typing
     useEffect(() => {
@@ -221,25 +217,24 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
 
 
-    // Sync form department with global department if not Production
-    useEffect(() => {
-        if (isOpen && currentDept !== 'PRODUCTION') {
-            setSelectedDept(currentDept as Department);
-        }
-    }, [isOpen, currentDept]);
+    // Sync form department -> Removed logic as we purely rely on currentDept checking in handleAddItem
+    // useEffect(() => {
+    //     if (isOpen && currentDept !== 'PRODUCTION') {
+    //         setSelectedDept(currentDept as Department);
+    //     }
+    // }, [isOpen, currentDept]);
 
     if (!isOpen) return null;
 
 
 
-    const handleAddItem = async () => {
+    const handleAddItem = async (shouldClose: boolean = true) => {
         if (!newItemName) return;
         setIsSubmitting(true);
 
         // Determine final department:
-        // If current user is NOT Production, they can ONLY order for their own department.
-        // The dropdown might be used for browsing other catalogs (via selectedDept), but the order acts as a "Purchase for ME".
-        const finalDepartment = currentDept !== 'PRODUCTION' ? (currentDept as Department) : selectedDept;
+        // Always use the user's current logged-in department (or Production if they are Prod)
+        const finalDepartment = currentDept as (Department | 'PRODUCTION');
 
         const newItem: ConsumableItem = {
             id: Math.random().toString(36).substr(2, 9), // Will be ignored by addItem
@@ -278,7 +273,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         setNewItemName('');
         setNewItemQty(1);
         setSuggestion(null);
-        onClose();
+        if (shouldClose) {
+            onClose();
+        }
     };
 
 
@@ -383,17 +380,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Department Selector Removed - Items are ordered for the current user's department */}
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-1 uppercase">Département</label>
-                            <select
-                                value={selectedDept}
-                                onChange={(e) => setSelectedDept(e.target.value as Department)}
-                                className={`w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-eco-500 focus:outline-none`}
-                            >
-                                {Object.values(Department).map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
+                            <p className="block text-xs font-medium text-slate-500 mb-1 uppercase">Département demandeur</p>
+                            <div className="w-full bg-cinema-900/50 border border-cinema-700/50 rounded-lg px-4 py-2.5 text-slate-400 cursor-not-allowed">
+                                {currentDept}
+                            </div>
                         </div>
 
                         <div>
@@ -476,8 +468,16 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                         disabled={!newItemName || isSubmitting}
                         className="bg-eco-600 hover:bg-eco-500 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-eco-900/20 flex items-center gap-2"
                     >
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                        {isSubmitting ? 'Envoi...' : 'Ajouter à la liste'}
+                        {isSubmitting ? 'Envoi...' : 'Ajouter'}
+                    </button>
+                    <button
+                        onClick={() => handleAddItem(false)}
+                        disabled={!newItemName || isSubmitting}
+                        className="bg-cinema-700 hover:bg-cinema-600 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-cinema-600 flex items-center gap-2"
+                        title="Ajouter et rester sur la fenêtre pour saisir un autre article"
+                    >
+                        <Plus className="h-4 w-4" />
+                        + 1 Autre
                     </button>
                 </div>
 
@@ -487,7 +487,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                         <div className="p-4 border-b border-cinema-700 flex justify-between items-center bg-cinema-900">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <List className="h-5 w-5 text-eco-400" />
-                                Catalogue : {selectedDept}
+                                Catalogue Global
                             </h3>
                             <button onClick={() => setIsCatalogOpen(false)} className="p-1 text-slate-400 hover:text-white">
                                 <X className="h-5 w-5" />
