@@ -193,30 +193,17 @@ export const ImpactReport: React.FC = () => {
                 text: "Aquí está el informe de impacto ecológico para el proyecto {project}."
             },
             ecoprod: {
-                title: "Répartition Carbon'Clap (Ecoprod)",
-                desc: "Estimation des émissions évitées selon la nomenclature standard Carbon'Clap (Scope 3 - Achats).",
-                legend: "CO2 Évité (kg)"
+                title: "Desglose Ecoprod",
+                desc: "Estimación de emisiones evitadas según la nomenclatura estándar Ecoprod (Alcance 3 - Compras).",
+                legend: "CO2 Evitado (kg)"
             }
         }
     }[language || 'fr'];
 
-    const t_en_ecoprod = {
-        title: "Carbon'Clap Breakdown (Ecoprod)",
-        desc: "Estimated avoided emissions according to Carbon'Clap standard nomenclature (Scope 3 - Purchasing).",
-        legend: "Avoided CO2 (kg)"
-    };
-    const t_es_ecoprod = {
-        title: "Desglose Carbon'Clap (Ecoprod)",
-        desc: "Estimación de emisiones evitadas según la nomenclatura estándar Carbon'Clap (Alcance 3 - Compras).",
-        legend: "CO2 Evitado (kg)"
-    };
-
-
-
     // Quick fix for missing translations
-    const tEco = language === 'en' ? t_en_ecoprod : language === 'es' ? t_es_ecoprod : t.ecoprod || {
-        title: "Répartition Carbon'Clap (Ecoprod)",
-        desc: "Estimation des émissions évitées selon la nomenclature standard Carbon'Clap (Scope 3 - Achats).",
+    const tEco = t.ecoprod || {
+        title: "Répartition Ecoprod",
+        desc: "Estimation des émissions évitées selon la nomenclature standard Ecoprod (Scope 3 - Achats).",
         legend: "CO2 Évité (kg)"
     };
 
@@ -661,9 +648,9 @@ export const ImpactReport: React.FC = () => {
                         <div>
                             <h3 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <ShieldCheck className="h-8 w-8 text-eco-400" />
-                                Checklist Ecoprod / Carbon'Clap
+                                Checklist Ecoprod
                             </h3>
-                            <p className="text-slate-400 mt-2">Cochez les actions réalisées pour obtenir votre certification officielle.</p>
+                            <p className="text-slate-400 mt-2">Cochez les actions réalisées pour obtenir votre certification plus précise !</p>
                         </div>
                         <div className="text-right">
                             <div className="text-4xl font-bold text-white">{auditScore !== null ? auditScore : 0}/100</div>
