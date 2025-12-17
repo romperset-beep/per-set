@@ -244,8 +244,13 @@ export const ImpactReport: React.FC = () => {
     const displayScore = isAuditActive ? auditScore : aiScore;
 
     const handleToggleCriterion = async (id: string, current: boolean) => {
-        const newChecklist = { ...(project.ecoprodChecklist || {}), [id]: !current };
-        await updateEcoprodChecklist(newChecklist);
+        try {
+            const newChecklist = { ...(project.ecoprodChecklist || {}), [id]: !current };
+            await updateEcoprodChecklist(newChecklist);
+        } catch (error) {
+            console.error("Error toggling criterion:", error);
+            alert("Une erreur est survenue lors de la mise à jour de la checklist. Veuillez réessayer.");
+        }
     };
 
     useEffect(() => {
