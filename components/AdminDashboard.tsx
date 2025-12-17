@@ -172,9 +172,9 @@ export const AdminDashboard: React.FC = () => {
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Users className="h-24 w-24 text-eco-500" />
                     </div>
-                    <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Utilisateurs Total</h3>
+                    <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-2">Membres de l'équipe</h3>
                     <p className="text-4xl font-bold text-white mb-1">{stats.totalUsers}</p>
-                    <p className="text-xs text-eco-400 font-medium">Gérer les membres</p>
+                    <p className="text-xs text-eco-400 font-medium">Personnes inscrites</p>
                 </div>
 
                 <div
