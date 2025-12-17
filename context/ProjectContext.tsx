@@ -80,6 +80,7 @@ interface ProjectContextType {
   deleteNotification: (id: string) => Promise<void>; // Added
   markAllAsRead: (notificationIds: string[]) => Promise<void>; // Added
   markNotificationAsReadByItemId: (itemId: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>; // Added
   unreadCount: number;
   unreadSocialCount: number;
   unreadMarketplaceCount: number;
@@ -1094,6 +1095,29 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const clearAllNotifications = async () => {
+    try {
+      const projectId = project.id;
+      if (!projectId || projectId === 'default-project') {
+        // Local clear if no project (unlikely)
+        setNotifications([]);
+        return;
+      }
+
+      // Collect IDs of currently loaded notifications (which are specific to user)
+      const toDelete = notifications.map(n => n.id);
+      if (toDelete.length === 0) return;
+
+      const promises = toDelete.map(id => deleteDoc(doc(db, 'projects', projectId, 'notifications', id)));
+      await Promise.all(promises);
+
+      // State will update via snapshot, but we can optimistically clear
+      setNotifications([]);
+    } catch (err: any) {
+      console.error("Error clearing notifications:", err);
+    }
+  };
+
   const deleteNotification = async (id: string) => {
     // Optimistic
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -1481,8 +1505,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       addNotification,
       markAsRead,
       deleteNotification, // Added
-      markAllAsRead, // Added
+      markAllAsRead,
       markNotificationAsReadByItemId,
+      clearAllNotifications,
       unreadCount,
       unreadSocialCount,
       unreadMarketplaceCount,

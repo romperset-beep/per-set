@@ -42,6 +42,7 @@ const AppContent: React.FC = () => {
     notifications, // Added
     markAsRead, // Added
     deleteNotification, // Added
+    clearAllNotifications, // Added
     markAllAsRead, // Added
     logout,
     t,
@@ -119,17 +120,24 @@ const AppContent: React.FC = () => {
 
   // We want to mark ALL distinct unread notifications visible (or theoretically visible) as read
   const markAllNofiticationsRead = async () => {
+    // We want to mark ALL distinct unread notifications visible (or theoretically visible) as read
     // Collect IDs of ALL unread notifications for this user, not just the top 10 displayed
     const allUnread = notifications.filter(n => {
-      if (n.read) return false;
-      if (user?.department === 'PRODUCTION' || user?.department === 'Régie') return true;
-      return n.targetDept === user?.department || n.targetDept === undefined;
-    });
+      // Logic same as display filter? (Usually notifications contains ALL for the user anyway)
+      return !n.read;
+    }).map(n => n.id);
 
     if (allUnread.length > 0) {
-      await markAllAsRead(allUnread.map(n => n.id));
+      await markAllAsRead(allUnread);
     }
     setShowNotifications(false);
+  };
+
+  const handleClearAllNotifications = async () => {
+    if (confirm("Voulez-vous vraiment supprimer toutes vos notifications ?")) {
+      await clearAllNotifications();
+      setShowNotifications(false);
+    }
   };
 
   if (!user) {
@@ -365,11 +373,18 @@ const AppContent: React.FC = () => {
                 <div className="absolute right-0 top-full mt-2 w-80 bg-cinema-800 border border-cinema-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                   <div className="p-3 border-b border-cinema-700 flex justify-between items-center bg-cinema-900/50">
                     <h3 className="font-bold text-white text-sm">Notifications</h3>
-                    {unreadNotificationCount > 0 && (
-                      <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
-                        Tout marquer lu
-                      </button>
-                    )}
+                    <div className="flex gap-2">
+                      {unreadNotificationCount > 0 && (
+                        <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
+                          Tout marquer lu
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button onClick={handleClearAllNotifications} className="text-[10px] text-red-400 hover:text-red-300 font-medium">
+                          Tout effacer
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
                     {displayNotifications.length === 0 ? (
