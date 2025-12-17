@@ -253,17 +253,24 @@ export const ImpactReport: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        const fetchMetrics = async () => {
-            if (project.items.length > 0) {
-                setLoading(true);
+    const fetchMetrics = async () => {
+        if (project.items.length > 0) {
+            setLoading(true);
+            try {
                 const data = await generateEcoImpactReport(project.items, project.name, project.carbonContext);
                 setMetrics(data);
+            } catch (error) {
+                console.error("Error generating report:", error);
+                alert("Erreur lors de l'analyse IA. Veuillez réessayer.");
+            } finally {
                 setLoading(false);
             }
-        };
-        fetchMetrics();
-    }, [project.name, project.carbonContext]);
+        }
+    };
+
+    // Auto-run ONLY on first mount if data exists and no metrics yet (optional, or just keep manual)
+    // For now, completely manual as requested.
+    // useEffect(() => { ... }, []);
 
     // Calculate Pie Chart Data (Lifecycle)
     const surplusItems = project.items.filter(i => i.quantityCurrent > 0);
@@ -440,6 +447,17 @@ export const ImpactReport: React.FC = () => {
                         <Settings className="h-4 w-4" />
                         <span className="hidden md:inline">Contexte</span>
                     </button>
+
+                    {!loading && !metrics && (
+                        <button
+                            onClick={fetchMetrics}
+                            className="flex items-center gap-2 bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg shadow-lg transition-colors animate-pulse"
+                        >
+                            <Leaf className="h-4 w-4" />
+                            <span className="font-bold">Lancer l'Analyse IA</span>
+                        </button>
+                    )}
+
                     {loading && (
                         <div className="flex items-center gap-2 text-eco-400 bg-eco-900/20 px-4 py-2 rounded-full">
                             <Loader2 className="h-5 w-5 animate-spin" />
@@ -447,13 +465,22 @@ export const ImpactReport: React.FC = () => {
                         </div>
                     )}
                     {!loading && metrics && (
-                        <button
-                            onClick={handleShare}
-                            className="flex items-center gap-2 bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg shadow-lg transition-colors"
-                        >
-                            <Share2 className="h-4 w-4" />
-                            <span className="hidden md:inline">{t.share}</span>
-                        </button>
+                        <>
+                            <button
+                                onClick={fetchMetrics} // Allow re-run
+                                className="flex items-center gap-2 bg-cinema-800 hover:bg-cinema-700 border border-cinema-600 text-slate-300 px-3 py-2 rounded-lg transition-colors"
+                                title="Relancer l'analyse"
+                            >
+                                <Leaf className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={handleShare}
+                                className="flex items-center gap-2 bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg shadow-lg transition-colors"
+                            >
+                                <Share2 className="h-4 w-4" />
+                                <span className="hidden md:inline">{t.share}</span>
+                            </button>
+                        </>
                     )}
                 </div>
             </header>
@@ -625,6 +652,63 @@ export const ImpactReport: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* ALWAYS SHOW CHECKLIST (Section 2), but hide metrics if null */}
+
+            <div className="border-t border-cinema-700 pt-8 mt-8">
+                <div className="bg-cinema-800 rounded-xl p-8 border border-cinema-700">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <ShieldCheck className="h-8 w-8 text-eco-400" />
+                                Checklist Ecoprod / Carbon'Clap
+                            </h3>
+                            <p className="text-slate-400 mt-2">Cochez les actions réalisées pour obtenir votre certification officielle.</p>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-4xl font-bold text-white">{auditScore !== null ? auditScore : 0}/100</div>
+                            <div className="text-sm font-bold uppercase text-eco-400">Score Audit</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        {ECOPROD_CRITERIA_RAW.map((category) => (
+                            <div key={category.category} className="bg-cinema-900/50 rounded-lg p-6 border border-cinema-800">
+                                <h4 className="font-bold text-xl text-white mb-6 border-b border-cinema-700 pb-2">
+                                    {category.category}
+                                </h4>
+                                <div className="grid gap-4">
+                                    {category.criteria.map(criterion => {
+                                        const isChecked = project.ecoprodChecklist?.[criterion.id] || false;
+                                        return (
+                                            <div
+                                                key={criterion.id}
+                                                onClick={() => handleToggleCriterion(criterion.id, isChecked)}
+                                                className={`flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-all border ${isChecked ? 'bg-eco-900/20 border-eco-500/50' : 'bg-cinema-900 border-cinema-700 hover:border-cinema-500'}`}
+                                            >
+                                                <div className={`mt-1 h-6 w-6 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-eco-500 border-eco-500 text-white' : 'border-slate-600'}`}>
+                                                    {isChecked && <CheckSquare className="h-4 w-4" />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className={`text-base ${isChecked ? 'text-white' : 'text-slate-300'}`}>{criterion.label}</p>
+                                                    <div className="flex gap-2 mt-2">
+                                                        <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${criterion.impact === 'High' ? 'bg-red-500/20 text-red-300' :
+                                                            criterion.impact === 'Medium' ? 'bg-orange-500/20 text-orange-300' :
+                                                                'bg-blue-500/20 text-blue-300'
+                                                            }`}>
+                                                            Impact {criterion.impact}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
             {
                 metrics && !loading && (
@@ -958,65 +1042,9 @@ export const ImpactReport: React.FC = () => {
                                 </div>
                             )}
                         </div>
-
-                        {/* SECTION 2: AUDIT CHECKLIST */}
-                        <div className="border-t border-cinema-700 pt-12">
-                            <div className="bg-cinema-800 rounded-xl p-8 border border-cinema-700">
-                                <div className="flex items-center justify-between mb-8">
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-white flex items-center gap-2">
-                                            <ShieldCheck className="h-8 w-8 text-eco-400" />
-                                            Checklist Ecoprod / Carbon'Clap
-                                        </h3>
-                                        <p className="text-slate-400 mt-2">Cochez les actions réalisées pour obtenir votre certification officielle.</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-4xl font-bold text-white">{displayScore}/100</div>
-                                        <div className="text-sm font-bold uppercase text-eco-400">Score Audit</div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-8">
-                                    {ECOPROD_CRITERIA_RAW.map((category) => (
-                                        <div key={category.category} className="bg-cinema-900/50 rounded-lg p-6 border border-cinema-800">
-                                            <h4 className="font-bold text-xl text-white mb-6 border-b border-cinema-700 pb-2">
-                                                {category.category}
-                                            </h4>
-                                            <div className="grid gap-4">
-                                                {category.criteria.map(criterion => {
-                                                    const isChecked = project.ecoprodChecklist?.[criterion.id] || false;
-                                                    return (
-                                                        <div
-                                                            key={criterion.id}
-                                                            onClick={() => handleToggleCriterion(criterion.id, isChecked)}
-                                                            className={`flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-all border ${isChecked ? 'bg-eco-900/20 border-eco-500/50' : 'bg-cinema-900 border-cinema-700 hover:border-cinema-500'}`}
-                                                        >
-                                                            <div className={`mt-1 h-6 w-6 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-eco-500 border-eco-500 text-white' : 'border-slate-600'}`}>
-                                                                {isChecked && <CheckSquare className="h-4 w-4" />}
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <p className={`text-base ${isChecked ? 'text-white' : 'text-slate-300'}`}>{criterion.label}</p>
-                                                                <div className="flex gap-2 mt-2">
-                                                                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${criterion.impact === 'High' ? 'bg-red-500/20 text-red-300' :
-                                                                        criterion.impact === 'Medium' ? 'bg-orange-500/20 text-orange-300' :
-                                                                            'bg-blue-500/20 text-blue-300'
-                                                                        }`}>
-                                                                        Impact {criterion.impact}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 };
