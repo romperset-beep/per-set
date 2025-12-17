@@ -655,7 +655,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const newStatus = isReservedByMe ? 'AVAILABLE' : 'RESERVED';
       const newReservedBy = isReservedByMe ? null : department;
       const newReservedByName = isReservedByMe ? null : (user?.name || 'Inconnu');
-      const newReservedByUserId = isReservedByMe ? null : (user ? (user as any).uid /* fallback if not in User type yet */ || null : null);
+      const newReservedByUserId = isReservedByMe ? null : (auth.currentUser?.uid || null);
+
+      console.log(`[BuyBack] Toggling reservation. Item: ${itemId}, UserID: ${newReservedByUserId}`);
 
       await updateDoc(itemRef, {
         status: newStatus,
