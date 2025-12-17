@@ -16,6 +16,16 @@ export const InventoryManager: React.FC = () => {
     const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
     // const [selectedForExpense, setSelectedForExpense] = useState<Set<string>>(new Set());
     const [surplusConfirmation, setSurplusConfirmation] = useState<{ item: any, action: SurplusAction } | null>(null);
+    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+
+    const toggleDeptExpansion = (dept: string) => {
+        setExpandedDepts(prev => {
+            const next = new Set(prev);
+            if (next.has(dept)) next.delete(dept);
+            else next.add(dept);
+            return next;
+        });
+    };
 
     // Check shooting end date
     const shootingEndDate = project.shootingEndDate ? new Date(project.shootingEndDate) : null;
@@ -366,6 +376,14 @@ export const InventoryManager: React.FC = () => {
         return acc;
     }, {} as Record<string, typeof project.items>);
 
+    // Group Requests by department for clearer view
+    const requestsByDept = visibleRequests.reduce((acc, item) => {
+        const dept = item.department || 'Autre';
+        if (!acc[dept]) acc[dept] = [];
+        acc[dept].push(item);
+        return acc;
+    }, {} as Record<string, typeof project.items>);
+
     return (
         <div className="space-y-8">
             <header className="flex justify-between items-end">
@@ -553,80 +571,105 @@ export const InventoryManager: React.FC = () => {
                             Aucune demande d'achat en attente.
                         </div>
                     ) : (
-                        visibleRequests.map(item => {
-                            const isProductionOrRegie = currentDept === 'PRODUCTION';
-
+                        Object.entries(requestsByDept).map(([dept, items]) => {
+                            const isExpanded = expandedDepts.has(dept);
                             return (
-                                <div key={item.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-cinema-700/20 transition-colors">
-                                    <div className="flex items-center gap-4 flex-1">
-                                        {!item.isBought && (
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedForEmail.has(item.id)}
-                                                onChange={() => toggleEmailSelection(item.id)}
-                                                className="h-5 w-5 rounded border-cinema-600 bg-cinema-900 text-eco-500 focus:ring-eco-500 focus:ring-offset-cinema-900"
-                                            />
-                                        )}
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-white">{item.name}</span>
-                                                <span className="text-xs bg-cinema-900 text-slate-400 px-2 py-0.5 rounded">
-                                                    {item.department}
-                                                </span>
-                                                {item.isBought && (
-                                                    <span className="text-xs bg-blue-900/50 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                                                        <CheckCircle2 className="h-3 w-3" /> ACHETÉ
-                                                    </span>
-                                                )}
+                                <div key={dept} className="border-b border-cinema-700/50 last:border-0">
+                                    {/* Department Header - Clickable Accordion */}
+                                    <button
+                                        onClick={() => toggleDeptExpansion(dept)}
+                                        className="w-full bg-cinema-900/40 px-6 py-3 border-y border-cinema-800 flex items-center justify-between hover:bg-cinema-800/60 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-1 rounded-full bg-cinema-800 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                                             </div>
-                                            <p className="text-sm text-slate-500">Quantité demandée: {item.quantityInitial} {item.unit}</p>
+                                            <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider group-hover:text-white transition-colors">{dept}</h4>
                                         </div>
-                                    </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs bg-cinema-800 px-2 py-1 rounded-full text-slate-400 font-medium border border-cinema-700">
+                                                {items.length} {items.length > 1 ? 'articles' : 'article'}
+                                            </span>
+                                        </div>
+                                    </button>
 
-                                    {/* Action Buttons */}
-                                    {isProductionOrRegie ? (
-                                        // View for Production/Regie
-                                        item.isBought ? (
-                                            // ALLOW Production/Regie to validate reception for ALL items, not just their own department.
-                                            <button
-                                                onClick={() => markAsPurchased(item.id)}
-                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                                            >
-                                                <PackageCheck className="h-4 w-4" />
-                                                Valider Réception
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => markAsBought(item.id)}
-                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                                            >
-                                                <CheckCircle2 className="h-4 w-4" />
-                                                À acheter
-                                            </button>
-                                        )
-                                    ) : (
-                                        // View for Departments
-                                        <div className="flex gap-2">
-                                            <div className="flex items-center gap-3 bg-cinema-800/50 px-3 py-2 rounded-lg border border-cinema-700">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedForExpense.has(item.id)}
-                                                    onChange={() => toggleExpenseSelection(item.id)}
-                                                    className="h-5 w-5 rounded border-cinema-600 bg-cinema-900 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                                                />
-                                                <span className="text-sm text-slate-300 font-medium">Acheté soi-même</span>
-                                            </div>
+                                    {/* Collapsible Content */}
+                                    {isExpanded && (
+                                        <div className="divide-y divide-cinema-700/30 bg-cinema-900/20 animate-in slide-in-from-top-1 duration-200">
+                                            {items.map(item => {
+                                                const isProductionOrRegie = currentDept === 'PRODUCTION';
+                                                return (
+                                                    <div key={item.id} className="p-4 pl-12 flex flex-col sm:flex-row items-center justify-between gap-4 hover:bg-cinema-700/20 transition-colors border-l-4 border-transparent hover:border-cinema-700">
+                                                        <div className="flex items-center gap-4 flex-1">
+                                                            {!item.isBought && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedForEmail.has(item.id)}
+                                                                    onChange={() => toggleEmailSelection(item.id)}
+                                                                    className="h-5 w-5 rounded border-cinema-600 bg-cinema-900 text-eco-500 focus:ring-eco-500 focus:ring-offset-cinema-900 cursor-pointer"
+                                                                />
+                                                            )}
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-white">{item.name}</span>
+                                                                    {item.isBought && (
+                                                                        <span className="text-xs bg-blue-900/50 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                                                                            <CheckCircle2 className="h-3 w-3" /> ACHETÉ
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-sm text-slate-500">Quantité demandée: {item.quantityInitial} {item.unit}</p>
+                                                            </div>
+                                                        </div>
 
-                                            <button
-                                                onClick={() => markAsPurchased(item.id)}
-                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${item.isBought
-                                                    ? 'bg-green-600 hover:bg-green-500 text-white animate-pulse'
-                                                    : 'bg-eco-600 hover:bg-eco-500 text-white'
-                                                    }`}
-                                            >
-                                                <PackageCheck className="h-4 w-4" />
-                                                {item.isBought ? 'Valider Réception' : 'Marquer reçu'}
-                                            </button>
+                                                        {/* Action Buttons */}
+                                                        {isProductionOrRegie ? (
+                                                            // View for Production/Regie
+                                                            item.isBought ? (
+                                                                <button
+                                                                    onClick={() => markAsPurchased(item.id)}
+                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-green-900/20"
+                                                                >
+                                                                    <PackageCheck className="h-4 w-4" />
+                                                                    Valider Réception
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => markAsBought(item.id)}
+                                                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-900/20"
+                                                                >
+                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                    À acheter
+                                                                </button>
+                                                            )
+                                                        ) : (
+                                                            // View for Departments
+                                                            <div className="flex gap-2">
+                                                                <div className="flex items-center gap-3 bg-cinema-800/50 px-3 py-2 rounded-lg border border-cinema-700">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedForExpense.has(item.id)}
+                                                                        onChange={() => toggleExpenseSelection(item.id)}
+                                                                        className="h-5 w-5 rounded border-cinema-600 bg-cinema-900 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                                                    />
+                                                                    <span className="text-sm text-slate-300 font-medium">Acheté soi-même</span>
+                                                                </div>
+
+                                                                <button
+                                                                    onClick={() => markAsPurchased(item.id)}
+                                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${item.isBought
+                                                                        ? 'bg-green-600 hover:bg-green-500 text-white animate-pulse'
+                                                                        : 'bg-eco-600 hover:bg-eco-500 text-white'
+                                                                        }`}
+                                                                >
+                                                                    <PackageCheck className="h-4 w-4" />
+                                                                    {item.isBought ? 'Valider Réception' : 'Marquer reçu'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
