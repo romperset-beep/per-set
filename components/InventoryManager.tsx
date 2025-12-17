@@ -95,17 +95,18 @@ export const InventoryManager: React.FC = () => {
             }
         });
 
-        // Add aggregated items
+        // Add aggregated items & Sort Alphabetically
         Object.values(newItemsByName).forEach(agg => grouped.push(agg));
         Object.values(startedItemsByName).forEach(agg => grouped.push(agg));
 
-        return grouped.sort((a, b) => {
-            if (a.name !== b.name) return a.name.localeCompare(b.name);
-            // New first
-            if (!a.isStartedView && b.isStartedView) return -1;
-            if (a.isStartedView && !b.isStartedView) return 1;
-            return 0;
-        });
+        return grouped.sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => {
+                if (a.name !== b.name) return a.name.localeCompare(b.name);
+                // New first
+                if (!a.isStartedView && b.isStartedView) return -1;
+                if (a.isStartedView && !b.isStartedView) return 1;
+                return 0;
+            });
     };
 
     const updateQuantity = async (id: string, change: number) => {
@@ -716,188 +717,209 @@ export const InventoryManager: React.FC = () => {
                         Votre inventaire est vide. Validez les achats ci-dessus pour remplir le stock.
                     </div>
                 ) : (
-                    Object.keys(stockByDept).map(dept => (
-                        <div key={dept} className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
-                            <div className="bg-cinema-700/40 px-6 py-3 border-b border-cinema-700">
-                                <h3 className="text-lg font-bold text-white">{dept}</h3>
-                            </div>
-                            <div className="divide-y divide-cinema-700">
-                                {groupStockItems(stockByDept[dept]).map(aggregatedItem => {
-                                    const item = aggregatedItem;
-                                    const percentage = (item.quantityCurrent / item.quantityInitial) * 100;
-                                    const isSurplus = item.surplusAction && item.surplusAction !== SurplusAction.NONE;
-                                    const isStarted = item.isStartedView;
+                    Object.keys(stockByDept).sort((a, b) => a.localeCompare(b)).map(dept => {
+                        const isExpanded = expandedDepts.has(`stock_${dept}`);
+                        const deptItems = groupStockItems(stockByDept[dept]);
 
-                                    return (
-                                        <div key={item.id + (isStarted ? '_started' : '_new')} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-lg text-white">
-                                                        {item.name}
-                                                        {item.items.length > 1 && (
-                                                            <span className="ml-2 text-xs text-slate-500 bg-cinema-900 px-2 py-0.5 rounded-full">
-                                                                x{item.items.length}
+                        return (
+                            <div key={dept} className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
+                                <button
+                                    onClick={() => toggleDeptExpansion(`stock_${dept}`)}
+                                    className="w-full bg-cinema-700/40 px-6 py-3 border-b border-cinema-700 flex items-center justify-between hover:bg-cinema-700/60 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-lg font-bold text-white">{dept}</h3>
+                                        <span className="bg-cinema-900 text-slate-400 text-xs px-2 py-0.5 rounded-full border border-cinema-600">
+                                            {deptItems.length} types d'articles
+                                        </span>
+                                    </div>
+                                    <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </button>
+
+                                {isExpanded && (
+                                    <div className="divide-y divide-cinema-700 animate-in slide-in-from-top-1 duration-200">
+                                        {deptItems.map(aggregatedItem => {
+                                            const item = aggregatedItem;
+                                            const percentage = (item.quantityCurrent / item.quantityInitial) * 100;
+                                            const isSurplus = item.surplusAction && item.surplusAction !== SurplusAction.NONE;
+                                            const isStarted = item.isStartedView;
+
+                                            return (
+                                                <div key={item.id + (isStarted ? '_started' : '_new')} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-lg text-white">
+                                                                {item.name}
+                                                                {item.items.length > 1 && (
+                                                                    <span className="ml-2 text-xs text-slate-500 bg-cinema-900 px-2 py-0.5 rounded-full">
+                                                                        x{item.items.length}
+                                                                    </span>
+                                                                )}
                                                             </span>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isStarted ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                                                {isStarted ? 'Entamé' : 'Neuf'}
+                                                            </span>
+                                                            {isSurplus && (
+                                                                <span className={`text-xs px-2 py-0.5 rounded border ${item.surplusAction === SurplusAction.MARKETPLACE
+                                                                    ? 'bg-blue-900/50 text-blue-400 border-blue-500/30'
+                                                                    : 'bg-purple-900/50 text-purple-400 border-purple-500/30'
+                                                                    }`}>
+                                                                    {item.surplusAction === SurplusAction.MARKETPLACE ? 'En Stock Virtuel' : 'En Don'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4">
+                                                        {/* Start Button (Only for New items) */}
+                                                        {!isSurplus && !isStarted && item.quantityCurrent > 0 && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const target = item.items.find(i => (i.quantityStarted || 0) < i.quantityCurrent);
+                                                                    if (target) incrementStarted(target.id);
+                                                                }}
+                                                                className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
+                                                                title="Entamer un article"
+                                                            >
+                                                                <PackageOpen className="h-4 w-4" />
+                                                            </button>
                                                         )}
-                                                    </span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isStarted ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                                                        {isStarted ? 'Entamé' : 'Neuf'}
-                                                    </span>
-                                                    {isSurplus && (
-                                                        <span className={`text-xs px-2 py-0.5 rounded border ${item.surplusAction === SurplusAction.MARKETPLACE
-                                                            ? 'bg-blue-900/50 text-blue-400 border-blue-500/30'
-                                                            : 'bg-purple-900/50 text-purple-400 border-purple-500/30'
-                                                            }`}>
-                                                            {item.surplusAction === SurplusAction.MARKETPLACE ? 'En Stock Virtuel' : 'En Don'}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
 
-                                            <div className="flex items-center gap-4">
-                                                {/* Start Button (Only for New items) */}
-                                                {!isSurplus && !isStarted && item.quantityCurrent > 0 && (
-                                                    <button
-                                                        onClick={() => {
-                                                            const target = item.items.find(i => (i.quantityStarted || 0) < i.quantityCurrent);
-                                                            if (target) incrementStarted(target.id);
-                                                        }}
-                                                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
-                                                        title="Entamer un article"
-                                                    >
-                                                        <PackageOpen className="h-4 w-4" />
-                                                    </button>
-                                                )}
+                                                        {/* Surplus Actions */}
+                                                        {!isSurplus && item.quantityCurrent > 0 && (
+                                                            <div className="flex gap-2 mr-4">
+                                                                {!isStarted && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                            if (target) {
+                                                                                if (user?.department === 'PRODUCTION') {
+                                                                                    handleSurplusClick(target, SurplusAction.MARKETPLACE);
+                                                                                } else {
+                                                                                    // Department View: Check Date
+                                                                                    if (isShootingFinished) {
+                                                                                        handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
+                                                                                    } else {
+                                                                                        alert(`Vous ne pourrez libérer le matériel que le ${shootingEndDate?.toLocaleDateString()}`);
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                        disabled={user?.department !== 'PRODUCTION' && !isShootingFinished}
+                                                                        className={`p-2 rounded-lg border transition-all ${user?.department !== 'PRODUCTION' && !isShootingFinished
+                                                                            ? 'border-slate-700 text-slate-600 cursor-not-allowed'
+                                                                            : 'border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10'
+                                                                            }`}
+                                                                        title={user?.department !== 'PRODUCTION'
+                                                                            ? (isShootingFinished ? "Libérer pour la Production" : `Disponible le ${shootingEndDate?.toLocaleDateString()}`)
+                                                                            : "Envoyer au Stock Virtuel"
+                                                                        }
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                    </button>
+                                                                )}
+                                                                {user?.department === 'PRODUCTION' && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                                if (target) handleSurplusClick(target, SurplusAction.DONATION);
+                                                                            }}
+                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                                                                            title="Envoyer aux Dons"
+                                                                        >
+                                                                            <GraduationCap className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                                if (target) handleSurplusClick(target, SurplusAction.SHORT_FILM);
+                                                                            }}
+                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
+                                                                            title="Envoyer aux Dons Court-Métrage"
+                                                                        >
+                                                                            <Film className="h-4 w-4" />
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
 
-                                                {/* Surplus Actions */}
-                                                {!isSurplus && item.quantityCurrent > 0 && (
-                                                    <div className="flex gap-2 mr-4">
-                                                        {!isStarted && (
+                                                        {isSurplus && (
+                                                            // Condition for Undo:
+                                                            // 1. Production can always undo.
+                                                            // 2. Department can ONLY undo if status is RELEASED_TO_PROD (before validation).
+                                                            // 3. If item is MARKETPLACE, DONATION or SHORT_FILM, Dept CANNOT undo.
+                                                            (user?.department === 'PRODUCTION' || item.surplusAction === SurplusAction.RELEASED_TO_PROD) && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const target = item.items[0];
+                                                                        if (target) setSurplusAction(target.id, SurplusAction.NONE);
+                                                                    }}
+                                                                    className="p-2 mr-4 rounded-lg border border-cinema-600 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 transition-all"
+                                                                    title="Annuler l'envoi"
+                                                                >
+                                                                    <Undo2 className="h-4 w-4" />
+                                                                </button>
+                                                            )
+                                                        )}
+                                                        {/* Transfer Button - Only for current dept items */}
+                                                        <button
+                                                            onClick={() => setTransferConfirmation({ item })}
+                                                            className="p-2 text-blue-400 hover:text-white hover:bg-blue-600/20 rounded-lg transition-colors"
+                                                            title="Transférer à un autre département"
+                                                        >
+                                                            <ArrowRightLeft className="h-4 w-4" />
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => setSurplusConfirmation({ item, action: SurplusAction.DONATION })}
+                                                            className="p-2 text-slate-400 hover:text-white hover:bg-cinema-700/50 rounded-lg transition-colors"
+                                                            title="Gérer le surplus"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+
+                                                        {/* Quantity Controls */}
+                                                        <div className="flex items-center gap-4 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
                                                             <button
                                                                 onClick={() => {
                                                                     const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                    if (target) {
-                                                                        if (user?.department === 'PRODUCTION') {
-                                                                            handleSurplusClick(target, SurplusAction.MARKETPLACE);
-                                                                        } else {
-                                                                            // Department View: Check Date
-                                                                            if (isShootingFinished) {
-                                                                                handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
-                                                                            } else {
-                                                                                alert(`Vous ne pourrez libérer le matériel que le ${shootingEndDate?.toLocaleDateString()}`);
-                                                                            }
-                                                                        }
-                                                                    }
+                                                                    if (target) updateQuantity(target.id, -1);
                                                                 }}
-                                                                disabled={user?.department !== 'PRODUCTION' && !isShootingFinished}
-                                                                className={`p-2 rounded-lg border transition-all ${user?.department !== 'PRODUCTION' && !isShootingFinished
-                                                                    ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                                                    : 'border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10'
-                                                                    }`}
-                                                                title={user?.department !== 'PRODUCTION'
-                                                                    ? (isShootingFinished ? "Libérer pour la Production" : `Disponible le ${shootingEndDate?.toLocaleDateString()}`)
-                                                                    : "Envoyer au Stock Virtuel"
-                                                                }
+                                                                className="p-2 rounded-md hover:bg-cinema-700 text-slate-300 hover:text-white transition-colors"
                                                             >
-                                                                <RefreshCw className="h-4 w-4" />
+                                                                <Minus className="h-5 w-5" />
                                                             </button>
-                                                        )}
-                                                        {user?.department === 'PRODUCTION' && (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                        if (target) handleSurplusClick(target, SurplusAction.DONATION);
-                                                                    }}
-                                                                    className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
-                                                                    title="Envoyer aux Dons"
-                                                                >
-                                                                    <GraduationCap className="h-4 w-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                        if (target) handleSurplusClick(target, SurplusAction.SHORT_FILM);
-                                                                    }}
-                                                                    className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
-                                                                    title="Envoyer aux Dons Court-Métrage"
-                                                                >
-                                                                    <Film className="h-4 w-4" />
-                                                                </button>
-                                                            </>
-                                                        )}
+
+                                                            <div className="text-center w-24">
+                                                                <span className="block text-xl font-bold text-white">{item.quantityCurrent}</span>
+                                                                <span className="text-xs text-slate-500">/ {item.quantityInitial} {item.unit}</span>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => {
+                                                                    const target = item.items[0];
+                                                                    if (target) updateQuantity(target.id, 1);
+                                                                }}
+                                                                className="p-2 rounded-md hover:bg-cinema-700 text-slate-300 hover:text-white transition-colors"
+                                                            >
+                                                                <Plus className="h-5 w-5" />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                )}
-
-                                                {isSurplus && (
-                                                    // Condition for Undo:
-                                                    // 1. Production can always undo.
-                                                    // 2. Department can ONLY undo if status is RELEASED_TO_PROD (before validation).
-                                                    // 3. If item is MARKETPLACE, DONATION or SHORT_FILM, Dept CANNOT undo.
-                                                    (user?.department === 'PRODUCTION' || item.surplusAction === SurplusAction.RELEASED_TO_PROD) && (
-                                                        <button
-                                                            onClick={() => {
-                                                                const target = item.items[0];
-                                                                if (target) setSurplusAction(target.id, SurplusAction.NONE);
-                                                            }}
-                                                            className="p-2 mr-4 rounded-lg border border-cinema-600 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 transition-all"
-                                                            title="Annuler l'envoi"
-                                                        >
-                                                            <Undo2 className="h-4 w-4" />
-                                                        </button>
-                                                    )
-                                                )}
-                                                {/* Transfer Button - Only for current dept items */}
-                                                <button
-                                                    onClick={() => setTransferConfirmation({ item })}
-                                                    className="p-2 text-blue-400 hover:text-white hover:bg-blue-600/20 rounded-lg transition-colors"
-                                                    title="Transférer à un autre département"
-                                                >
-                                                    <ArrowRightLeft className="h-4 w-4" />
-                                                </button>
-
-                                                <button
-                                                    onClick={() => setSurplusConfirmation({ item, action: SurplusAction.DONATION })}
-                                                    className="p-2 text-slate-400 hover:text-white hover:bg-cinema-700/50 rounded-lg transition-colors"
-                                                    title="Gérer le surplus"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-
-                                                {/* Quantity Controls */}
-                                                <div className="flex items-center gap-4 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
-                                                    <button
-                                                        onClick={() => {
-                                                            const target = item.items.find(i => i.quantityCurrent > 0);
-                                                            if (target) updateQuantity(target.id, -1);
-                                                        }}
-                                                        className="p-2 rounded-md hover:bg-cinema-700 text-slate-300 hover:text-white transition-colors"
-                                                    >
-                                                        <Minus className="h-5 w-5" />
-                                                    </button>
-
-                                                    <div className="text-center w-24">
-                                                        <span className="block text-xl font-bold text-white">{item.quantityCurrent}</span>
-                                                        <span className="text-xs text-slate-500">/ {item.quantityInitial} {item.unit}</span>
-                                                    </div>
-
-                                                    <button
-                                                        onClick={() => {
-                                                            const target = item.items[0];
-                                                            if (target) updateQuantity(target.id, 1);
-                                                        }}
-                                                        className="p-2 rounded-md hover:bg-cinema-700 text-slate-300 hover:text-white transition-colors"
-                                                    >
-                                                        <Plus className="h-5 w-5" />
-                                                    </button>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
             {/* Transfer Confirmation Modal */}
