@@ -256,6 +256,7 @@ export interface UserProfile {
   birthCountry: string;
   nationality: string;
   socialSecurityCenterAddress: string;
+  taxRate?: number; // Added: Taux d'imposition à la source (%)
 
   // Emergency Contact
   emergencyContactName: string;

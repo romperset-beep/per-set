@@ -243,6 +243,7 @@ ${formData.firstName} ${formData.lastName}`;
                     <h3 className="text-xl font-bold text-blue-400 border-b border-cinema-700 pb-2">État Civil & Social</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input label="Numéro Sécurité Sociale" name="ssn" value={formData.ssn} onChange={handleChange} disabled={!isEditing} required />
+                        <Input label="Taux Prélèvement à la Source (%)" name="taxRate" type="number" step="0.1" value={formData.taxRate} onChange={handleChange} disabled={!isEditing} placeholder="Ex: 11" />
                         <Input label="Nationalité" name="nationality" value={formData.nationality} onChange={handleChange} disabled={!isEditing} required />
                         <Input label="Date de Naissance" name="birthDate" type="date" value={formData.birthDate} onChange={handleChange} disabled={!isEditing} required />
                         <Input label="Lieu de Naissance" name="birthPlace" value={formData.birthPlace} onChange={handleChange} disabled={!isEditing} required />

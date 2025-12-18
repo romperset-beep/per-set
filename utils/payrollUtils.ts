@@ -21,6 +21,8 @@ interface CalculationParams {
     base35Ref?: number; // For travel calc (Habilleuse ref)
     isContinuousDay?: boolean;
     convention?: string; // To switch logic
+    isSunday?: boolean; // New
+    isHoliday?: boolean; // New
 }
 
 export const calculateCinemaGross = (params: CalculationParams): PayrollResult => {
@@ -101,6 +103,28 @@ export const calculateCinemaGross = (params: CalculationParams): PayrollResult =
         logParams.push(`Voyage Extra: +${(rate * REF_HABILLEUSE).toFixed(2)}€`);
     }
     total += travelIndemnity;
+
+    // Sunday / Holiday Majorations
+    // Simplification: Apply percentage to the Daily Total (excluding travel).
+    const baseTotalForMajoration = total - travelIndemnity;
+
+    if (params.isHoliday) {
+        const maj = baseTotalForMajoration * 1.0; // +100%
+        total += maj;
+        logParams.push(`Majoration Férié (+100%): +${maj.toFixed(2)}€`);
+    } else if (params.isSunday) {
+        const maj = baseTotalForMajoration * 0.5; // +50%
+        total += maj;
+        logParams.push(`Majoration Dimanche (+50%): +${maj.toFixed(2)}€`);
+    }
+
+    // (Original comments removed for brevity)
+
+    // Actually, we can't implement it here without the date.
+    // Check below for calculateEstimatedSalary wrapper which might have access?
+    // No, calculateEstimatedSalary receives CalculationParams.
+    // We MUST update CalculationParams interface to includes isSunday / isHoliday or 'date'.
+
 
     return { grossAmount: total, details: logParams.join(', ') };
 };
@@ -274,6 +298,13 @@ export const calculatePubGross = (params: CalculationParams): PayrollResult => {
 };
 
 export const calculateEstimatedSalary = (params: CalculationParams): PayrollResult => {
+    // Enrich params with Sunday/Holiday logic if not present?
+    // Actually, params are built by the caller. But if we want to enforce logic here:
+    // We don't have the date here...
+    // The CALLER (TimesheetWidget) must pass isSunday/isHoliday based on the date it knows.
+    // OR we pass 'date' properly to CalculationParams.
+    // For now, let's assume the caller will populate isSunday/isHoliday.
+
     const { convention } = params;
     if (convention === 'Publicité') {
         return calculatePubGross(params);
@@ -308,6 +339,7 @@ export interface ShiftResult {
     nightHours50: number;    // Majorated 50%
     nightHours100: number;   // Majorated 100%
     sundayHours: number;
+    holidayHours: number; // Added: Heures Fériées
 }
 
 // Helper to parse time string "HH:mm" to decimal hours
@@ -315,6 +347,58 @@ const timeToDecimal = (t: string): number => {
     if (!t) return 0;
     const [h, m] = t.split(':').map(Number);
     return h + (m / 60);
+};
+
+// Helper to check for French Public Holidays
+// Includes fixed dates and variable dates (Easter based)
+const getEasterDate = (year: number): Date => {
+    const f = Math.floor,
+        G = year % 19,
+        C = f(year / 100),
+        H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
+        I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
+        J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
+        L = I - J,
+        month = 3 + f((L + 40) / 44),
+        day = L + 28 - 31 * f(month / 4);
+    return new Date(year, month - 1, day);
+};
+
+export const isFrenchPublicHoliday = (d: Date): boolean => {
+    const year = d.getFullYear();
+    const dateStr = `${d.getMonth() + 1}-${d.getDate()}`; // M-D
+
+    // Fixed Dates
+    const fixed = [
+        '1-1',   // Jour de l'an
+        '5-1',   // Fête du travail
+        '5-8',   // Victoire 1945
+        '7-14',  // Fête nationale
+        '8-15',  // Assomption
+        '11-1',  // Toussaint
+        '11-11', // Armistice
+        '12-25'  // Noël
+    ];
+    if (fixed.includes(dateStr)) return true;
+
+    // Variable Dates (Easter based)
+    const easter = getEasterDate(year);
+    const easterMonday = new Date(easter);
+    easterMonday.setDate(easter.getDate() + 1);
+
+    const ascension = new Date(easter);
+    ascension.setDate(easter.getDate() + 39);
+
+    const pentecostMonday = new Date(easter);
+    pentecostMonday.setDate(easter.getDate() + 50);
+
+    const check = (target: Date) => target.getMonth() === d.getMonth() && target.getDate() === d.getDate();
+
+    if (check(easterMonday)) return true;
+    if (check(ascension)) return true;
+    if (check(pentecostMonday)) return true;
+
+    return false;
 };
 
 const isWinter = (dateStr: string): boolean => {
@@ -337,6 +421,11 @@ const isWinter = (dateStr: string): boolean => {
 export const calculateShiftDetails = (entry: TimeEntry): ShiftResult => {
     let start = timeToDecimal(entry.start);
     let end = timeToDecimal(entry.end);
+
+    // Date analysis
+    const d = new Date(entry.date);
+    const isSunday = d.getDay() === 0;
+    const isHoliday = isFrenchPublicHoliday(d);
 
     // Handle overnight
     if (end < start) {
@@ -414,6 +503,7 @@ export const calculateShiftDetails = (entry: TimeEntry): ShiftResult => {
         // New
         nightHours50: Number(night50.toFixed(2)),
         nightHours100: Number(night100.toFixed(2)),
-        sundayHours: 0
+        sundayHours: isSunday ? Number(effectiveHours.toFixed(2)) : 0,
+        holidayHours: isHoliday ? Number(effectiveHours.toFixed(2)) : 0
     };
 };

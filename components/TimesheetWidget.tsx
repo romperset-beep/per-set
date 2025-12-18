@@ -5,7 +5,7 @@ import { TimeLog } from '../types';
 import { db, auth } from '../services/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins } from 'lucide-react';
-import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calculateShiftDetails, TimeEntry } from '../utils/payrollUtils';
+import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calculateShiftDetails, TimeEntry, isFrenchPublicHoliday } from '../utils/payrollUtils';
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
@@ -21,7 +21,7 @@ export const TimesheetWidget: React.FC = () => {
     const [breakDuration, setBreakDuration] = useState<number>(0); // New
     const [pauseTime, setPauseTime] = useState(''); // New: Time of pause
     const [note, setNote] = useState(''); // New
-    const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string }>({}); // New
+    const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string, taxRate?: number }>({}); // New
     const [travelHoursInside, setTravelHoursInside] = useState<number>(0);
     const [travelHoursOutside, setTravelHoursOutside] = useState<number>(0);
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
@@ -50,7 +50,8 @@ export const TimesheetWidget: React.FC = () => {
                         setUserProfileData({
                             firstName: data.firstName,
                             lastName: data.lastName,
-                            role: data.role
+                            role: data.role,
+                            taxRate: data.taxRate // Fetch tax rate from profile
                         });
                     }
                 } catch (err) {
@@ -241,23 +242,28 @@ export const TimesheetWidget: React.FC = () => {
 
     // Group logs by week (Relative or ISO)
     const getWeekInfo = (d: Date) => {
-        // 1. Try Relative to Shooting Start
+        // 1. Try Relative to Shooting Start (BUT Aligned on Monday-Sunday)
         if (project.shootingStartDate) {
-            const start = new Date(project.shootingStartDate);
-            // Reset times to midnight for accurate day diff
-            const target = new Date(d);
-            target.setHours(0, 0, 0, 0);
+            const rawStart = new Date(project.shootingStartDate);
+            // Find the Monday of that week
+            const start = new Date(rawStart);
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            start.setDate(diff);
             start.setHours(0, 0, 0, 0);
 
-            // Calculate diff in days
+            // Target date
+            const target = new Date(d);
+            target.setHours(0, 0, 0, 0);
+
+            // Calculate diff in days from that Base Monday
             const diffTime = target.getTime() - start.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            // If date is before start date, maybe use Pre-Prod weeks? Or just negative?
-            // For now let's handle "Week 1" as days 0-6.
+            // Week 1 starts on that Base Monday
             const weekNum = Math.floor(diffDays / 7) + 1;
 
-            // Calculate start/end of this relative week
+            // Calculate start/end of this aligned week
             const weekStart = new Date(start);
             weekStart.setDate(start.getDate() + (weekNum - 1) * 7);
             const weekEnd = new Date(weekStart);
@@ -265,12 +271,12 @@ export const TimesheetWidget: React.FC = () => {
 
             return {
                 week: weekNum,
-                year: weekStart.getFullYear(), // Just for grouping key mostly
-                label: `Semaine ${weekNum} `,
+                year: weekStart.getFullYear(),
+                label: `Semaine ${weekNum}`,
                 startDate: weekStart,
                 endDate: weekEnd,
                 isRelative: true,
-                key: `S${weekNum} ` // Simple key
+                key: `S${weekNum}`
             };
         }
 
@@ -726,12 +732,12 @@ export const TimesheetWidget: React.FC = () => {
 
                                 {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
                                 {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
-                                    <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 flex justify-between items-center gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Coins className="h-4 w-4 text-emerald-400" />
-                                            <span className="text-slate-400 text-xs font-bold uppercase">Estim. Brut (Jour) :</span>
-                                        </div>
-                                        <div className="text-right">
+                                    <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 flex flex-col gap-2">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <Coins className="h-4 w-4 text-emerald-400" />
+                                                <span className="text-slate-400 text-xs font-bold uppercase">Estim. Brut (Jour) :</span>
+                                            </div>
                                             <span className="text-emerald-400 font-bold text-lg">
                                                 {(() => {
                                                     const hours = calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration);
@@ -745,6 +751,11 @@ export const TimesheetWidget: React.FC = () => {
                                                     // @ts-ignore
                                                     const job = availableJobs.find(j => j.title === jobTitle) || availableJobs[0];
 
+                                                    // Daily Estimation Context
+                                                    const d = new Date(date);
+                                                    const isSunday = d.getDay() === 0;
+                                                    const isHoliday = isFrenchPublicHoliday(d);
+
                                                     const est = calculateEstimatedSalary({
                                                         job,
                                                         hoursWorked: hours,
@@ -752,14 +763,33 @@ export const TimesheetWidget: React.FC = () => {
                                                         travelHoursInside: travelHoursInside || 0,
                                                         travelHoursOutside: travelHoursOutside || 0,
                                                         isContinuousDay: isContinuousDay,
-                                                        convention: project.convention
+                                                        convention: project.convention,
+                                                        isSunday,
+                                                        isHoliday
                                                     });
-                                                    return `${est.grossAmount.toFixed(2)} €`;
+
+                                                    // Net Calculation
+                                                    const gross = est.grossAmount;
+                                                    // Approx Social Charges for Intermittents (~23% -> Multiplier 0.77)
+                                                    const netImposable = gross * 0.77;
+                                                    // Apply Source Tax Rate (PAS)
+                                                    const taxRate = userProfileData.taxRate || 0;
+                                                    const netPayer = netImposable * (1 - (taxRate / 100));
+
+                                                    return (
+                                                        <div className="text-right">
+                                                            <div>{gross.toFixed(2)} € <span className="text-[10px] text-slate-500 font-normal opacity-70">BRUT</span></div>
+                                                            <div className="text-emerald-300 transform scale-110 origin-right transition-transform">
+                                                                {netPayer.toFixed(2)} € <span className="text-[10px] opacity-70">NET ESTIMÉ</span>
+                                                            </div>
+                                                            {taxRate > 0 && <div className="text-[9px] text-slate-500">Taux PAS: {taxRate}%</div>}
+                                                        </div>
+                                                    );
                                                 })()}
                                             </span>
-                                            <div className="text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">
-                                                {project.convention || 'Convention USPA'}
-                                            </div>
+                                        </div>
+                                        <div className="text-right text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">
+                                            {project.convention || 'Convention USPA'}
                                         </div>
                                     </div>
                                 )}
@@ -772,11 +802,67 @@ export const TimesheetWidget: React.FC = () => {
                         {weeklyData.length > 0 ? weeklyData.map(([weekKey, data]) => (
                             <div key={weekKey} className="bg-cinema-800 text-slate-200 rounded-xl overflow-hidden border border-cinema-700 shadow-xl">
                                 {/* Header */}
-                                <div className="bg-cinema-900/50 px-6 py-4 flex justify-between items-end border-b border-cinema-700">
-                                    <div>
+                                <div className="bg-cinema-900/50 px-6 py-4 flex flex-col md:flex-row justify-between items-end md:items-center border-b border-cinema-700 gap-4">
+                                    <div className="flex-1">
                                         <h3 className="font-bold text-xl text-white uppercase tracking-tight">{data.label}</h3>
+                                        {/* Weekly Salary Estimation */}
+                                        {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
+                                            <div className="mt-2 text-sm flex flex-wrap gap-4 items-center">
+                                                {(() => {
+                                                    let totalGross = 0;
+                                                    data.logs.forEach(log => {
+                                                        // Calculate Hours for this log
+                                                        // We need to re-parse because stored logs might only have raw times
+                                                        // But wait, log has 'effectiveHours' if saved recently?
+                                                        // Ideally we use helper. But log data structure is strictly TimeLog.
+                                                        // TimeLog doesn't store computed Gross. We must recalc.
+
+                                                        const hours = calculateHours(
+                                                            log.callTime,
+                                                            log.mealTime,
+                                                            log.endTime,
+                                                            log.hasShortenedMeal,
+                                                            log.isContinuousDay || false,
+                                                            log.breakDuration || 0
+                                                        );
+
+                                                        if (hours > 0) {
+                                                            // Try to find job
+                                                            // @ts-ignore
+                                                            const jobTitle = log.userRole || userProfileData.role || user?.role || 'Régisseur Général';
+                                                            // @ts-ignore
+                                                            const job = availableJobs.find(j => j.title === jobTitle) || availableJobs[0];
+
+                                                            const logDate = new Date(log.date);
+                                                            const isSunday = logDate.getDay() === 0;
+                                                            totalGross += est.grossAmount;
+                                                        }
+                                                    });
+
+                                                    const taxRate = userProfileData.taxRate || 0;
+                                                    const totalNet = (totalGross * 0.77) * (1 - (taxRate / 100));
+
+                                                    return (
+                                                        <>
+                                                            <div className="flex items-center gap-1.5 bg-emerald-900/30 px-2 py-1 rounded border border-emerald-500/30">
+                                                                <Coins className="h-3.5 w-3.5 text-emerald-400" />
+                                                                <span className="text-emerald-300 font-bold">{totalGross.toFixed(2)} €</span>
+                                                                <span className="text-[10px] text-emerald-500 uppercase font-medium">Est. Brut</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 bg-blue-900/30 px-2 py-1 rounded border border-blue-500/30">
+                                                                <span className="text-blue-300 font-bold">{totalNet.toFixed(2)} €</span>
+                                                                <span className="text-[10px] text-blue-500 uppercase font-medium">Est. Net</span>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-500 italic max-w-[200px] leading-tight hidden xl:inline-block">
+                                                                (Estimation indicative, non contractuelle)
+                                                            </span>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right flex flex-col items-end">
                                         <div className="text-xs text-slate-500 uppercase font-bold">Total Hebdo</div>
                                         <div className="text-2xl font-black text-white leading-none">{formatHours(data.totalHours)}</div>
                                         <button
