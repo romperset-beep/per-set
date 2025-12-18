@@ -22,7 +22,7 @@ export const BuyBackMarketplace: React.FC = () => {
     const totalSold = buyBackItems.filter(i => i.status === 'SOLD').length;
     const totalRevenue = buyBackItems
         .filter(i => i.status === 'RESERVED' || i.status === 'SOLD')
-        .reduce((acc, item) => acc + item.price, 0);
+        .reduce((acc, item) => acc + (item.price > 0 ? item.price : 0), 0);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -149,7 +149,9 @@ export const BuyBackMarketplace: React.FC = () => {
                                 <div>
                                     <div className="flex justify-between items-start gap-2">
                                         <h3 className="text-lg font-bold text-white leading-tight">{item.name}</h3>
-                                        <div className="text-xl font-bold text-yellow-400 whitespace-nowrap">{item.price} €</div>
+                                        <div className={`text-xl font-bold whitespace-nowrap ${item.price < 0 ? 'text-slate-400 text-sm mt-1' : 'text-yellow-400'}`}>
+                                            {item.price >= 0 ? `${item.price} €` : 'Prix à définir'}
+                                        </div>
                                     </div>
                                     {item.originalPrice && (
                                         <p className="text-xs text-slate-500 line-through">Prix d'achat : {item.originalPrice} €</p>

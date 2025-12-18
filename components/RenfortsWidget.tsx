@@ -155,9 +155,16 @@ export const RenfortsWidget: React.FC = () => {
     const [newName, setNewName] = useState('');
     const [newPhone, setNewPhone] = useState('');
     const [newEmail, setNewEmail] = useState('');
+    const [newRole, setNewRole] = useState(''); // Added
     const [addingToDate, setAddingToDate] = useState<string | null>(null);
 
     const getReinforcements = (dateStr: string, dept: string) => {
+        // Global Visibility Logic:
+        // - PRODUCTION sees everything (targetDept determines what is shown)
+        // - Others see ONLY their department
+        if (user?.department !== 'PRODUCTION' && dept !== user?.department) {
+            return [];
+        }
         return (project.reinforcements || []).filter(r => r.date === dateStr && r.department === dept);
     };
 
@@ -173,7 +180,8 @@ export const RenfortsWidget: React.FC = () => {
             id: `staff_${Date.now()} `,
             name: newName.trim(),
             phone: newPhone.trim(),
-            email: newEmail.trim()
+            email: newEmail.trim(),
+            role: newRole.trim() // Added
         };
 
         if (existing) {
@@ -200,7 +208,7 @@ export const RenfortsWidget: React.FC = () => {
                 'PRODUCTION'
             );
         }
-        setNewName(''); setNewPhone(''); setNewEmail(''); setAddingToDate(null);
+        setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setAddingToDate(null);
     };
 
     const handleRemoveReinforcement = async (dateStr: string, dept: string, staffId: string) => {
@@ -222,10 +230,15 @@ export const RenfortsWidget: React.FC = () => {
 
     // --- CSV EXPORT (Global) ---
     const downloadReinforcementsCSV = () => {
-        const reinforcements = project.reinforcements || [];
+        let reinforcements = project.reinforcements || [];
+
+        // Strict Filter for CSV as well
+        if (user?.department !== 'PRODUCTION') {
+            reinforcements = reinforcements.filter(r => r.department === user?.department);
+        }
+
         if (reinforcements.length === 0) return alert("Aucun renfort à exporter.");
 
-        // 1. Flatten Data
         // 1. Flatten Data
         const rows: any[] = [];
         reinforcements.forEach(r => {
@@ -240,6 +253,7 @@ export const RenfortsWidget: React.FC = () => {
                     date: r.date,
                     dept: r.department,
                     name: s.name,
+                    role: s.role || '', // Added
                     phone: s.phone || '',
                     email: s.email || ''
                 });
@@ -254,7 +268,7 @@ export const RenfortsWidget: React.FC = () => {
         });
 
         // 3. Build CSV
-        const header = ['Semaine', 'Date', 'Département', 'Nom', 'Téléphone', 'Email'];
+        const header = ['Semaine', 'Date', 'Département', 'Nom', 'Poste', 'Téléphone', 'Email'];
         const csvContent = [
             header.join(','),
             ...rows.map(row => [
@@ -262,6 +276,7 @@ export const RenfortsWidget: React.FC = () => {
                 row.date,
                 row.dept,
                 `"${row.name}"`, // Quote names to be safe
+                `"${row.role}"`,
                 `"${row.phone}"`,
                 `"${row.email}"`
             ].join(','))
@@ -422,7 +437,10 @@ export const RenfortsWidget: React.FC = () => {
                                                                                                 >
                                                                                                     <div className="flex items-center gap-3 min-w-0">
                                                                                                         <User className="h-4 w-4 text-indigo-300 shrink-0" />
-                                                                                                        <span className="font-semibold text-white truncate">{s.name}</span>
+                                                                                                        <div className="flex flex-col min-w-0">
+                                                                                                            <span className="font-semibold text-white truncate">{s.name}</span>
+                                                                                                            {s.role && <span className="text-xs text-slate-400 truncate">{s.role}</span>}
+                                                                                                        </div>
                                                                                                     </div>
                                                                                                     <button
                                                                                                         onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
@@ -472,6 +490,11 @@ export const RenfortsWidget: React.FC = () => {
                             </div>
 
                             <div className="space-y-4">
+                                {viewingStaff.role && (
+                                    <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-300 font-medium text-center">
+                                        {viewingStaff.role}
+                                    </div>
+                                )}
                                 <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
                                     {viewingStaff.phone ? (
                                         <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
@@ -595,7 +618,10 @@ export const RenfortsWidget: React.FC = () => {
                                                         onClick={() => setViewingStaff(s)}
                                                         className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group"
                                                     >
-                                                        <div className="text-sm text-white font-bold truncate pr-2">{s.name}</div>
+                                                        <div className="flex flex-col min-w-0 pr-2">
+                                                            <div className="text-sm text-white font-bold truncate">{s.name}</div>
+                                                            {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
+                                                        </div>
 
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
@@ -654,6 +680,12 @@ export const RenfortsWidget: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
+                            {viewingStaff.role && (
+                                <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-300 font-medium text-center">
+                                    {viewingStaff.role}
+                                </div>
+                            )}
+
                             <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
                                 {viewingStaff.phone ? (
                                     <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
@@ -736,6 +768,19 @@ export const RenfortsWidget: React.FC = () => {
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Poste</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Électricien, Assistant..."
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                        value={newRole}
+                                        onChange={e => setNewRole(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-300">Téléphone</label>
@@ -771,7 +816,7 @@ export const RenfortsWidget: React.FC = () => {
 
                         <div className="flex gap-3 justify-end pt-2">
                             <button
-                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
+                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); }}
                                 className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
                             >
                                 Annuler

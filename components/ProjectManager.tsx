@@ -41,7 +41,7 @@ const InventoryWidget = ({ onClick }: { onClick: () => void }) => {
 
     return (
         <button onClick={onClick} className="w-full h-full bg-gradient-to-br from-eco-600 to-eco-800 p-6 rounded-xl text-white shadow-lg text-left hover:scale-[1.02] transition-transform">
-            <h3 className="text-lg font-semibold opacity-90">Mon Stock {currentDept !== 'PRODUCTION' && `(${currentDept})`}</h3>
+            <h3 className="text-lg font-semibold opacity-90">Consommables {currentDept !== 'PRODUCTION' && `(${currentDept})`}</h3>
             <p className="text-4xl font-bold mt-2">
                 {filteredItems.filter(i => i.purchased && (!i.surplusAction || i.surplusAction === SurplusAction.NONE) && i.quantityCurrent > 0).length} <span className="text-lg opacity-50 font-normal">articles</span>
             </p>
@@ -90,7 +90,7 @@ const HoursWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Les Heures</h3>
+                <h3 className="text-lg font-semibold opacity-70">Heures Jours/Semaines</h3>
                 <Clock className="h-6 w-6 text-blue-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="mt-2"><p className="text-4xl font-bold text-blue-400">{formatted}</p></div>
@@ -171,7 +171,7 @@ const CateringWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Cantine</h3>
+                <h3 className="text-lg font-semibold opacity-70">Feuille Cantine</h3>
                 <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-4xl font-bold mt-2 text-orange-400">{todayCount}</p>
@@ -203,7 +203,7 @@ const TeamWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Équipe</h3>
+                <h3 className="text-lg font-semibold opacity-70">Bible Équipe Technique</h3>
                 <Users className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-4xl font-bold mt-2 text-green-400">{userProfiles?.length || 0}</p>
@@ -217,7 +217,7 @@ const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">À Racheter</h3>
+                <h3 className="text-lg font-semibold opacity-70">Ventes de la Production</h3>
                 <ShoppingBag className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-4xl font-bold mt-2 text-yellow-400">{buyBackItems?.filter(i => i.status === 'AVAILABLE').length || 0}</p>

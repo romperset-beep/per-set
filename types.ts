@@ -94,6 +94,7 @@ export interface ReinforcementDetail {
   name: string;
   phone?: string;
   email?: string;
+  role?: string; // Poste / Fonction
 }
 
 export interface Reinforcement {
@@ -143,6 +144,8 @@ export interface TimeLog {
   effectiveHours?: number; // Heures effectives (Amplitude - Repas/Pause)
   nightHours22_24?: number; // Heures Nuit 22h-24h
   nightHours00_06?: number; // Heures Nuit 00h-06h
+  nightHours50?: number; // Majoration 50% (Hiver: 8 prem. h entre 20h-6h / Été: 22h-6h)
+  nightHours100?: number; // Majoration 100% (Au-delà)
 }
 
 export interface CarbonContext {

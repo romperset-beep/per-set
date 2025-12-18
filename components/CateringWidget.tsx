@@ -14,7 +14,20 @@ export const CateringWidget: React.FC = () => {
     const [guestDiet, setGuestDiet] = useState<string>('');
 
     const isProduction = currentDept === 'PRODUCTION';
-    const isRegie = currentDept === Department.REGIE || isProduction; // Prod can also edit if needed, or just view
+    const isRegie = currentDept === Department.REGIE || currentDept === 'Régie' || currentDept === 'REGIE' || isProduction;
+
+    // Security Check
+    if (!isRegie && !isProduction) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center h-full">
+                <div className="bg-red-500/10 p-4 rounded-full mb-4">
+                    <Utensils className="h-12 w-12 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Accès Restreint</h2>
+                <p className="text-slate-400">La feuille de cantine est réservée à la Régie et à la Production.</p>
+            </div>
+        );
+    }
 
     // Get logs for selected date
     const dailyLogs = useMemo(() => {

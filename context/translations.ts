@@ -14,15 +14,15 @@ export const TRANSLATIONS = {
 
         // Sidebar
         'sidebar.dashboard': 'Tableau de Bord',
-        'sidebar.inventory': 'Mon Stock',
+        'sidebar.inventory': 'Consommables',
         'sidebar.marketplace': "Zone de Revente",
         'sidebar.donations': 'Économie Circulaire',
         'sidebar.globalStock': 'Stock Global',
         'sidebar.circular': 'Économie Circulaire', // Legacy
         'sidebar.expenses': 'Notes de Frais',
-        'sidebar.buyback': 'À Racheter',
+        'sidebar.buyback': 'Ventes de la Production',
         'sidebar.social': 'Mur Social',
-        'sidebar.team': 'Équipe',
+        'sidebar.team': 'Bible Équipe Technique',
         'sidebar.report': 'Rapport RSE',
         'sidebar.profile': 'Mon Profil',
         'sidebar.logout': 'Déconnexion',

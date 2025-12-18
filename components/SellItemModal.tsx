@@ -15,6 +15,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
     const [originalPrice, setOriginalPrice] = useState('');
     const [description, setDescription] = useState('');
     const [photo, setPhoto] = useState<string | null>(null);
+    const [isPriceTBD, setIsPriceTBD] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (!isOpen) return null;
@@ -32,12 +33,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !price) return;
+        if (!name || (!price && !isPriceTBD)) return;
 
         const newItem: BuyBackItem = {
             id: `buyback_${Date.now()}`,
             name,
-            price: parseFloat(price),
+            price: isPriceTBD ? -1 : parseFloat(price),
             originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
             description,
             photo: photo || undefined,
@@ -56,6 +57,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
         setOriginalPrice('');
         setDescription('');
         setPhoto(null);
+        setIsPriceTBD(false);
     };
 
     return (
@@ -116,8 +118,22 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
                     {/* Prices */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Prix de vente (€)</label>
-                            <div className="relative">
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">Prix de vente (€)</label>
+                                <label className="flex items-center gap-1 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isPriceTBD}
+                                        onChange={(e) => {
+                                            setIsPriceTBD(e.target.checked);
+                                            if (e.target.checked) setPrice('');
+                                        }}
+                                        className="rounded bg-cinema-800 border-cinema-700 text-yellow-500 focus:ring-0 w-3 h-3"
+                                    />
+                                    <span className="text-[10px] text-slate-400">À définir</span>
+                                </label>
+                            </div>
+                            <div className={`relative ${isPriceTBD ? 'opacity-50' : ''}`}>
                                 <Euro className="absolute left-3 top-3 h-5 w-5 text-slate-500" />
                                 <input
                                     type="number"
@@ -125,9 +141,10 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
                                     step="0.01"
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
-                                    className="w-full bg-cinema-800 border border-cinema-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none placeholder-slate-600"
-                                    placeholder="0.00"
-                                    required
+                                    disabled={isPriceTBD}
+                                    className="w-full bg-cinema-800 border border-cinema-700 rounded-lg pl-10 pr-4 py-3 text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none placeholder-slate-600 disabled:cursor-not-allowed"
+                                    placeholder={isPriceTBD ? "Prix à définir" : "0.00"}
+                                    required={!isPriceTBD}
                                 />
                             </div>
                         </div>
@@ -171,7 +188,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
                         </button>
                         <button
                             type="submit"
-                            disabled={!name || !price}
+                            disabled={!name || (!price && !isPriceTBD)}
                             className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-2 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-yellow-500/20 flex items-center gap-2"
                         >
                             <Tag className="h-4 w-4" />

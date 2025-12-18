@@ -75,6 +75,7 @@ export const TimesheetWidget: React.FC = () => {
         }
 
         const details = calculateShiftDetails({
+            date,
             start,
             end,
             mealDuration
@@ -100,6 +101,7 @@ export const TimesheetWidget: React.FC = () => {
         }
 
         return calculateShiftDetails({
+            date,
             start: callTime,
             end: endTime,
             mealDuration
@@ -145,7 +147,9 @@ export const TimesheetWidget: React.FC = () => {
             // New Detailed Fields
             effectiveHours: breakdown?.effectiveHours,
             nightHours22_24: breakdown?.nightHours22_24,
-            nightHours00_06: breakdown?.nightHours00_06
+            nightHours00_06: breakdown?.nightHours00_06,
+            nightHours50: breakdown?.nightHours50,
+            nightHours100: breakdown?.nightHours100
         };
 
         // Remove existing log for same day/user if any, then add new
@@ -350,7 +354,7 @@ export const TimesheetWidget: React.FC = () => {
                 }));
             }
 
-            const headers = ['Date', 'Nom', 'Prénom', 'Fonction', 'Département', 'Début', 'Fin', 'Repas', 'Pause (min)', 'Ampli (h)', 'Eff. (h)', 'Nuit 22-24', 'Nuit 00-06', 'Note', 'Total Validé'];
+            const headers = ['Date', 'Nom', 'Prénom', 'Fonction', 'Département', 'Début', 'Fin', 'Repas', 'Pause (min)', 'Ampli (h)', 'Eff. (h)', 'Nuit 50%', 'Nuit 100%', 'Note', 'Total Validé'];
             const rows = logs.map(log => {
                 const profile = profileMap[log.userId];
                 const lastName = log.userLastName || profile?.lastName || log.userName.split(' ').slice(1).join(' ');
@@ -359,9 +363,22 @@ export const TimesheetWidget: React.FC = () => {
                 const dateFormatted = formatDateFR(log.date);
 
                 // Calculate or use stored values
-                const ampli = log.totalHours + (log.breakDuration ? log.breakDuration / 60 : 0) + (log.mealTime ? (log.hasShortenedMeal ? 0.5 : 1) : 0);
-                // Note: Amplitude is rough estimation if not stored, but acceptable for display. 
-                // Better: Use log.effectiveHours if available (new logs), else log.totalHours.
+                const mealDur = (log.mealTime ? (log.hasShortenedMeal ? 0.5 : 1) : 0) + ((log.breakDuration || 0) / 60);
+                const ampli = log.totalHours + mealDur;
+
+                // Backfill Night Hours if missing (Legacy logs)
+                let n50 = log.nightHours50;
+                let n100 = log.nightHours100;
+                if (n50 === undefined && n100 === undefined) {
+                    const bd = calculateShiftDetails({
+                        date: log.date,
+                        start: log.callTime,
+                        end: log.endTime,
+                        mealDuration: mealDur
+                    });
+                    n50 = bd.nightHours50;
+                    n100 = bd.nightHours100;
+                }
 
                 return [
                     dateFormatted,
@@ -374,10 +391,10 @@ export const TimesheetWidget: React.FC = () => {
                     log.mealTime || '',
                     log.breakDuration || 0,
                     // New Columns
-                    formatHours(ampli || log.totalHours), // Approx Amplitude
+                    formatHours(ampli), // Approx Amplitude
                     formatHours(log.effectiveHours || log.totalHours),
-                    formatHours(log.nightHours22_24 || 0),
-                    formatHours(log.nightHours00_06 || 0),
+                    formatHours(n50 || 0),
+                    formatHours(n100 || 0),
                     `"${(log.note || '').replace(/"/g, '""')}"`,
                     formatHours(log.totalHours)
                 ];
@@ -634,12 +651,12 @@ export const TimesheetWidget: React.FC = () => {
                                 {/* Dynamic Night Hours Feedback */}
                                 {(() => {
                                     const bd = getShiftBreakdown();
-                                    if (bd && (bd.nightHours22_24 > 0 || bd.nightHours00_06 > 0)) {
+                                    if (bd && (bd.nightHours50 > 0 || bd.nightHours100 > 0)) {
                                         return (
                                             <div className="col-span-full bg-purple-900/20 px-4 py-2 rounded-lg border border-purple-500/30 flex gap-4 text-xs font-bold text-purple-300">
                                                 <span>Heures Nuit :</span>
-                                                {bd.nightHours22_24 > 0 && <span>22h-24h : {bd.nightHours22_24}h</span>}
-                                                {bd.nightHours00_06 > 0 && <span>00h-06h : {bd.nightHours00_06}h</span>}
+                                                {bd.nightHours50 > 0 && <span>Maj. 50% : {bd.nightHours50}h</span>}
+                                                {bd.nightHours100 > 0 && <span>Maj. 100% : {bd.nightHours100}h</span>}
                                             </div>
                                         );
                                     }

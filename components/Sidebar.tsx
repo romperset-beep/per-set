@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Quotidien',
       items: [
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
-        { id: 'timesheet', label: 'Les Heures', icon: Clock, allowedDepts: 'ALL' },
+        { id: 'timesheet', label: 'Heures Jours/Semaines', icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
         { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' }, // Added
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'PRODUCTION'] },

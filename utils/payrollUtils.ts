@@ -293,6 +293,7 @@ export const getAvailableJobs = (convention: string | undefined): any[] => {
 };
 
 export interface TimeEntry {
+    date: string; // YYYY-MM-DD - REQUIRED for seasonal calculation
     start: string; // HH:mm
     end: string;   // HH:mm
     mealDuration: number; // in hours (e.g. 1.0)
@@ -301,10 +302,12 @@ export interface TimeEntry {
 export interface ShiftResult {
     amplitude: number;
     effectiveHours: number;
-    nightHours22_24: number;
-    nightHours00_06: number;
-    nightHours20_22: number; // Keeping 20-22 separate just in case
-    sundayHours: number; // Placeholder
+    nightHours22_24: number; // Legacy
+    nightHours00_06: number; // Legacy
+    nightHours20_22: number; // Legacy
+    nightHours50: number;    // Majorated 50%
+    nightHours100: number;   // Majorated 100%
+    sundayHours: number;
 }
 
 // Helper to parse time string "HH:mm" to decimal hours
@@ -314,11 +317,28 @@ const timeToDecimal = (t: string): number => {
     return h + (m / 60);
 };
 
+const isWinter = (dateStr: string): boolean => {
+    // Winter: Oct 1 - March 31
+    // Summer: April 1 - Sept 30
+    if (!dateStr) return false; // Default to Summer or handle error? Defaulting to false (Summer)
+    const date = new Date(dateStr);
+    const month = date.getMonth(); // 0-11. Jan=0, Oct=9
+    const day = date.getDate();
+
+    // Oct (9) to Dec (11) OR Jan (0) to March (2)
+    if (month >= 9 || month <= 2) {
+        // Edge cases: Starts Oct 1 (included), Ends March 31 (included)
+        // Logic covers full months 9,10,11,0,1,2 which is Oct,Nov,Dec,Jan,Feb,Mar. Correct.
+        return true;
+    }
+    return false;
+};
+
 export const calculateShiftDetails = (entry: TimeEntry): ShiftResult => {
     let start = timeToDecimal(entry.start);
     let end = timeToDecimal(entry.end);
 
-    // Handle overnight (e.g. 16:00 to 02:40 -> end becomes 26.66)
+    // Handle overnight
     if (end < start) {
         end += 24;
     }
@@ -326,42 +346,74 @@ export const calculateShiftDetails = (entry: TimeEntry): ShiftResult => {
     const amplitude = end - start;
     const effectiveHours = Math.max(0, amplitude - entry.mealDuration);
 
-    // Night Hours Logic relative to Start Day (0h-24h) and Next Day (24h-30h+)
+    // Seasonal Night Logic
+    // Winter: 20h - 06h
+    // Summer: 22h - 06h
+    const _isWinter = isWinter(entry.date);
 
-    // Bounds
-    const night20_22_start = 20;
-    const night20_22_end = 22;
-    const night22_24_start = 22;
-    const night22_24_end = 24;
-    const night00_06_start = 0;
-    const night00_06_end = 6;
-    const next_night00_06_start = 24;
-    const next_night00_06_end = 30; // 06:00 next day
+    const nightStart = _isWinter ? 20 : 22;
+    const nightEnd = 6; // 06:00
+    const nextNightStart = nightStart + 24; // e.g. 44 (20+24) or 46 (22+24)
+    const nextNightEnd = nightEnd + 24; // 30
 
-    let n20_22 = 0;
-    let n22_24 = 0;
-    let n00_06 = 0;
+    // Calculate overlap with Night Window
+    // Window 1: Day 1 Night (e.g. 20h-24h or 22h-24h AND 00h-06h overlap if shift started previous day? No assuming start is Day 0)
+    // We treat shift start as 0..24+ ranges.
+    // Relevant windows:
+    // A) 00h - 06h (If shift started very early? Unlikely context, standard is start limits)
+    // B) NightStart - 24h
+    // C) 24h - NextNightEnd (which is 00h - 06h next day)
 
     const getOverlap = (s1: number, e1: number, s2: number, e2: number) => {
         return Math.max(0, Math.min(e1, e2) - Math.max(s1, s2));
     };
 
-    // 1. Morning Day 1
-    n00_06 += getOverlap(start, end, night00_06_start, night00_06_end);
+    let totalNight = 0;
 
-    // 2. Evening Day 1
-    n20_22 += getOverlap(start, end, night20_22_start, night20_22_end);
-    n22_24 += getOverlap(start, end, night22_24_start, night22_24_end);
+    // 1. Check overlap with 00h-06h (Early morning start)
+    totalNight += getOverlap(start, end, 0, nightEnd);
 
-    // 3. Morning Day 2
-    n00_06 += getOverlap(start, end, next_night00_06_start, next_night00_06_end);
+    // 2. Check overlap with NightStart - 24h
+    totalNight += getOverlap(start, end, nightStart, 24);
+
+    // 3. Check overlap with 24h - NextNightEnd (Next day morning)
+    totalNight += getOverlap(start, end, 24, nextNightEnd);
+
+    // Also check NextNightStart+ if really long shift? (rare > 24h amplitude)
+    // Usually ends before next evening.
+
+    // Split 50% / 100%
+    // Rule: "Majoration de 50% pour les 8 premières heures... 100% au-delà."
+
+    // Apply deduction for meal break? 
+    // Usually meal break is taken out of "working hours". 
+    // If meal is during night, we assume it's deducted from night hours? 
+    // Simple approach: Night Hours = Overlap. 
+    // If we want Effective Night Hours, we might need to know WHEN break was.
+    // For now, allow simplification: Net Night = Total Night - (Meal Duration if Full Night? Or Pro-rated?)
+    // Given the prompt "calculate effective working hours" previously, usually night hours are paid hours.
+    // Let's assume Valid Night Hours = Total Overlap. (Meal break often uncompounded or specific).
+    // Safest: Use Total Overlap.
+
+    // BUT effectiveHours removes meal. If meal was during day, Night should be full.
+    // If meal was during night, Night should be reduced.
+    // Without specific meal time, we can't be 100% sure.
+    // However, usually we prioritize the employee. 
+    // Let's keep Total Overlap for now as "Night Hours Worked" (assuming meal is taken outside or ignored for premium cap).
+
+    const night50 = Math.min(totalNight, 8);
+    const night100 = Math.max(0, totalNight - 8);
 
     return {
         amplitude: Number(amplitude.toFixed(2)),
         effectiveHours: Number(effectiveHours.toFixed(2)),
-        nightHours20_22: Number(n20_22.toFixed(2)),
-        nightHours22_24: Number(n22_24.toFixed(2)),
-        nightHours00_06: Number(n00_06.toFixed(2)),
+        // Legacy/Compat
+        nightHours22_24: 0,
+        nightHours00_06: 0,
+        nightHours20_22: 0,
+        // New
+        nightHours50: Number(night50.toFixed(2)),
+        nightHours100: Number(night100.toFixed(2)),
         sundayHours: 0
     };
 };
