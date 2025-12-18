@@ -61,6 +61,31 @@ export const TimesheetWidget: React.FC = () => {
         fetchProfile();
     }, [user]);
 
+    // Auto-Toggle Continuous Day
+    useEffect(() => {
+        if (!callTime || !endTime) return;
+
+        const parse = (t: string) => {
+            const [h, m] = t.split(':').map(Number);
+            return h + (m / 60);
+        };
+
+        let start = parse(callTime);
+        let end = parse(endTime);
+        if (end < start) end += 24;
+
+        const amplitude = end - start;
+
+        // Rule: If work >= 6h WITHOUT interruption (no meal, no break) -> Continuous Day
+        if (amplitude >= 6 && !mealTime && (!breakDuration || breakDuration === 0)) {
+            setIsContinuousDay(true);
+        } else {
+            // Implicit: If condition fails (e.g. user adds a meal), we uncheck it.
+            // This enforces the rule "Continuous Day = No Break".
+            setIsContinuousDay(false);
+        }
+    }, [callTime, endTime, mealTime, breakDuration]);
+
     // Calculate hours helper (Legacy wrapper or Direct use)
     const calculateHours = (start: string, meal: string, end: string, shortMeal: boolean, continuous: boolean, pause: number) => {
         if (!start || !end) return 0;
