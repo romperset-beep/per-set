@@ -62,7 +62,8 @@ export const RenfortsWidget: React.FC = () => {
             return {
                 week: weekNum,
                 label: `Semaine ${weekNum} (${weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} - ${weekEnd.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })})`,
-                key: `S${weekNum}`
+                key: `S${weekNum}`,
+                start: weekStart // Return start date
             };
         }
 
@@ -84,12 +85,13 @@ export const RenfortsWidget: React.FC = () => {
         return {
             week: weekNo,
             label: `Semaine ${weekNo} (${monday.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} - ${sunday.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })})`,
-            key: `${d.getUTCFullYear()}-${weekNo}`
+            key: `${d.getUTCFullYear()}-${weekNo}`,
+            start: monday // Return start date
         };
     };
 
     const groupedByWeek = useMemo(() => {
-        const groups: Record<string, { label: string, count: number, days: string[] }> = {};
+        const groups: Record<string, { label: string, count: number, days: string[], start: Date }> = {};
 
         // Find range of existing reinforcements
         const allDates = (project.reinforcements || []).map(r => r.date).sort();
@@ -98,13 +100,14 @@ export const RenfortsWidget: React.FC = () => {
         // Populate weeks
         (project.reinforcements || []).forEach(r => {
             const d = new Date(r.date);
-            const { key, label } = getWeekInfo(d);
+            const { key, label, start } = getWeekInfo(d);
 
             if (!groups[key]) {
                 groups[key] = {
                     label,
                     count: 0,
-                    days: []
+                    days: [],
+                    start // Store start date
                 };
             }
             const staffCount = getStaffList(r).length;
@@ -223,14 +226,18 @@ export const RenfortsWidget: React.FC = () => {
         if (reinforcements.length === 0) return alert("Aucun renfort à exporter.");
 
         // 1. Flatten Data
+        // 1. Flatten Data
         const rows: any[] = [];
         reinforcements.forEach(r => {
-            const { week, year } = getISOWeek(new Date(r.date));
+            const d = new Date(r.date);
+            const info = getWeekInfo(d);
             const staff = getStaffList(r);
             staff.forEach(s => {
                 rows.push({
-                    week: `${year}-W${week}`,
-                    date: r.date, // Formatted later or raw
+                    weekLabel: info.label,
+                    weekKey: info.key, // for debug/grouping
+                    weekStart: info.start.getTime(), // For sorting!
+                    date: r.date,
                     dept: r.department,
                     name: s.name,
                     phone: s.phone || '',
@@ -239,9 +246,9 @@ export const RenfortsWidget: React.FC = () => {
             });
         });
 
-        // 2. Sort: Week DESC > Date ASC > Dept ASC
+        // 2. Sort: Week Start DESC (Recent first) > Date ASC > Dept ASC
         rows.sort((a, b) => {
-            if (a.week !== b.week) return b.week.localeCompare(a.week);
+            if (a.weekStart !== b.weekStart) return b.weekStart - a.weekStart;
             if (a.date !== b.date) return a.date.localeCompare(b.date);
             return a.dept.localeCompare(b.dept);
         });
@@ -251,7 +258,7 @@ export const RenfortsWidget: React.FC = () => {
         const csvContent = [
             header.join(','),
             ...rows.map(row => [
-                row.week,
+                row.weekLabel,
                 row.date,
                 row.dept,
                 `"${row.name}"`, // Quote names to be safe
