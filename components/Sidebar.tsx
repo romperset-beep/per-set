@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Utensils,
   Clock,
-  Truck // Added
+  Truck, // Added
+  Globe // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -45,7 +46,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Matériel & RSE',
       items: [
         { id: 'inventory', label: t('sidebar.inventory'), icon: Package },
-        { id: 'marketplace', label: t('sidebar.marketplace'), icon: ShoppingBag },
+        // Inter-Production Marketplace (Production Only)
+        { id: 'inter_marketplace', label: 'Revente Inter-Productions', icon: Globe, allowedDepts: ['PRODUCTION', 'REGIE'] },
+        // Local Marketplace (All)
+        { id: 'local_marketplace', label: 'Revente Locale', icon: ShoppingBag, allowedDepts: 'ALL' },
         { id: 'donations', label: t('sidebar.donations'), icon: Recycle },
         { id: 'report', label: t('sidebar.report'), icon: FileText },
       ]
@@ -94,14 +98,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     // Standard Department Rules
     if (item.id === 'dashboard') return true;
     if (item.id === 'inventory') return true;
-    if (item.id === 'marketplace') return true;
+    if (item.id === 'local_marketplace') return true; // Everyone sees Local
+    if (item.id === 'inter_marketplace') return (currentDept === 'PRODUCTION' || currentDept === 'Régie'); // Only Prod/Regie see Inter-Prod
     if (item.id === 'donations') return true;
     if (item.id === 'expenses') return true;
     if (item.id === 'team') return true;
-    if (item.id === 'catering') return false; // Production/Regie only
+    if (item.id === 'catering') return false; // Production/Regie only // Handled by allowedDepts but explicit here too or rely on allowedDepts?
+    // Let's rely on filterItem logic below or fix lines above
 
     return false;
   };
+
+  // Re-evaluating filter logic to be more generic if possible, but keeping explicit overrides
+  // We should respect item.allowedDepts if present?
+  // The current code is a mix. Let's patch the specific Marketplace lines first.
 
   return (
     <>
@@ -143,7 +153,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
 
                     let badgeCount = 0;
                     if (item.id === 'inventory') badgeCount = unreadCount;
-                    if (item.id === 'marketplace') badgeCount = unreadMarketplaceCount;
+                    if (item.id === 'inter_marketplace') badgeCount = unreadMarketplaceCount; // Assume global badges go here? 
+                    // Or split? For now assign to global checks.
                     if (item.id === 'social') badgeCount = unreadSocialCount;
 
                     return (
@@ -151,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
                         key={item.id}
                         onClick={() => {
                           setActiveTab(item.id);
-                          if (item.id === 'marketplace') markMarketplaceAsRead();
+                          if (item.id === 'inter_marketplace') markMarketplaceAsRead();
                           if (item.id === 'social') markSocialAsRead();
                           if (onClose) onClose();
                         }}

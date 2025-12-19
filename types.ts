@@ -52,6 +52,7 @@ export interface ConsumableItem {
   purchased: boolean; // true if in stock, false if just a request/need
   isBought?: boolean; // true if purchased by production but not yet received by department
   price?: number; // Estimated cost in euros
+  originalPrice?: number; // Purchase price (for resale calculation)
   quantityStarted?: number; // Number of items currently opened/started
 }
 

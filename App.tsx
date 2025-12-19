@@ -179,8 +179,10 @@ const AppContent: React.FC = () => {
         return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
       case 'inventory':
         return <InventoryManager />;
-      case 'marketplace':
-        return <MarketplacePage />; // Updated to Global Marketplace
+      case 'inter_marketplace':
+        return <MarketplacePage />; // Global Inter-Production
+      case 'local_marketplace':
+        return <BuyBackMarketplace />; // Local Production Sell/Buy
       case 'donations':
         return <CircularEconomy />;
       case 'circular':
