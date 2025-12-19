@@ -297,9 +297,11 @@ export interface User {
   currentProjectId?: string; // Added for robust syncing
   projectHistory?: ProjectSummary[];
   dashboardOrder?: string[]; // Added for customizable dashboard
-  status?: 'pending' | 'approved' | 'rejected'; // Added
+  status?: 'pending' | 'approved' | 'rejected' | 'deleted'; // Added 'deleted' status
   isAdmin?: boolean; // Added
   hasAcceptedSaaSTerms?: boolean; // Added: Mandatory for Production
+  deletedAt?: string; // Added: ISO timestamp of deletion
+  originalEmail?: string; // Added: Original email before anonymization
 }
 
 export interface CallSheet {

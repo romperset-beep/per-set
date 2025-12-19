@@ -1571,13 +1571,51 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteUser = async (userId: string) => {
     try {
       console.log(`[ProjectContext] Deleting user: ${userId}`);
-      const userRef = doc(db, 'users', userId);
-      await deleteDoc(userRef);
-      console.log(`[ProjectContext] User deleted successfully`);
 
-      // Optionally clean up other references? For now, just the user doc.
-      // Note: Authentication user cannot be deleted from Client SDK without their credential.
-      // This only deletes the User Profile in Firestore.
+      // IMPORTANT: Firebase Client SDK cannot delete Auth users for security reasons.
+      // The Auth account will remain, but we mark the Firestore profile as deleted.
+      // 
+      // To fully delete the Auth account, you need to:
+      // 1. Use Firebase Console (Authentication > Users > Delete)
+      // 2. Install Firebase Extension "Delete User Data"
+      // 3. Create a Cloud Function with Admin SDK
+      //
+      // For now, we'll mark the user as deleted and anonymize their data
+
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        console.warn(`[ProjectContext] User ${userId} not found`);
+        return;
+      }
+
+      const userData = userSnap.data();
+      const originalEmail = userData.email;
+
+      // Mark as deleted and anonymize
+      await updateDoc(userRef, {
+        email: `deleted_${Date.now()}_${originalEmail}`, // Anonymize email to allow reuse
+        name: 'Utilisateur Supprimé',
+        status: 'deleted',
+        deletedAt: new Date().toISOString(),
+        originalEmail: originalEmail // Keep for audit trail
+      });
+
+      console.log(`[ProjectContext] User profile marked as deleted. Original email: ${originalEmail}`);
+      console.warn(`[ProjectContext] ⚠️ Firebase Auth account still exists. Manual deletion required in Firebase Console.`);
+
+      // Show alert to admin
+      alert(
+        `✅ Profil utilisateur supprimé.\n\n` +
+        `⚠️ IMPORTANT: Le compte Firebase Authentication existe toujours.\n\n` +
+        `Pour permettre la réutilisation de l'email "${originalEmail}", vous devez :\n` +
+        `1. Aller dans Firebase Console\n` +
+        `2. Authentication > Users\n` +
+        `3. Trouver et supprimer l'utilisateur "${originalEmail}"\n\n` +
+        `Ou installer l'extension Firebase "Delete User Data" pour automatiser cela.`
+      );
+
     } catch (err) {
       console.error("[ProjectContext] Error deleting user:", err);
       throw err;
