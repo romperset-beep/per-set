@@ -973,6 +973,30 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       console.log(`[deleteProject] Deleting project: ${projectId}`);
 
+      // DEEP CLEAN: Delete all subcollections explicitly
+      // Note: Firestore does not cascade delete. We must delete documents manually.
+      // We skip 'catalog' as it's a root collection, so it naturally remains.
+
+      const SUBCOLLECTIONS = [
+        'items',
+        'timeLogs',
+        'notifications',
+        'socialPosts',
+        'logistics',
+        'expenses',
+        'buyBackItems',
+        'callSheets'
+      ];
+
+      for (const subCol of SUBCOLLECTIONS) {
+        console.log(`[deleteProject] Cleaning subcollection: ${subCol}`);
+        const subRef = collection(db, 'projects', projectId, subCol);
+        const snap = await getDocs(subRef);
+
+        const deletePromises = snap.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+      }
+
       // 1. Delete Project Document
       const projectRef = doc(db, 'projects', projectId);
       await deleteDoc(projectRef);
