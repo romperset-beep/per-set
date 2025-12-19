@@ -22,6 +22,10 @@ export const MarketplacePage: React.FC = () => {
     const [activeContactItems, setActiveContactItems] = useState<MarketplaceItem[]>([]);
     const [contactQuantities, setContactQuantities] = useState<Record<string, number>>({});
 
+    // Quick Quantity Prompt State
+    const [quantityPromptItem, setQuantityPromptItem] = useState<MarketplaceItem | null>(null);
+    const [quantityInput, setQuantityInput] = useState<number>(1);
+
     useEffect(() => {
         const fetchItems = async () => {
             setLoading(true);
@@ -40,21 +44,55 @@ export const MarketplacePage: React.FC = () => {
         return matchesSearch && matchesCategory;
     });
 
-    const toggleSelection = (id: string, e?: React.MouseEvent) => {
-        e?.stopPropagation(); // Prevent card click
+    const toggleSelection = (item: MarketplaceItem, e?: React.MouseEvent) => {
+        e?.stopPropagation();
+
         const newSet = new Set(selectedItems);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
+        if (newSet.has(item.id)) {
+            // Deselect: remove from set and quantities
+            newSet.delete(item.id);
+            const newQuantities = { ...contactQuantities };
+            delete newQuantities[item.id];
+            setContactQuantities(newQuantities);
+            setSelectedItems(newSet);
+        } else {
+            // Select logic
+            if (item.quantityCurrent > 1) {
+                // Open prompt
+                setQuantityInput(1);
+                setQuantityPromptItem(item);
+            } else {
+                // Auto-select 1
+                newSet.add(item.id);
+                setContactQuantities(prev => ({ ...prev, [item.id]: 1 }));
+                setSelectedItems(newSet);
+            }
+        }
+    };
+
+    const confirmQuantitySelection = () => {
+        if (!quantityPromptItem) return;
+
+        const qty = Math.max(1, Math.min(quantityInput, quantityPromptItem.quantityCurrent));
+
+        const newSet = new Set(selectedItems);
+        newSet.add(quantityPromptItem.id);
         setSelectedItems(newSet);
+        setContactQuantities(prev => ({ ...prev, [quantityPromptItem.id]: qty }));
+
+        setQuantityPromptItem(null);
     };
 
     const handleBatchContact = () => {
         const selected = items.filter(i => selectedItems.has(i.id));
         setActiveContactItems(selected);
 
-        // Init quantities to max
-        const quantities: Record<string, number> = {};
-        selected.forEach(i => quantities[i.id] = i.quantityCurrent);
+        // Init quantities to existing or max (though if selected, should be in state)
+        // We do careful merge just in case
+        const quantities: Record<string, number> = { ...contactQuantities };
+        selected.forEach(i => {
+            if (!quantities[i.id]) quantities[i.id] = i.quantityCurrent;
+        });
         setContactQuantities(quantities);
 
         setContactModalOpen(true);
@@ -181,7 +219,7 @@ export const MarketplacePage: React.FC = () => {
                     {filteredItems.map(item => (
                         <div
                             key={item.id}
-                            onClick={() => toggleSelection(item.id)}
+                            onClick={(e) => toggleSelection(item, e)}
                             className={`bg-cinema-800 rounded-2xl border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 group flex flex-col cursor-pointer relative ${selectedItems.has(item.id)
                                 ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-indigo-500/20'
                                 : 'border-cinema-700 hover:border-indigo-500/50'
@@ -250,6 +288,54 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Quantity Prompt Modal (Small) */}
+            {quantityPromptItem && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setQuantityPromptItem(null)}>
+                    <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-6 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-white mb-4 text-center">Quantité souhaitée</h3>
+                        <p className="text-slate-300 text-center mb-6">
+                            Combien d'unités pour : <br /><span className="text-white font-bold">{quantityPromptItem.name}</span> ?
+                        </p>
+
+                        <div className="flex justify-center items-center mb-8">
+                            <button
+                                onClick={() => setQuantityInput(prev => Math.max(1, prev - 1))}
+                                className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-l-lg text-white font-bold text-xl"
+                            >
+                                -
+                            </button>
+                            <input
+                                type="number"
+                                value={quantityInput}
+                                onChange={(e) => setQuantityInput(Math.min(quantityPromptItem.quantityCurrent, Math.max(1, parseInt(e.target.value) || 1)))}
+                                className="h-10 w-20 bg-cinema-900 text-center text-white font-mono border-y border-cinema-700 focus:outline-none"
+                            />
+                            <button
+                                onClick={() => setQuantityInput(prev => Math.min(quantityPromptItem.quantityCurrent, prev + 1))}
+                                className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-r-lg text-white font-bold text-xl"
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setQuantityPromptItem(null)}
+                                className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white py-2 rounded-lg font-bold transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={confirmQuantitySelection}
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg font-bold transition-colors"
+                            >
+                                Valider
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
