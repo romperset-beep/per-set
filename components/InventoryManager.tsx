@@ -305,9 +305,9 @@ export const InventoryManager: React.FC = () => {
                     quantityInitial: startedQty,
                     quantityStarted: startedQty,
                     status: ItemStatus.USED,
-                    surplusAction: action, // Changed from SHORT_FILM to action
-                    price: (action === SurplusAction.MARKETPLACE && resalePrice !== undefined) ? resalePrice : item.price,
-                    originalPrice: item.originalPrice || item.price
+                    surplusAction: action,
+                    price: (action === SurplusAction.MARKETPLACE && resalePrice !== undefined) ? resalePrice : (item.price ?? 0),
+                    originalPrice: item.originalPrice ?? item.price ?? 0
                 };
 
                 // New Item becomes the New portion -> Virtual Stock
@@ -321,25 +321,31 @@ export const InventoryManager: React.FC = () => {
                     surplusAction: SurplusAction.MARKETPLACE,
                     purchased: true,
                     isBought: false,
-                    price: resalePrice !== undefined ? resalePrice : item.price,
-                    originalPrice: item.price // Preserve original
+                    price: resalePrice !== undefined ? resalePrice : (item.price ?? 0),
+                    originalPrice: item.originalPrice ?? item.price ?? 0 // Preserve
                 };
 
-                // 2. Persist to Firestore
-                if (updateItem) await updateItem(updatedOriginalItem);
-                if (addItem) await addItem(newItem); // Use addItem from context
+                // 2. Persist to Firestore with Error Handling
+                try {
+                    if (updateItem) await updateItem(updatedOriginalItem);
+                    if (addItem) await addItem(newItem);
 
-                // 3. Update Local State
-                setProject(prev => ({
-                    ...prev,
-                    items: [...prev.items.filter(i => i.id !== item.id), updatedOriginalItem, newItem]
-                }));
+                    // 3. Update Local State
+                    setProject(prev => ({
+                        ...prev,
+                        items: [...prev.items.filter(i => i.id !== item.id), updatedOriginalItem, newItem]
+                    }));
 
-                addNotification(
-                    `♻️ Surplus (Split) : ${item.name} -> ${newQty} Neufs et ${startedQty} Entamés vers Stock Virtuel`,
-                    'STOCK_MOVE',
-                    'PRODUCTION'
-                );
+                    addNotification(
+                        `♻️ Surplus (Split) : ${item.name} -> ${newQty} Neufs et ${startedQty} Entamés vers Stock Virtuel`,
+                        'STOCK_MOVE',
+                        'PRODUCTION'
+                    );
+                } catch (err: any) {
+                    console.error("Error splitting item:", err);
+                    alert(`Erreur lors du basculement : ${err.message}`);
+                    // Revert local optimistic update if needed? For now just alert.
+                }
             } else {
                 // Standard behavior (No split needed, just action update)
                 // Note: If no split needed but we came here, it means logic error or simplifiction.
@@ -880,6 +886,9 @@ export const InventoryManager: React.FC = () => {
                                                             </span>
                                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isStarted ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
                                                                 {isStarted ? 'Entamé' : 'Neuf'}
+                                                            </span>
+                                                            <span className="text-xs font-mono text-slate-400 border border-cinema-700 px-2 py-0.5 rounded bg-cinema-900/50">
+                                                                {item.price !== undefined ? `${item.price} €` : '- €'}
                                                             </span>
                                                             {isSurplus && (
                                                                 <span className={`text-xs px-2 py-0.5 rounded border ${item.surplusAction === SurplusAction.MARKETPLACE
