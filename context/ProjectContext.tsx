@@ -539,6 +539,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         return results;
       } catch (error: any) {
         console.error("Failed to fetch Global Surplus (Index missing?):", error);
+        setError(`Erreur Marketplace: ${error.message}. Si c'est une erreur d'index, consultez la console ou contactez le support.`);
         return [];
       }
     } catch (err) {
