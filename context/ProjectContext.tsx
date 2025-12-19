@@ -748,7 +748,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
               email: firebaseUser.email || '',
               department: 'PRODUCTION', // Default safe fallback
               productionName: 'Demo Prod',
-              filmTitle: 'Demo Film'
+              filmTitle: 'Demo Film',
+              status: firebaseUser.email === 'romain.perset@abatterset.com' ? 'approved' : 'pending',
+              isAdmin: firebaseUser.email === 'romain.perset@abatterset.com'
             };
 
             await setDoc(userRef, recoveredUser);
@@ -794,7 +796,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         email,
         department: dept,
         productionName: '', // Initially empty
-        filmTitle: ''       // Initially empty
+        filmTitle: '',       // Initially empty
+        status: email === 'romain.perset@abatterset.com' ? 'approved' : 'pending',
+        isAdmin: email === 'romain.perset@abatterset.com'
       };
       await setDoc(doc(db, 'users', cred.user.uid), newUser);
 

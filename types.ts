@@ -295,6 +295,8 @@ export interface User {
   currentProjectId?: string; // Added for robust syncing
   projectHistory?: ProjectSummary[];
   dashboardOrder?: string[]; // Added for customizable dashboard
+  status?: 'pending' | 'approved' | 'rejected'; // Added
+  isAdmin?: boolean; // Added
 }
 
 export interface CallSheet {

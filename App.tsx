@@ -21,6 +21,7 @@ import { LoginPage } from './components/LoginPage';
 import { ProjectSelection } from './components/ProjectSelection';
 import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
 import { AdminDashboard } from './components/AdminDashboard';
+import { PendingApprovalScreen } from './components/PendingApprovalScreen';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
@@ -142,6 +143,11 @@ const AppContent: React.FC = () => {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  // Security: Block Pending or Rejected Users
+  if (user.status === 'pending' || user.status === 'rejected') {
+    return <PendingApprovalScreen />;
   }
 
   // If project is default/empty, we always go to selection screen

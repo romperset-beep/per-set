@@ -97,6 +97,27 @@ export const AdminDashboard: React.FC = () => {
         }
     };
 
+    const handleApproveUser = async (userId: string) => {
+        try {
+            await updateDoc(doc(db, 'users', userId), { status: 'approved' });
+            // Update local state
+            setUsers(prev => prev.map(u => (u as any).id === userId ? { ...u, status: 'approved' } : u));
+        } catch (err: any) {
+            alert("Erreur validation : " + err.message);
+        }
+    };
+
+    const handleRejectUser = async (userId: string) => {
+        if (!window.confirm("Voulez-vous vraiment refuser cet utilisateur ? Il ne pourra pas accéder à l'application.")) return;
+        try {
+            await updateDoc(doc(db, 'users', userId), { status: 'rejected' });
+            // Update local state
+            setUsers(prev => prev.map(u => (u as any).id === userId ? { ...u, status: 'rejected' } : u));
+        } catch (err: any) {
+            alert("Erreur rejet : " + err.message);
+        }
+    };
+
     const startEditing = (type: 'USER' | 'PROJECT', item: any) => {
         setEditingId(item.id);
         setEditForm({ ...item });
@@ -223,73 +244,108 @@ export const AdminDashboard: React.FC = () => {
                                 <thead>
                                     <tr className="bg-cinema-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-cinema-700">
                                         <th className="px-6 py-4 font-semibold">Identité</th>
+                                        <th className="px-6 py-4 font-semibold">Statut</th>
                                         <th className="px-6 py-4 font-semibold">Département</th>
                                         <th className="px-6 py-4 font-semibold">Projet</th>
                                         <th className="px-6 py-4 font-semibold text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-cinema-700 text-sm">
-                                    {filteredUsers.map((u: any) => (
-                                        <tr key={u.id} className="hover:bg-cinema-700/30 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                {editingId === u.id ? (
-                                                    <div className="space-y-2">
+                                    {filteredUsers
+                                        .sort((a, b) => (a.status === 'pending' === (b.status === 'pending')) ? 0 : a.status === 'pending' ? -1 : 1)
+                                        .map((u: any) => (
+                                            <tr key={u.id} className={`hover:bg-cinema-700/30 transition-colors group ${u.status === 'pending' ? 'bg-yellow-500/5' : ''}`}>
+                                                <td className="px-6 py-4">
+                                                    {editingId === u.id ? (
+                                                        <div className="space-y-2">
+                                                            <input
+                                                                className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
+                                                                value={editForm.name || ''}
+                                                                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                            />
+                                                            <input
+                                                                className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-xs text-slate-400"
+                                                                value={editForm.email || ''}
+                                                                onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white relative">
+                                                                {u.name?.charAt(0)}
+                                                                {u.status === 'pending' && <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-500 rounded-full border-2 border-cinema-800"></span>}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium text-white">{u.name}</div>
+                                                                <div className="text-xs text-slate-500">{u.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {u.status === 'pending' ? (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 animate-pulse">
+                                                            En attente
+                                                        </span>
+                                                    ) : u.status === 'rejected' ? (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                                                            Rejeté
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                                                            Approuvé
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {editingId === u.id ? (
                                                         <input
                                                             className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
-                                                            value={editForm.name || ''}
-                                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                            value={editForm.department || ''}
+                                                            onChange={e => setEditForm({ ...editForm, department: e.target.value })}
                                                         />
-                                                        <input
-                                                            className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-xs text-slate-400"
-                                                            value={editForm.email || ''}
-                                                            onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white">
-                                                            {u.name?.charAt(0)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium text-white">{u.name}</div>
-                                                            <div className="text-xs text-slate-500">{u.email}</div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {editingId === u.id ? (
-                                                    <input
-                                                        className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
-                                                        value={editForm.department || ''}
-                                                        onChange={e => setEditForm({ ...editForm, department: e.target.value })}
-                                                    />
-                                                ) : (
-                                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-cinema-700 text-slate-300 border border-cinema-600">
-                                                        {u.department}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-300">
-                                                {u.filmTitle || 'Aucun'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {editingId === u.id ? (
-                                                        <>
-                                                            <button onClick={() => saveEdit('USER')} className="text-eco-400 hover:bg-eco-500/20 p-2 rounded"><Save className="h-4 w-4" /></button>
-                                                            <button onClick={() => setEditingId(null)} className="text-red-400 hover:bg-red-500/20 p-2 rounded"><X className="h-4 w-4" /></button>
-                                                        </>
                                                     ) : (
-                                                        <>
-                                                            <button onClick={() => startEditing('USER', u)} className="text-slate-400 hover:text-white p-2"><Edit2 className="h-4 w-4" /></button>
-                                                            <button onClick={() => handleDeleteUser(u.id, u.name)} className="text-red-500 hover:bg-red-500/20 p-2 rounded"><Trash2 className="h-4 w-4" /></button>
-                                                        </>
+                                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-cinema-700 text-slate-300 border border-cinema-600">
+                                                            {u.department}
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-300">
+                                                    {u.filmTitle || 'Aucun'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        {editingId === u.id ? (
+                                                            <>
+                                                                <button onClick={() => saveEdit('USER')} className="text-eco-400 hover:bg-eco-500/20 p-2 rounded"><Save className="h-4 w-4" /></button>
+                                                                <button onClick={() => setEditingId(null)} className="text-red-400 hover:bg-red-500/20 p-2 rounded"><X className="h-4 w-4" /></button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {u.status === 'pending' && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleApproveUser(u.id)}
+                                                                            className="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold mr-2 transition-colors"
+                                                                        >
+                                                                            Valider
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleRejectUser(u.id)}
+                                                                            className="bg-red-600/20 hover:bg-red-600/40 text-red-400 px-3 py-1 rounded text-xs font-bold mr-2 transition-colors border border-red-600/20"
+                                                                        >
+                                                                            Refuser
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                <button onClick={() => startEditing('USER', u)} className="text-slate-400 hover:text-white p-2"><Edit2 className="h-4 w-4" /></button>
+                                                                <button onClick={() => handleDeleteUser(u.id, u.name)} className="text-red-500 hover:bg-red-500/20 p-2 rounded"><Trash2 className="h-4 w-4" /></button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </div>
