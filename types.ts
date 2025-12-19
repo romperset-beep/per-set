@@ -298,6 +298,7 @@ export interface User {
   dashboardOrder?: string[]; // Added for customizable dashboard
   status?: 'pending' | 'approved' | 'rejected'; // Added
   isAdmin?: boolean; // Added
+  hasAcceptedSaaSTerms?: boolean; // Added: Mandatory for Production
 }
 
 export interface CallSheet {

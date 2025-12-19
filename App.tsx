@@ -23,6 +23,7 @@ import { ProjectConfigurationModal } from './components/ProjectConfigurationModa
 import { AdminDashboard } from './components/AdminDashboard';
 import { MarketplacePage } from './components/MarketplacePage'; // Added
 import { PendingApprovalScreen } from './components/PendingApprovalScreen';
+import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
@@ -149,6 +150,11 @@ const AppContent: React.FC = () => {
   // Security: Block Pending or Rejected Users
   if (user.status === 'pending' || user.status === 'rejected') {
     return <PendingApprovalScreen />;
+  }
+
+  // Legal: Force SaaS Agreement for Production
+  if (user.department === 'PRODUCTION' && !user.hasAcceptedSaaSTerms) {
+    return <SaaSAgreementScreen />;
   }
 
   // If project is default/empty, we always go to selection screen
