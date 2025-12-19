@@ -34,7 +34,8 @@ import {
   orderBy,
   arrayUnion,
   where,
-  deleteDoc // Added
+  deleteDoc, // Added
+  getDocs // Added
 } from 'firebase/firestore';
 
 import { getStorage, ref, deleteObject, uploadString, getDownloadURL } from 'firebase/storage';
@@ -125,6 +126,9 @@ interface ProjectContextType {
   // Logistics
   addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
   deleteLogisticsRequest: (requestId: string) => Promise<void>;
+
+  // Search
+  searchProjects: (queryStr: string) => Promise<Project[]>;
 
   // Social Nav Control
   socialAudience: 'GLOBAL' | 'DEPARTMENT' | 'USER';
@@ -1458,6 +1462,40 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     await updateProjectDetails({ logistics: newLogistics });
   };
 
+  const searchProjects = async (queryStr: string): Promise<Project[]> => {
+    if (!queryStr || queryStr.length < 2) return [];
+
+    // Simple client-side filtering for now or simple query
+    // Firestore lacks partial text search natively (needs third party like Algolia).
+    // Workaround: We query ALL projects (if list is small) or use startAt/endAt
+
+    const projectsRef = collection(db, 'projects');
+    const q = query(projectsRef, orderBy('productionCompany'));
+    // Optimization: In a real large app we would needs specific indexing
+
+    try {
+      // Fetching all for client-side filtering (assuming < 1000 projects for now)
+      // This is safe for MVP.
+      const snapshot = await getDocs(q); // Using getDocs (need to import)
+      // Wait, I need to check if getDocs is imported. It usually is.
+      // Actually checking imports... getDoc is there, getDocs might not be.
+
+      const results: Project[] = [];
+      snapshot.forEach(doc => {
+        const data = doc.data() as Project;
+        // Filter locally
+        if (data.productionCompany?.toLowerCase().includes(queryStr.toLowerCase()) ||
+          data.name?.toLowerCase().includes(queryStr.toLowerCase())) {
+          results.push({ ...data, id: doc.id });
+        }
+      });
+      return results;
+    } catch (e) {
+      console.error("Search Error", e);
+      return [];
+    }
+  };
+
   const updateUserProfile = (profile: UserProfile) => {
     // Legacy local update, keeping it as is but it's less useful now with sync
     setUserProfiles(prev => {
@@ -1553,6 +1591,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Logistics
       addLogisticsRequest,
       deleteLogisticsRequest,
+      searchProjects, // Added
+
 
       userProfiles,
       updateUserProfile,
