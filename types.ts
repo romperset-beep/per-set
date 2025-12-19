@@ -74,6 +74,7 @@ export interface Project {
   id: string;
   name: string;
   productionCompany: string;
+  filmTitle?: string; // Added: Store film title separately to avoid duplication bugs
   startDate: string;
   shootingStartDate?: string;
   shootingEndDate?: string;

@@ -34,7 +34,7 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         setFormData({
             ...formData,
             productionName: p.productionCompany,
-            filmTitle: p.name,
+            filmTitle: p.filmTitle || p.name.split(' - ')[1] || p.name, // Use filmTitle if available, otherwise extract from name
         });
         setIsNewProject(false);
         setSuggestions([]);

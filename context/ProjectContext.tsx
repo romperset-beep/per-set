@@ -890,7 +890,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const projectData: any = {
         name: `${prod} - ${film}`,
         productionCompany: prod,
-        filmTitle: film,
+        filmTitle: film, // Store film title separately
         lastAccess: new Date().toISOString()
       };
       if (start) projectData.shootingStartDate = start;
