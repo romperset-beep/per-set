@@ -782,6 +782,15 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             // Persist to localStorage for faster hydration on reload
             localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
 
+            // Self-Healing: Force Admin Status for whitelist
+            if (['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(userData.email) &&
+              (userData.status !== 'approved' || !userData.isAdmin)) {
+              console.log("Auto-Fixing Admin Account permissions...");
+              await updateDoc(userRef, { status: 'approved', isAdmin: true });
+              userData.status = 'approved';
+              userData.isAdmin = true;
+            }
+
             // Security: Enforce View restriction for non-production users
             if (userData.department !== 'PRODUCTION') {
               setCurrentDept(userData.department);
@@ -797,8 +806,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
               department: 'PRODUCTION', // Default safe fallback
               productionName: 'Demo Prod',
               filmTitle: 'Demo Film',
-              status: firebaseUser.email === 'romain.perset@abatterset.com' ? 'approved' : 'pending',
-              isAdmin: firebaseUser.email === 'romain.perset@abatterset.com',
+              status: ['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(firebaseUser.email || '') ? 'approved' : 'pending',
+              isAdmin: ['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(firebaseUser.email || ''),
               id: firebaseUser.uid // Ensure ID is set
             };
 
@@ -847,8 +856,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         department: dept,
         productionName: '', // Initially empty
         filmTitle: '',       // Initially empty
-        status: email === 'romain.perset@abatterset.com' ? 'approved' : 'pending',
-        isAdmin: email === 'romain.perset@abatterset.com'
+        status: ['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(email) ? 'approved' : 'pending',
+        isAdmin: ['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(email)
       };
       await setDoc(doc(db, 'users', cred.user.uid), newUser);
 
