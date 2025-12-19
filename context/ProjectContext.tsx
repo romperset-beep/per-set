@@ -531,7 +531,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       try {
         const qSurplus = query(
           collectionGroup(db, 'items'),
-          where('surplusAction', '==', 'MARKETPLACE')
+          where('surplusAction', '==', SurplusAction.MARKETPLACE)
         );
         const snap = await getDocs(qSurplus);
         const results: ConsumableItem[] = [];
