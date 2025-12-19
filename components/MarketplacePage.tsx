@@ -20,6 +20,7 @@ export const MarketplacePage: React.FC = () => {
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [contactModalOpen, setContactModalOpen] = useState(false);
     const [activeContactItems, setActiveContactItems] = useState<MarketplaceItem[]>([]);
+    const [contactQuantities, setContactQuantities] = useState<Record<string, number>>({});
 
     useEffect(() => {
         const fetchItems = async () => {
@@ -50,18 +51,38 @@ export const MarketplacePage: React.FC = () => {
     const handleBatchContact = () => {
         const selected = items.filter(i => selectedItems.has(i.id));
         setActiveContactItems(selected);
+
+        // Init quantities to max
+        const quantities: Record<string, number> = {};
+        selected.forEach(i => quantities[i.id] = i.quantityCurrent);
+        setContactQuantities(quantities);
+
         setContactModalOpen(true);
     };
 
     const handleSingleContact = (item: MarketplaceItem, e: React.MouseEvent) => {
         e.stopPropagation();
         setActiveContactItems([item]);
+
+        // Init quantity
+        setContactQuantities({ [item.id]: item.quantityCurrent });
+
         setContactModalOpen(true);
+    };
+
+    const handleQuantityChange = (id: string, val: number, max: number) => {
+        if (val < 1) val = 1;
+        if (val > max) val = max;
+        setContactQuantities(prev => ({ ...prev, [id]: val }));
     };
 
     const handleMailContact = () => {
         const subject = encodeURIComponent("Intérêt rachat matériel - A Better Set");
-        const itemList = activeContactItems.map(i => `- ${i.name} (${i.quantityCurrent} ${i.unit || 'u'}) - Prix: ${i.price || '?'}€`).join('\n');
+        const itemList = activeContactItems.map(i => {
+            const qty = contactQuantities[i.id] || i.quantityCurrent;
+            return `- ${i.name} (x${qty} / ${i.quantityCurrent}) - Prix : ${i.price || '?'}€/u`;
+        }).join('\n');
+
         const body = encodeURIComponent(`Bonjour,\n\nJe suis intéressé par le rachat des articles suivants :\n\n${itemList}\n\nMerci de me recontacter.\n\nCordialement,\n${user?.name || ''}`);
         window.location.href = `mailto:rachats@abetterset.com?subject=${subject}&body=${body}`;
         setContactModalOpen(false);
@@ -235,7 +256,7 @@ export const MarketplacePage: React.FC = () => {
             {/* Contact Method Modal */}
             {contactModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-8 max-w-md w-full shadow-2xl relative">
+                    <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         <button
                             onClick={() => setContactModalOpen(false)}
                             className="absolute top-4 right-4 text-slate-400 hover:text-white"
@@ -243,10 +264,61 @@ export const MarketplacePage: React.FC = () => {
                             ✕
                         </button>
 
-                        <h2 className="text-2xl font-bold text-white mb-6 text-center">Contacter le vendeur</h2>
-                        <p className="text-slate-300 text-center mb-8">
-                            Comment souhaitez-vous procéder pour {activeContactItems.length > 1 ? `ces ${activeContactItems.length} articles` : "cet article"} ?
+                        <h2 className="text-2xl font-bold text-white mb-2 text-center">Contacter le vendeur</h2>
+                        <p className="text-slate-300 text-center mb-6">
+                            Vérifiez votre sélection avant de choisir le moyen de contact.
                         </p>
+
+                        {/* Order Summary with Quantity Input */}
+                        <div className="bg-cinema-900/50 rounded-xl p-4 mb-6 space-y-3 max-h-60 overflow-y-auto border border-cinema-700/50">
+                            {activeContactItems.map(item => (
+                                <div key={item.id} className="flex justify-between items-center gap-4 bg-cinema-800 p-3 rounded-lg border border-cinema-700">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-white truncate">{item.name}</p>
+                                        <p className="text-xs text-slate-400">Stock : {item.quantityCurrent} {item.unit}</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        {item.quantityCurrent > 1 ? (
+                                            <div className="flex items-center bg-cinema-900 rounded-lg border border-cinema-600">
+                                                <button
+                                                    onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) - 1, item.quantityCurrent)}
+                                                    className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-l-lg"
+                                                >
+                                                    -
+                                                </button>
+                                                <input
+                                                    type="number"
+                                                    value={contactQuantities[item.id] || item.quantityCurrent}
+                                                    onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1, item.quantityCurrent)}
+                                                    className="w-12 text-center bg-transparent text-white font-mono text-sm focus:outline-none py-1"
+                                                    min="1"
+                                                    max={item.quantityCurrent}
+                                                />
+                                                <button
+                                                    onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) + 1, item.quantityCurrent)}
+                                                    className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-r-lg"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm font-mono text-slate-400 px-3">x1</span>
+                                        )}
+                                        <span className="text-yellow-400 font-bold w-16 text-right">
+                                            {item.price ? `${(item.price * (contactQuantities[item.id] || item.quantityCurrent))}€` : '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            {/* Total Estimate */}
+                            <div className="pt-2 border-t border-cinema-700 flex justify-end text-sm">
+                                <span className="text-slate-400 mr-2">Total estimé :</span>
+                                <span className="text-yellow-400 font-bold">
+                                    {activeContactItems.reduce((acc, i) => acc + ((i.price || 0) * (contactQuantities[i.id] || i.quantityCurrent)), 0)} €
+                                </span>
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <button
