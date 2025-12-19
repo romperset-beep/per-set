@@ -21,6 +21,7 @@ export const MarketplacePage: React.FC = () => {
         const fetchItems = async () => {
             setLoading(true);
             const data = await getGlobalMarketplaceItems();
+            console.log("Marketplace Items Received:", data);
             setItems(data);
             setLoading(false);
         };
