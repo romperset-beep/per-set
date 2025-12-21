@@ -297,7 +297,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     const renderWidget = (id: string) => {
         // Permissions checks
         if (id === 'catering' && currentDept !== 'Régie' && currentDept !== 'PRODUCTION') return null;
-        if (id === 'team' && currentDept !== 'PRODUCTION') return null;
+
 
         switch (id) {
             case 'inventory': return <InventoryWidget onClick={() => setActiveTab('inventory')} />;
