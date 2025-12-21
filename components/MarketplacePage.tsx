@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { ShoppingBag, Tag, Search, Filter, Globe, ExternalLink, Plus } from 'lucide-react';
+import { ShoppingBag, Tag, Search, Filter, Globe, ExternalLink, Plus, Leaf } from 'lucide-react';
 import { ConsumableItem, SurplusAction, Department, ItemStatus, Transaction } from '../types';
 import { SellItemModal } from './SellItemModal'; // Added
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
@@ -333,6 +333,10 @@ export const MarketplacePage: React.FC = () => {
                                                     {item.status || 'Disponible'}
                                                 </span>
                                             )}
+                                            {/* RSE+ Badge */}
+                                            <span className="text-xs px-2 py-1 bg-green-600/20 text-green-400 rounded-md border border-green-600/30 uppercase font-bold flex items-center gap-1">
+                                                <Leaf className="h-3 w-3" /> Compatible RSE+
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

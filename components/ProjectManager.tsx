@@ -217,7 +217,7 @@ const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Ventes de la Production</h3>
+                <h3 className="text-lg font-semibold opacity-70">Ventes à l'équipe</h3>
                 <ShoppingBag className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-4xl font-bold mt-2 text-yellow-400">{buyBackItems?.filter(i => i.status === 'AVAILABLE').length || 0}</p>

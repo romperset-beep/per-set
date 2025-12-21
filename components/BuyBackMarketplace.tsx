@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department } from '../types';
-import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2, FileText } from 'lucide-react';
+import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2, FileText, Leaf } from 'lucide-react';
 import { SellItemModal } from './SellItemModal';
 import { SalesHistoryModal } from './SalesHistoryModal';
 import { InvoiceModal } from './InvoiceModal';
@@ -142,6 +142,14 @@ export const BuyBackMarketplace: React.FC = () => {
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 )}
+
+                                {/* RSE+ Badge */}
+                                <div className="absolute bottom-2 left-2 z-10">
+                                    <span className="bg-green-600/90 text-white px-2 py-1 rounded text-xs font-bold border border-green-500 shadow-lg flex items-center gap-1 backdrop-blur-md">
+                                        <Leaf className="h-3 w-3" />
+                                        Compatible RSE+
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Content */}

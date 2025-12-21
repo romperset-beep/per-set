@@ -39,19 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     {
       title: 'Général',
       items: [
-        { id: 'dashboard', label: t('sidebar.dashboard'), icon: LayoutDashboard }
-      ]
-    },
-    {
-      title: 'Matériel & RSE',
-      items: [
-        { id: 'inventory', label: t('sidebar.inventory'), icon: Package },
-        // Inter-Production Marketplace (Production Only)
-        { id: 'inter_marketplace', label: 'Revente Inter-Productions', icon: Globe, allowedDepts: ['PRODUCTION', 'REGIE'] },
-        // Local Marketplace (All)
-        { id: 'local_marketplace', label: 'Revente Locale', icon: ShoppingBag, allowedDepts: 'ALL' },
-        { id: 'donations', label: t('sidebar.donations'), icon: Recycle },
-        { id: 'report', label: t('sidebar.report'), icon: FileText },
+        { id: 'dashboard', label: 'Tableau de Bord', icon: LayoutDashboard }
       ]
     },
     {
@@ -60,52 +48,59 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
         { id: 'timesheet', label: 'Heures Jours/Semaines', icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
-        { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' }, // Added
-        { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'PRODUCTION'] },
-        { id: 'expenses', label: t('sidebar.expenses'), icon: Euro },
+        { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
+        { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
+        { id: 'team', label: 'Bible Équipe Tournage', icon: Users },
+        { id: 'inventory', label: 'Consommables', icon: Package },
+        { id: 'social', label: 'Mur Social', icon: MessageSquare },
       ]
     },
     {
-      title: 'Équipe',
+      title: 'Production',
       items: [
-        { id: 'social', label: t('sidebar.social'), icon: MessageSquare },
-        { id: 'team', label: t('sidebar.team'), icon: Users },
+        { id: 'expenses', label: 'Notes de Frais', icon: Euro },
+        { id: 'inter_marketplace', label: 'Revente Inter-Productions', icon: Globe, allowedDepts: ['PRODUCTION', 'REGIE', 'Régie'] },
+        { id: 'local_marketplace', label: "Ventes à l'équipe", icon: ShoppingBag, allowedDepts: 'ALL' },
+        { id: 'donations', label: 'Économie Circulaire', icon: Recycle },
+        { id: 'report', label: 'Rapport RSE+', icon: FileText },
       ]
     },
     {
       title: 'Compte',
       items: [
-        { id: 'profile', label: t('sidebar.profile'), icon: Settings },
+        { id: 'profile', label: 'Mon Profil', icon: Settings },
         { id: 'admin', label: 'Administration', icon: ShieldCheck },
       ]
     }
   ];
 
   const filterItem = (item: any) => {
+    // 1. Admin restricted
+    if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
+
+    // 2. Universal items (Visible to ALL)
+    if (item.id === 'dashboard') return true;
     if (item.id === 'profile') return true;
-    if (item.id === 'social') return true;
     if (item.id === 'callsheets') return true;
     if (item.id === 'timesheet') return true;
     if (item.id === 'renforts') return true;
-    if (item.id === 'logistics') return true; // Added
-
-    // Super Admin
-    if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
-
-    // Production sees everything
-    if (currentDept === 'PRODUCTION' || currentDept === 'Régie') return true;
-
-    // Standard Department Rules
-    if (item.id === 'dashboard') return true;
-    if (item.id === 'inventory') return true;
-    if (item.id === 'local_marketplace') return true; // Everyone sees Local
-    if (item.id === 'inter_marketplace') return (currentDept === 'PRODUCTION' || currentDept === 'Régie'); // Only Prod/Regie see Inter-Prod
-    if (item.id === 'donations') return true;
-    if (item.id === 'expenses') return true;
+    if (item.id === 'logistics') return true;
     if (item.id === 'team') return true;
-    if (item.id === 'catering') return false; // Production/Regie only // Handled by allowedDepts but explicit here too or rely on allowedDepts?
-    // Let's rely on filterItem logic below or fix lines above
+    if (item.id === 'inventory') return true;
+    if (item.id === 'social') return true;
+    if (item.id === 'expenses') return true;
+    if (item.id === 'local_marketplace') return true;
+    if (item.id === 'donations') return true;
 
+    // 3. Role-based restrictions
+    // Production/Regie Scope
+    const isProdOrRegie = currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE';
+
+    if (item.id === 'inter_marketplace') return isProdOrRegie;
+    if (item.id === 'catering') return isProdOrRegie;
+    if (item.id === 'report') return isProdOrRegie;
+
+    // Default fallback
     return false;
   };
 

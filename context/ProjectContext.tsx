@@ -60,8 +60,8 @@ interface ProjectContextType {
 
   currentDept: string;
   setCurrentDept: (dept: string) => void;
-  circularView: 'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs';
-  setCircularView: (view: 'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs') => void;
+  circularView: 'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs' | 'storage';
+  setCircularView: (view: 'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs' | 'storage') => void;
 
   // Auth
   user: User | null;
@@ -175,7 +175,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [project, setProject] = useState<Project>(DEFAULT_PROJECT);
   const [currentDept, setCurrentDept] = useState<string>('PRODUCTION');
-  const [circularView, setCircularView] = useState<'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs'>('overview');
+  const [circularView, setCircularView] = useState<'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs' | 'storage'>('overview');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [expenseReports, setExpenseReports] = useState<ExpenseReport[]>([]);
   const [language, setLanguage] = useState<Language>('fr');

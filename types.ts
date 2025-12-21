@@ -89,6 +89,13 @@ export interface Project {
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   items: ConsumableItem[];
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
+  ecoprodProofs?: Record<string, string>; // ID -> Proof URL/Metadata
+  rseCertification?: {
+    auditorName: string;
+    certificateUrl?: string;
+    status: 'PENDING' | 'CERTIFIED' | 'REJECTED';
+    certifiedAt?: string;
+  };
   carbonContext?: CarbonContext;
   cateringLogs?: CateringLog[];
   cateringValidations?: Record<string, boolean>; // date -> isValidated
@@ -184,6 +191,7 @@ export interface EcoprodCriterion {
   category: string;
   label: string;
   impact: 'High' | 'Medium' | 'Low';
+  level?: 1 | 2 | 3;
 }
 
 export enum ExpenseStatus {
