@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction } from '../types';
-import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal } from 'lucide-react';
+import { DailyDashboard } from './DailyDashboard'; // New Import
+import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { DndContext, closestCenter, TouchSensor, MouseSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -163,6 +164,25 @@ const LogisticsWidget = ({ onClick }: { onClick: () => void }) => {
     );
 };
 
+const EnergyWidget = ({ onClick }: { onClick: () => void }) => {
+    const { project, currentDept } = useProject();
+    if (currentDept !== 'PRODUCTION' && currentDept !== 'Régie' && currentDept !== 'REGIE') return null;
+
+    const todayLog = (project.energyLogs || []).find(l => l.date === new Date().toISOString().split('T')[0]);
+    const hours = todayLog?.generatorHours || 0;
+
+    return (
+        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+            <div className="flex justify-between items-start">
+                <h3 className="text-lg font-semibold opacity-70">Énergie</h3>
+                <Zap className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="mt-2 text-4xl font-bold text-yellow-400">{hours}h</div>
+            <p className="text-xs text-slate-400 mt-1">Groupe aujourd'hui</p>
+        </button>
+    );
+};
+
 
 
 const CateringWidget = ({ onClick }: { onClick: () => void }) => {
@@ -254,7 +274,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     // --- Dashboard Order Logic ---
     const allWidgets = [
         'inventory', 'callsheets', 'timesheet', 'renforts', 'logistics',
-        'catering', 'expenses', 'team', 'buyback', 'social'
+        'catering', 'energy', 'expenses', 'team', 'buyback', 'social'
     ];
 
     // Default order
@@ -305,6 +325,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             case 'timesheet': return <HoursWidget onClick={() => setActiveTab('timesheet')} />;
             case 'renforts': return <RenfortsWidget onClick={() => setActiveTab('renforts')} />;
             case 'logistics': return <LogisticsWidget onClick={() => setActiveTab('logistics')} />;
+            case 'energy': return <EnergyWidget onClick={() => setActiveTab('energy')} />;
 
             case 'catering': return <CateringWidget onClick={() => setActiveTab('catering')} />;
             case 'expenses': return <ExpensesWidget onClick={() => setActiveTab('expenses')} />;
@@ -316,7 +337,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20">
+            {/* NEW: Daily Dashboard (First Page View) */}
+            <DailyDashboard />
+
             {/* Department Selection Header */}
             <div className="bg-cinema-800 rounded-xl p-6 border border-cinema-700 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>

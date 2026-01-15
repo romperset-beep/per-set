@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { TimeLog } from '../types';
+import { TimeLog, SavedRoute } from '../types';
 import { db, auth } from '../services/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins } from 'lucide-react';
-import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calculateShiftDetails, TimeEntry, isFrenchPublicHoliday } from '../utils/payrollUtils';
+import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins, Truck, MapPin, X } from 'lucide-react';
+import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calculateShiftDetails, TimeEntry, isFrenchPublicHoliday, calculateMileageIndemnity } from '../utils/payrollUtils';
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
@@ -21,9 +21,19 @@ export const TimesheetWidget: React.FC = () => {
     const [breakDuration, setBreakDuration] = useState<number>(0); // New
     const [pauseTime, setPauseTime] = useState(''); // New: Time of pause
     const [note, setNote] = useState(''); // New
-    const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string, taxRate?: number }>({}); // New
+    const [userProfileData, setUserProfileData] = useState<{ firstName?: string, lastName?: string, role?: string, taxRate?: number, address?: string, city?: string }>({}); // New
     const [travelHoursInside, setTravelHoursInside] = useState<number>(0);
     const [travelHoursOutside, setTravelHoursOutside] = useState<number>(0);
+
+    // Transport / Mileage State
+    const [transportMode, setTransportMode] = useState<'TRANSPORT_COMMUN' | 'VEHICULE_PERSO' | 'COVOITURAGE'>('TRANSPORT_COMMUN');
+    const [vehicleType, setVehicleType] = useState<'VOITURE' | 'MOTO' | 'SCOOTER' | undefined>('VOITURE');
+    const [fiscalPower, setFiscalPower] = useState<number>(0);
+    const [commuteDistanceKm, setCommuteDistanceKm] = useState<number>(0);
+    const [saveAsDefaultTransport, setSaveAsDefaultTransport] = useState(false);
+    const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]); // New Saved Routes state
+    const [showCalculator, setShowCalculator] = useState(false); // Toggle for Calculator UI
+
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
 
     // Dynamic Job List based on Convention
@@ -51,8 +61,17 @@ export const TimesheetWidget: React.FC = () => {
                             firstName: data.firstName,
                             lastName: data.lastName,
                             role: data.role,
-                            taxRate: data.taxRate // Fetch tax rate from profile
+                            taxRate: data.taxRate, // Fetch tax rate from profile
+                            address: data.address,
+                            city: data.city
                         });
+
+                        // Set defaults if available
+                        if (data.defaultTransportMode) setTransportMode(data.defaultTransportMode);
+                        if (data.defaultVehicleType) setVehicleType(data.defaultVehicleType);
+                        if (data.defaultFiscalPower) setFiscalPower(data.defaultFiscalPower);
+                        if (data.defaultCommuteDistanceKm) setCommuteDistanceKm(data.defaultCommuteDistanceKm);
+                        if (data.savedRoutes) setSavedRoutes(data.savedRoutes);
                     }
                 } catch (err) {
                     console.error("Error fetching user profile for timesheet:", err);
@@ -196,7 +215,14 @@ export const TimesheetWidget: React.FC = () => {
             pauseTime, // Save pause time
             note, // Save note
             travelHoursInside,
+
             travelHoursOutside,
+
+            // Transport
+            transportMode,
+            vehicleType: transportMode === 'VEHICULE_PERSO' ? vehicleType : undefined,
+            fiscalPower: transportMode === 'VEHICULE_PERSO' ? fiscalPower : undefined,
+            commuteDistanceKm: transportMode === 'VEHICULE_PERSO' ? commuteDistanceKm : undefined,
 
             // User Details from Profile
             userFirstName: userProfileData.firstName || user.name.split(' ')[0],
@@ -226,6 +252,50 @@ export const TimesheetWidget: React.FC = () => {
         const newLogs = (project.timeLogs || []).filter(l => l.id !== logId);
         await updateProjectDetails({ timeLogs: newLogs });
     };
+
+    // Route Calculator Logic
+    const [calcOrigin, setCalcOrigin] = useState('');
+    const [calcDest, setCalcDest] = useState('');
+    const [calcResultKm, setCalcResultKm] = useState<number>(0);
+    const [routeName, setRouteName] = useState('');
+
+    const handleSaveRoute = async () => {
+        if (!auth.currentUser || !calcResultKm || !routeName) return;
+
+        const newRoute: SavedRoute = {
+            id: Date.now().toString(),
+            name: routeName,
+            distanceKm: calcResultKm,
+            origin: calcOrigin,
+            destination: calcDest
+        };
+
+        const updatedRoutes = [...savedRoutes, newRoute];
+        setSavedRoutes(updatedRoutes);
+
+        // Persist to Profile
+        try {
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                savedRoutes: updatedRoutes
+            });
+
+            // Auto use
+            setCommuteDistanceKm(calcResultKm);
+            setShowCalculator(false);
+            setCalcResultKm(0);
+            setRouteName('');
+        } catch (e) {
+            console.error("Error saving route", e);
+            alert("Erreur sauvegarde trajet");
+        }
+    };
+
+    // Auto-fill origin with home address if available
+    useEffect(() => {
+        if (showCalculator && userProfileData.address && !calcOrigin) {
+            setCalcOrigin(`${userProfileData.address}, ${userProfileData.city || ''}`);
+        }
+    }, [showCalculator, userProfileData]);
 
     // Production Supervision State
     const [viewMode, setViewMode] = useState<'personal' | 'team'>('personal');
@@ -681,318 +751,359 @@ export const TimesheetWidget: React.FC = () => {
                                             />
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Note Input */}
-                                <div className="col-span-2 lg:col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Note (Optionnel)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Commentaire..."
-                                        value={note}
-                                        onChange={(e) => setNote(e.target.value)}
-                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none"
-                                    />
-                                </div>
 
 
-                                <div className="col-span-2 lg:col-span-1 flex items-end">
-                                    <button
-                                        onClick={handleSaveLog}
-                                        disabled={!date || !callTime || !endTime}
-                                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                                    >
-                                        <Save className="h-4 w-4" />
-                                        <span className="hidden lg:inline">Ajouter</span>
-                                        <span className="lg:hidden">Enregistrer</span>
-                                    </button>
-                                </div>
+                                    {/* Transport Section */}
+                                    <div className="col-span-full bg-cinema-900/30 p-4 rounded-lg border border-cinema-700 space-y-3">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2">
+                                            <Truck className="h-3 w-3" /> Transport
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
-                                <div className="col-span-full mt-2 bg-cinema-900/50 px-4 py-2.5 rounded-lg border border-cinema-700 flex justify-center items-center gap-2">
-                                    <span className="text-slate-500 text-xs font-bold uppercase">Total Estimé :</span>
-                                    <span className="text-blue-400 font-bold text-lg">
-                                        {formatHours(calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration))}
-                                    </span>
-                                </div>
-
-                                {/* Dynamic Night Hours Feedback */}
-                                {(() => {
-                                    const bd = getShiftBreakdown();
-                                    if (bd && (bd.nightHours50 > 0 || bd.nightHours100 > 0)) {
-                                        return (
-                                            <div className="col-span-full bg-purple-900/20 px-4 py-2 rounded-lg border border-purple-500/30 flex gap-4 text-xs font-bold text-purple-300">
-                                                <span>Heures Nuit :</span>
-                                                {bd.nightHours50 > 0 && <span>Maj. 50% : {bd.nightHours50}h</span>}
-                                                {bd.nightHours100 > 0 && <span>Maj. 100% : {bd.nightHours100}h</span>}
+                                            <div className="md:col-span-2">
+                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">Moyen de Transport</label>
+                                                <div className="flex bg-cinema-900 rounded-lg p-1 border border-cinema-700">
+                                                    <button onClick={() => setTransportMode('TRANSPORT_COMMUN')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'TRANSPORT_COMMUN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Commun</button>
+                                                    <button onClick={() => setTransportMode('VEHICULE_PERSO')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'VEHICULE_PERSO' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Véhicule Perso</button>
+                                                    <button onClick={() => setTransportMode('COVOITURAGE')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'COVOITURAGE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Covoit.</button>
+                                                </div>
                                             </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
 
-                                {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
-                                {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
-                                    <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 flex flex-col gap-2">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-2">
-                                                <Coins className="h-4 w-4 text-emerald-400" />
-                                                <span className="text-slate-400 text-xs font-bold uppercase">Estim. Brut (Jour) :</span>
-                                            </div>
-                                            <span className="text-emerald-400 font-bold text-lg">
-                                                {(() => {
-                                                    const hours = calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration);
-                                                    if (hours <= 0) return '- €';
-
-                                                    // Try to find job from profile role
-                                                    // @ts-ignore
-                                                    const jobTitle = userProfileData.role || user?.role || 'Régisseur Général';
-
-                                                    // Search in availableJobs (Cinema or USPA)
-                                                    // @ts-ignore
-                                                    const job = availableJobs.find(j => j.title === jobTitle) || availableJobs[0];
-
-                                                    // Daily Estimation Context
-                                                    const d = new Date(date);
-                                                    const isSunday = d.getDay() === 0;
-                                                    const isHoliday = isFrenchPublicHoliday(d);
-
-                                                    const est = calculateEstimatedSalary({
-                                                        job,
-                                                        hoursWorked: hours,
-                                                        contractType: 'JOUR', // Default assumption
-                                                        travelHoursInside: travelHoursInside || 0,
-                                                        travelHoursOutside: travelHoursOutside || 0,
-                                                        isContinuousDay: isContinuousDay,
-                                                        convention: project.convention,
-                                                        isSunday,
-                                                        isHoliday
-                                                    });
-
-                                                    // Net Calculation
-                                                    const gross = est.grossAmount;
-                                                    // Approx Social Charges for Intermittents (~23% -> Multiplier 0.77)
-                                                    const netImposable = gross * 0.77;
-                                                    // Apply Source Tax Rate (PAS)
-                                                    const taxRate = userProfileData.taxRate || 0;
-                                                    const netPayer = netImposable * (1 - (taxRate / 100));
-
-                                                    return (
-                                                        <div className="text-right">
-                                                            <div>{gross.toFixed(2)} € <span className="text-[10px] text-slate-500 font-normal opacity-70">BRUT</span></div>
-                                                            <div className="text-emerald-300 transform scale-110 origin-right transition-transform">
-                                                                {netPayer.toFixed(2)} € <span className="text-[10px] opacity-70">NET ESTIMÉ</span>
-                                                            </div>
-                                                            {taxRate > 0 && <div className="text-[9px] text-slate-500">Taux PAS: {taxRate}%</div>}
+                                            {transportMode === 'VEHICULE_PERSO' && (
+                                                <>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Type & CV</label>
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                value={vehicleType}
+                                                                onChange={(e) => setVehicleType(e.target.value as any)}
+                                                                className="bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white w-20 focus:border-blue-500 outline-none"
+                                                            >
+                                                                <option value="VOITURE">Voiture</option>
+                                                                <option value="MOTO">Moto</option>
+                                                                <option value="SCOOTER">Scooter</option>
+                                                            </select>
+                                                            <input
+                                                                type="number"
+                                                                placeholder="CV"
+                                                                value={fiscalPower || ''}
+                                                                onChange={(e) => setFiscalPower(parseFloat(e.target.value))}
+                                                                className="bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white w-12 focus:border-blue-500 outline-none"
+                                                            />
                                                         </div>
-                                                    );
-                                                })()}
-                                            </span>
-                                        </div>
-                                        <div className="text-right text-[9px] text-emerald-600/60 uppercase font-bold tracking-wider">
-                                            {project.convention || 'Convention USPA'}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                                                    </div>
 
-                    {/* Weekly Summary Tables */}
-                    <div className="space-y-8">
-                        {weeklyData.length > 0 ? weeklyData.map(([weekKey, data]) => (
-                            <div key={weekKey} className="bg-cinema-800 text-slate-200 rounded-xl overflow-hidden border border-cinema-700 shadow-xl">
-                                {/* Header */}
-                                <div className="bg-cinema-900/50 px-6 py-4 flex flex-col md:flex-row justify-between items-end md:items-center border-b border-cinema-700 gap-4">
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-xl text-white uppercase tracking-tight">{data.label}</h3>
-                                        {/* Weekly Salary Estimation */}
-                                        {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
-                                            <div className="mt-2 text-sm flex flex-wrap gap-4 items-center">
-                                                {(() => {
-                                                    let totalGross = 0;
-                                                    data.logs.forEach(log => {
-                                                        // Calculate Hours for this log
-                                                        // We need to re-parse because stored logs might only have raw times
-                                                        // But wait, log has 'effectiveHours' if saved recently?
-                                                        // Ideally we use helper. But log data structure is strictly TimeLog.
-                                                        // TimeLog doesn't store computed Gross. We must recalc.
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Distance (km)</label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="0"
+                                                            value={commuteDistanceKm || ''}
+                                                            onChange={(e) => setCommuteDistanceKm(parseFloat(e.target.value))}
+                                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white focus:border-blue-500 outline-none"
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
 
-                                                        const hours = calculateHours(
-                                                            log.callTime,
-                                                            log.mealTime,
-                                                            log.endTime,
-                                                            log.hasShortenedMeal,
-                                                            log.isContinuousDay || false,
-                                                            log.breakDuration || 0
+                                            {transportMode === 'VEHICULE_PERSO' && (
+                                                <div className="col-span-full space-y-2">
+                                                    {/* Saved Routes Dropdown */}
+                                                    {savedRoutes.length > 0 && !showCalculator && (
+                                                        <select
+                                                            className="w-full bg-cinema-800 border border-cinema-700 rounded-md p-2 text-xs text-slate-300 outline-none focus:border-blue-500"
+                                                            onChange={(e) => {
+                                                                if (e.target.value) {
+                                                                    const r = savedRoutes.find(fav => fav.id === e.target.value);
+                                                                    if (r) setCommuteDistanceKm(r.distanceKm);
+                                                                }
+                                                            }}
+                                                            defaultValue=""
+                                                        >
+                                                            <option value="" disabled>-- Charger un trajet favori --</option>
+                                                            {savedRoutes.map(r => (
+                                                                <option key={r.id} value={r.id}>{r.name} ({r.distanceKm} km)</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+
+                                                    {/* Calculator Toggle */}
+                                                    {!showCalculator ? (
+                                                        <button
+                                                            onClick={() => setShowCalculator(true)}
+                                                            className="text-[10px] text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                                        >
+                                                            <MapPin className="h-3 w-3" />
+                                                            Calculer une distance
+                                                        </button>
+                                                    ) : (
+                                                        <div className="bg-cinema-800 p-3 rounded-lg border border-cinema-700 space-y-3 animate-in fade-in zoom-in-95">
+                                                            <div className="flex justify-between items-center">
+                                                                <h5 className="text-xs font-bold text-white">Calculateur de Trajet</h5>
+                                                                <button onClick={() => setShowCalculator(false)} className="text-slate-500 hover:text-white"><X className="h-3 w-3" /></button>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                <input
+                                                                    placeholder="Départ (ex: Mon domicile)"
+                                                                    value={calcOrigin}
+                                                                    onChange={(e) => setCalcOrigin(e.target.value)}
+                                                                    className="bg-cinema-900 border border-cinema-700 rounded p-1.5 text-xs text-white"
+                                                                />
+                                                                <input
+                                                                    placeholder="Arrivée (ex: Studio A)"
+                                                                    value={calcDest}
+                                                                    onChange={(e) => setCalcDest(e.target.value)}
+                                                                    className="bg-cinema-900 border border-cinema-700 rounded p-1.5 text-xs text-white"
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex gap-2">
+                                                                <a
+                                                                    href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(calcOrigin)}&destination=${encodeURIComponent(calcDest)}&travelmode=driving`}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className={`flex-1 flex justify-center items-center gap-2 py-1.5 rounded text-xs font-bold ${!calcOrigin || !calcDest ? 'bg-slate-700 text-slate-500 pointer-events-none' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                                                                >
+                                                                    <MapPin className="h-3 w-3" />
+                                                                    Voir sur Google Maps
+                                                                </a>
+                                                            </div>
+
+                                                            <div className="flex items-end gap-2 pt-2 border-t border-cinema-700/50">
+                                                                <div className="flex-1">
+                                                                    <label className="block text-[10px] text-slate-500 mb-1">Distance relevée (km)</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0.0"
+                                                                        value={calcResultKm || ''}
+                                                                        onChange={(e) => setCalcResultKm(parseFloat(e.target.value))}
+                                                                        className="w-full bg-cinema-900 border border-cinema-700 rounded p-1.5 text-xs text-white font-bold text-center focus:border-emerald-500 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <label className="block text-[10px] text-slate-500 mb-1">Nom (pour sauvegarder)</label>
+                                                                    <input
+                                                                        placeholder="ex: Domicile - Studio"
+                                                                        value={routeName}
+                                                                        onChange={(e) => setRouteName(e.target.value)}
+                                                                        className="w-full bg-cinema-900 border border-cinema-700 rounded p-1.5 text-xs text-white"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={handleSaveRoute}
+                                                                    disabled={!calcResultKm || !routeName}
+                                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    Sauvegarder
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={saveAsDefaultTransport}
+                                                    onChange={(e) => setSaveAsDefaultTransport(e.target.checked)}
+                                                    className="rounded border-cinema-600 bg-cinema-800 text-blue-600 focus:ring-blue-500 h-3 w-3"
+                                                />
+                                                <span className="text-[10px] text-slate-400">Sauvegarder par défaut</span>
+                                            </div>
+
+                                            {/* Mileage Indemnity Display */}
+                                            {transportMode === 'VEHICULE_PERSO' && commuteDistanceKm > 0 && fiscalPower > 0 && (
+                                                <div className="col-span-full mt-2">
+                                                    {(() => {
+                                                        const indemnity = calculateMileageIndemnity(
+                                                            project.convention,
+                                                            vehicleType,
+                                                            fiscalPower,
+                                                            commuteDistanceKm
                                                         );
 
-                                                        if (hours > 0) {
-                                                            // Try to find job
-                                                            // @ts-ignore
-                                                            const jobTitle = log.userRole || userProfileData.role || user?.role || 'Régisseur Général';
-                                                            // @ts-ignore
-                                                            const job = availableJobs.find(j => j.title === jobTitle) || availableJobs[0];
+                                                        if (indemnity.amount === 0) return null;
 
-                                                            const logDate = new Date(log.date);
-                                                            const isSunday = logDate.getDay() === 0;
-                                                            const isHoliday = isFrenchPublicHoliday(logDate);
-
-                                                            const est = calculateEstimatedSalary({
-                                                                job,
-                                                                hoursWorked: hours,
-                                                                contractType: 'JOUR',
-                                                                travelHoursInside: log.travelHoursInside || 0,
-                                                                travelHoursOutside: log.travelHoursOutside || 0,
-                                                                isContinuousDay: log.isContinuousDay,
-                                                                convention: project.convention,
-                                                                isSunday,
-                                                                isHoliday
-                                                            });
-
-                                                            totalGross += est.grossAmount;
-                                                        }
-                                                    });
-
-                                                    const taxRate = userProfileData.taxRate || 0;
-                                                    const totalNet = (totalGross * 0.77) * (1 - (taxRate / 100));
-
-                                                    return (
-                                                        <>
-                                                            <div className="flex items-center gap-1.5 bg-emerald-900/30 px-2 py-1 rounded border border-emerald-500/30">
-                                                                <Coins className="h-3.5 w-3.5 text-emerald-400" />
-                                                                <span className="text-emerald-300 font-bold">{totalGross.toFixed(2)} €</span>
-                                                                <span className="text-[10px] text-emerald-500 uppercase font-medium">Est. Brut</span>
+                                                        return (
+                                                            <div className="bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-700/30 flex justify-between items-center text-xs">
+                                                                <span className="text-blue-400 font-medium">{indemnity.details}</span>
+                                                                <span className="text-blue-300 font-bold text-sm">+{indemnity.amount.toFixed(2)} €</span>
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 bg-blue-900/30 px-2 py-1 rounded border border-blue-500/30">
-                                                                <span className="text-blue-300 font-bold">{totalNet.toFixed(2)} €</span>
-                                                                <span className="text-[10px] text-blue-500 uppercase font-medium">Est. Net</span>
-                                                            </div>
-                                                            <span className="text-[10px] text-slate-500 italic max-w-[200px] leading-tight hidden xl:inline-block">
-                                                                (Estimation indicative, non contractuelle)
-                                                            </span>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="text-right flex flex-col items-end">
-                                        <div className="text-xs text-slate-500 uppercase font-bold">Total Hebdo</div>
-                                        <div className="text-2xl font-black text-white leading-none">{formatHours(data.totalHours)}</div>
-                                        <button
-                                            onClick={() => downloadCSV(data.logs, `Heures_Semaine_${weekKey}`)}
-                                            disabled={isDownloading}
-                                            className="mt-2 text-[10px] font-bold uppercase tracking-wider text-blue-400 hover:text-blue-300 flex items-center justify-end gap-1 disabled:opacity-50"
-                                        >
-                                            {isDownloading ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                                <Download className="h-3 w-3" />
+                                                        );
+                                                    })()}
+                                                </div>
                                             )}
-                                            Export CSV
+
+                                        </div>
+                                    </div>
+
+                                    {/* Note Input */}
+                                    <div className="col-span-2 lg:col-span-1">
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">Note (Optionnel)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Commentaire..."
+                                            value={note}
+                                            onChange={(e) => setNote(e.target.value)}
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none"
+                                        />
+                                    </div>
+
+
+                                    <div className="col-span-2 lg:col-span-1 flex items-end">
+                                        <button
+                                            onClick={handleSaveLog}
+                                            disabled={!date || !callTime || !endTime}
+                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                        >
+                                            <Save className="h-4 w-4" />
+                                            <span className="hidden lg:inline">Ajouter</span>
+                                            <span className="lg:hidden">Enregistrer</span>
                                         </button>
                                     </div>
+
+                                    <div className="col-span-full mt-2 bg-cinema-900/50 px-4 py-2.5 rounded-lg border border-cinema-700 flex justify-center items-center gap-2">
+                                        <span className="text-slate-500 text-xs font-bold uppercase">Total Estimé :</span>
+                                        <span className="text-blue-400 font-bold text-lg">
+                                            {formatHours(calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration))}
+                                        </span>
+                                    </div>
+
+                                    {/* Dynamic Night Hours Feedback */}
+                                    {(() => {
+                                        const bd = getShiftBreakdown();
+                                        if (bd && (bd.nightHours50 > 0 || bd.nightHours100 > 0)) {
+                                            return (
+                                                <div className="col-span-full bg-purple-900/20 px-4 py-2 rounded-lg border border-purple-500/30 flex gap-4 text-xs font-bold text-purple-300">
+                                                    <span>Heures Nuit :</span>
+                                                    {bd.nightHours50 > 0 && <span>Maj. 50% : {bd.nightHours50}h</span>}
+                                                    {bd.nightHours100 > 0 && <span>Maj. 100% : {bd.nightHours100}h</span>}
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
+                                    {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
+                                    {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
+                                        <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50">
+                                            {(() => {
+                                                const bd = getShiftBreakdown();
+                                                if (!bd) return <span className="text-emerald-400 font-bold text-sm">Prév. Salaire : -- €</span>;
+
+                                                const jobTitle = userProfileData.role || '';
+                                                const job = availableJobs.find(j => j.title === jobTitle) || {};
+
+                                                const params = {
+                                                    job,
+                                                    hoursWorked: bd.effectiveHours,
+                                                    contractType: 'SEMAINE' as const,
+                                                    travelHoursInside,
+                                                    travelHoursOutside,
+                                                    isContinuousDay,
+                                                    convention: project.convention,
+                                                    isSunday: bd.sundayHours > 0,
+                                                    isHoliday: bd.holidayHours > 0
+                                                };
+
+                                                const result = calculateEstimatedSalary(params);
+
+                                                return (
+                                                    <div className="flex justify-between items-center w-full">
+                                                        <span className="text-emerald-500 text-xs font-bold uppercase">Estimation Salaire Brut :</span>
+                                                        <span className="text-emerald-300 font-bold text-lg">
+                                                            {result && result.grossAmount ? `${result.grossAmount.toFixed(2)} €` : '-- €'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm whitespace-nowrap">
-                                        <thead>
-                                            <tr className="bg-cinema-900/30 border-b border-cinema-700 text-left text-slate-500 uppercase text-[10px] font-bold tracking-wider">
-                                                <th className="px-4 py-3">Jour</th>
-                                                <th className="px-4 py-3">Début</th>
-                                                <th className="px-4 py-3">Repas</th>
-                                                <th className="px-4 py-3 text-center">Infos / Pause</th>
-                                                <th className="px-4 py-3">Fin</th>
-                                                <th className="px-4 py-3 text-right">Total Jour</th>
-                                                <th className="px-4 py-3 text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-cinema-700/50">
-                                            {data.logs
-                                                .sort((a, b) => a.date.localeCompare(b.date))
-                                                .map(log => (
-                                                    <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                                                        <td className="px-4 py-4 font-bold text-white">
-                                                            {new Date(log.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-slate-300 font-mono">{log.callTime}</td>
-                                                        <td className="px-4 py-4 text-slate-300 font-mono">
-                                                            {log.mealTime || '-'}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-slate-400 text-xs text-center">
-                                                            <div className="flex flex-col gap-1 items-center">
-                                                                {log.isContinuousDay && (
-                                                                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-bold uppercase border border-blue-500/30">Journée Continue</span>
-                                                                )}
-                                                                {!log.isContinuousDay && (
-                                                                    <span>{log.hasShortenedMeal ? 'Repas -30m' : 'Repas -1h'}</span>
-                                                                )}
-                                                                {log.breakDuration && log.breakDuration > 0 && (
-                                                                    <div className="text-red-400 flex items-center gap-1">
-                                                                        <StopCircle className="h-3 w-3" />
-                                                                        Pause -{log.breakDuration}m
-                                                                        {log.pauseTime && <span className="text-xs text-slate-500 ml-1">({log.pauseTime})</span>}
-                                                                    </div>
-                                                                )}
-                                                                {log.note && (
-                                                                    <div className="group relative">
-                                                                        <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20 cursor-help max-w-[150px] truncate block">
-                                                                            Note : {log.note}
+
+                            </div>
+
+
+                            {/* Weekly Summary Tables */}
+                            <div className="space-y-8">
+                                {weeklyData.map(([key, week]) => (
+                                    <div key={key} className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
+                                        <div className="bg-cinema-900/50 px-6 py-4 border-b border-cinema-700 flex justify-between items-center">
+                                            <h3 className="font-bold text-white uppercase tracking-wider text-sm">{week.label}</h3>
+                                            <span className="bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30">
+                                                {formatHours(week.totalHours)}
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-cinema-900/30 text-xs font-bold text-slate-500 uppercase border-b border-cinema-700">
+                                                        <th className="px-6 py-3">Date</th>
+                                                        <th className="px-6 py-3">Début</th>
+                                                        <th className="px-6 py-3">Fin</th>
+                                                        <th className="px-6 py-3">Repas</th>
+                                                        <th className="px-6 py-3 text-right">Ampli</th>
+                                                        <th className="px-6 py-3 text-right">Eff.</th>
+                                                        <th className="px-6 py-3 text-right">Validé</th>
+                                                        <th className="px-6 py-3 text-center">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-cinema-700/50">
+                                                    {week.logs.map((log) => {
+                                                        const mealDeduction = (log.mealTime ? (log.hasShortenedMeal ? 0.5 : 1) : 0) + ((log.breakDuration || 0) / 60);
+                                                        const ampli = log.totalHours + mealDeduction;
+
+                                                        return (
+                                                            <tr key={log.id} className="hover:bg-cinema-700/30 transition-colors text-sm text-slate-300">
+                                                                <td className="px-6 py-3 font-medium text-white">{formatDateFR(log.date)}</td>
+                                                                <td className="px-6 py-3">{log.callTime}</td>
+                                                                <td className="px-6 py-3">{log.endTime}</td>
+                                                                <td className="px-6 py-3">
+                                                                    {log.mealTime ? (
+                                                                        <span className="flex flex-col">
+                                                                            <span>{log.mealTime}</span>
+                                                                            <span className="text-[10px] text-slate-500">{log.hasShortenedMeal ? '30m' : '1h'}</span>
                                                                         </span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-4 text-slate-300 font-mono">{log.endTime}</td>
-                                                        <td className="px-4 py-4 text-right font-bold text-white bg-cinema-900/30">{formatHours(log.totalHours)}</td>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <div className="flex justify-center items-center gap-2">
-                                                                <button
-                                                                    onClick={() => downloadCSV([log], `Heures_${log.userName}_${log.date}`)}
-                                                                    disabled={isDownloading}
-                                                                    className="text-slate-500 hover:text-blue-400 p-1 rounded transition-colors disabled:opacity-50"
-                                                                    title="Télécharger CSV"
-                                                                >
-                                                                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                                                </button>
-                                                                {/* Only allow delete in Personal Mode */}
-                                                                {viewMode === 'personal' && (
+                                                                    ) : '-'}
+                                                                </td>
+                                                                <td className="px-6 py-3 text-right text-slate-500">{formatHours(ampli)}</td>
+                                                                <td className="px-6 py-3 text-right">{formatHours(log.effectiveHours || log.totalHours)}</td>
+                                                                <td className="px-6 py-3 text-right font-bold text-blue-400">{formatHours(log.totalHours)}</td>
+                                                                <td className="px-6 py-3 text-center">
                                                                     <button
                                                                         onClick={() => handleDeleteLog(log.id)}
-                                                                        className="text-slate-500 hover:text-red-400 p-1 rounded transition-colors"
+                                                                        className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
                                                                         title="Supprimer"
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </button>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                        </tbody>
-                                        <tfoot className="bg-cinema-900/30 border-t border-cinema-700">
-                                            <tr>
-                                                <td colSpan={5} className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">Total Semaine</td>
-                                                <td className="px-4 py-3 text-right font-black text-white border-l border-cinema-700">{formatHours(data.totalHours)}</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {weeklyData.length === 0 && (
+                                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 p-12 text-center text-slate-500 flex flex-col items-center gap-4">
+                                        <div className="p-4 bg-cinema-900 rounded-full">
+                                            <Calendar className="h-8 w-8 opacity-50" />
+                                        </div>
+                                        <p>Aucune heure saisie pour ce projet.</p>
+                                    </div>
+                                )}
                             </div>
-                        )) : (
-                            <div className="bg-cinema-800 rounded-xl border border-cinema-700 p-12 text-center opacity-50">
-                                <Clock className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold text-white mb-2">Aucune fiche d'heure</h3>
-                                <p className="text-slate-400">
-                                    {viewMode === 'personal' ? 'Remplissez le formulaire ci-dessus pour commencer.' : 'Aucune donnée pour cet utilisateur.'}
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+
+                    )}
                 </div>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 };

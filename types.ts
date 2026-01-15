@@ -74,6 +74,18 @@ export interface LogisticsRequest {
   description: string;
   contact?: string;
   status?: 'pending' | 'approved' | 'completed';
+  vehicleType?: 'HGV' | 'Truck' | 'Van' | 'Car' | 'Scooter';
+  distanceKm?: number;
+}
+
+export interface EnergyLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  generatorHours: number;
+  fuelLiters: number;
+  gridKwh: number;
+  notes?: string;
+  submittedBy?: string;
 }
 
 export interface Project {
@@ -88,6 +100,7 @@ export interface Project {
   convention?: string; // e.g., "Cinéma - Annexe 1", "USPA"
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   items: ConsumableItem[];
+  callSheets?: CallSheet[]; // Added: Call sheets list
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
   ecoprodProofs?: Record<string, string>; // ID -> Proof URL/Metadata
   rseCertification?: {
@@ -102,6 +115,7 @@ export interface Project {
   timeLogs?: TimeLog[];
   reinforcements?: Reinforcement[];
   logistics?: LogisticsRequest[];
+  energyLogs?: EnergyLog[];
 }
 
 export interface ReinforcementDetail {
@@ -146,6 +160,12 @@ export interface TimeLog {
   note?: string; // Added: User manual note
   travelHoursInside?: number; // Added: Heures de voyage DANS l'horaire
   travelHoursOutside?: number; // Added: Heures de voyage HORS horaire
+
+  // Transport / Mileage
+  transportMode?: 'TRANSPORT_COMMUN' | 'VEHICULE_PERSO' | 'COVOITURAGE';
+  vehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER';
+  fiscalPower?: number; // CV
+  commuteDistanceKm?: number;
 
   // Detailed User Info for Export
   userFirstName?: string;
@@ -264,6 +284,12 @@ export interface UserProfile {
   familyStatus: string; // Situation familiale
   dietaryHabits?: string; // e.g. "Végétarien", "Sans Gluten"
 
+  // Default Transport Preferences
+  defaultTransportMode?: 'TRANSPORT_COMMUN' | 'VEHICULE_PERSO' | 'COVOITURAGE';
+  defaultVehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER';
+  defaultFiscalPower?: number;
+  defaultCommuteDistanceKm?: number;
+
   // Admin Info
   ssn: string; // Numéro de sécurité sociale
   birthPlace: string;
@@ -273,6 +299,9 @@ export interface UserProfile {
   nationality: string;
   socialSecurityCenterAddress: string;
   taxRate?: number; // Added: Taux d'imposition à la source (%)
+
+  // Saved Commute Routes
+  savedRoutes?: SavedRoute[];
 
   // Emergency Contact
   emergencyContactName: string;
@@ -288,6 +317,14 @@ export interface UserProfile {
   cmbCard?: string;
   idCard?: string;
   drivingLicense?: string;
+}
+
+export interface SavedRoute {
+  id: string;
+  name: string; // e.g. "Domicile - Studio"
+  distanceKm: number;
+  origin?: string;
+  destination?: string;
 }
 
 export interface ProjectSummary {
@@ -326,6 +363,12 @@ export interface CallSheet {
   url: string; // PDF URL or Base64
   uploadedBy: string; // User Name
   department: Department | 'PRODUCTION';
+
+  // Daily Logistics
+  callTime?: string;
+  location1?: string;
+  location2?: string | null;
+  cateringLocation?: string;
 }
 
 export interface CatalogItem {

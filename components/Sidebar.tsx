@@ -15,7 +15,8 @@ import {
   Utensils,
   Clock,
   Truck, // Added
-  Globe // Added
+  Globe, // Added
+  Zap // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -49,6 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
         { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
+        { id: 'energy', label: 'Énergie / Groupe', icon: Zap, allowedDepts: ['PRODUCTION', 'Lumière'] },
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
         { id: 'team', label: 'Bible Équipe Tournage', icon: Users },
         { id: 'inventory', label: 'Consommables', icon: Package },
@@ -86,6 +88,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     const prodAndRegieItems = ['catering'];
 
     // 4. Check Restrictions
+    if (item.id === 'energy') {
+      return currentDept === 'PRODUCTION' || currentDept === 'Lumière';
+    }
+
     if (prodOnlyItems.includes(item.id)) return false; // Production caught above, so everyone else returns false here
 
     if (prodAndRegieItems.includes(item.id)) {

@@ -507,3 +507,64 @@ export const calculateShiftDetails = (entry: TimeEntry): ShiftResult => {
         holidayHours: isHoliday ? Number(effectiveHours.toFixed(2)) : 0
     };
 };
+
+import { getFiscalRate, USPA_RULES, URSSAF_2024_CARS, URSSAF_2024_MOTOS, URSSAF_2024_MOPEDS } from '../data/mileageRates';
+
+export const calculateMileageIndemnity = (
+    convention: string | undefined,
+    vehicleType: 'VOITURE' | 'MOTO' | 'SCOOTER' | undefined,
+    fiscalPower: number | undefined,
+    distanceKm: number
+): { amount: number; rateUsed: number; details: string } => {
+    if (!distanceKm || !vehicleType || !fiscalPower) return { amount: 0, rateUsed: 0, details: '' };
+
+    // 1. Identify which rule to apply
+    // USPA specific
+    const isUSPA = convention === 'USPA' || convention === 'Téléfilm' || convention === 'Série TV' || convention === 'Plateforme';
+
+    if (isUSPA) {
+        // USPA Rules
+        // Franchise 10km : No pay if <= 10km? Or first 10km free?
+        // Text: "Aucune indemnité n'est prévue pour les trajets inférieurs ou égaux à 10 kilomètres." (Implies threshold)
+        if (distanceKm <= USPA_RULES.franchiseKm) {
+            return { amount: 0, rateUsed: 0, details: `Franchise USPA (${USPA_RULES.franchiseKm}km) non atteinte` };
+        }
+
+        // Rate
+        let baseRate = 0;
+        let finalRate = 0;
+
+        if (vehicleType === 'VOITURE') {
+            // "Moitié du tarif 7CV"
+            const scale7CV = URSSAF_2024_CARS[7].d_max_5000;
+            baseRate = scale7CV;
+            finalRate = baseRate * USPA_RULES.carRateMultiplier;
+        } else {
+            // Moto: Moitié du tarif 3/4/5 CV (Wait, text says "tarif corresp à 3, 4 ou 5 CV")
+            // USPA Text: "moitié du tarif correspondant à 3, 4 ou 5 CV" -> Ambiguous. usually means "Use the scale for 3-5CV (which is 3-4-5 merged usually or 3,4,5 distinct?)"
+            // URSSAF MOTO has buckets: 1-2, 3-4-5, >5.
+            // So we use the 3-5 bucket from URSSAF.
+            const scale3_5 = URSSAF_2024_MOTOS[3].d_max_5000;
+            baseRate = scale3_5;
+            finalRate = baseRate * USPA_RULES.motoRateMultiplier;
+        }
+
+        const amount = distanceKm * finalRate;
+        return {
+            amount: Number(amount.toFixed(2)),
+            rateUsed: Number(finalRate.toFixed(3)),
+            details: `Tarif USPA (${vehicleType} ${fiscalPower}CV): ${distanceKm}km x ${finalRate.toFixed(3)}€`
+        };
+    } else {
+        // Standard / Cinema / Default (URSSAF Full Rate)
+        // We use the fiscal power provided.
+        const rate = getFiscalRate(vehicleType, fiscalPower, 0); // Assume Tier 1
+        const amount = distanceKm * rate;
+
+        return {
+            amount: Number(amount.toFixed(2)),
+            rateUsed: rate,
+            details: `Tarif URSSAF (${vehicleType} ${fiscalPower}CV): ${distanceKm}km x ${rate.toFixed(3)}€`
+        };
+    }
+};

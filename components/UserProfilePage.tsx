@@ -66,7 +66,11 @@ export const UserProfilePage: React.FC = () => {
                             cmbCard: mergedData.cmbCard,
                             idCard: mergedData.idCard,
                             drivingLicense: mergedData.drivingLicense,
-                            dietaryHabits: mergedData.dietaryHabits
+                            dietaryHabits: mergedData.dietaryHabits,
+                            defaultTransportMode: mergedData.defaultTransportMode || 'TRANSPORT_COMMUN',
+                            defaultVehicleType: mergedData.defaultVehicleType,
+                            defaultFiscalPower: mergedData.defaultFiscalPower,
+                            defaultCommuteDistanceKm: mergedData.defaultCommuteDistanceKm
                         });
                         setIsEditing(false); // Assume if data exists, we view it first
                         setIsLoading(false);
@@ -110,7 +114,11 @@ export const UserProfilePage: React.FC = () => {
                     rib: u.rib,
                     cmbCard: u.cmbCard,
                     idCard: u.idCard,
-                    drivingLicense: u.drivingLicense
+                    drivingLicense: u.drivingLicense,
+                    defaultTransportMode: u.defaultTransportMode || 'TRANSPORT_COMMUN',
+                    defaultVehicleType: u.defaultVehicleType,
+                    defaultFiscalPower: u.defaultFiscalPower,
+                    defaultCommuteDistanceKm: u.defaultCommuteDistanceKm
                 });
             }
             setIsLoading(false);
@@ -324,6 +332,63 @@ ${formData.firstName} ${formData.lastName}`;
                         </select>
                         <p className="text-xs text-slate-500 mt-1">Ces informations seront visibles par la Régie pour l'organisation des repas.</p>
                     </div>
+
+                </section>
+
+                {/* Transport Defaults */}
+                <section className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 space-y-4">
+                    <h3 className="text-xl font-bold text-yellow-400 border-b border-cinema-700 pb-2">Transport Préféré (Défaut)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Mode de Transport Principal</label>
+                            <select
+                                name="defaultTransportMode"
+                                value={formData.defaultTransportMode || 'TRANSPORT_COMMUN'}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none appearance-none disabled:opacity-50"
+                            >
+                                <option value="TRANSPORT_COMMUN">Transports en Commun</option>
+                                <option value="VEHICULE_PERSO">Véhicule Personnel</option>
+                                <option value="COVOITURAGE">Covoiturage</option>
+                            </select>
+                        </div>
+
+                        {formData.defaultTransportMode === 'VEHICULE_PERSO' && (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Type de Véhicule</label>
+                                    <select
+                                        name="defaultVehicleType"
+                                        value={formData.defaultVehicleType || 'VOITURE'}
+                                        onChange={handleChange}
+                                        disabled={!isEditing}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-yellow-500 focus:outline-none appearance-none disabled:opacity-50"
+                                    >
+                                        <option value="VOITURE">Voiture</option>
+                                        <option value="MOTO">Moto</option>
+                                        <option value="SCOOTER">Scooter</option>
+                                    </select>
+                                </div>
+                                <Input
+                                    label="Chevaux Fiscaux (CV)"
+                                    name="defaultFiscalPower"
+                                    type="number"
+                                    value={formData.defaultFiscalPower}
+                                    onChange={handleChange}
+                                    disabled={!isEditing}
+                                />
+                                <Input
+                                    label="Distance Domicile-Travail (km)"
+                                    name="defaultCommuteDistanceKm"
+                                    type="number"
+                                    value={formData.defaultCommuteDistanceKm}
+                                    onChange={handleChange}
+                                    disabled={!isEditing}
+                                />
+                            </>
+                        )}
+                    </div>
                 </section>
 
                 {/* Civil Status */}
@@ -396,7 +461,7 @@ ${formData.firstName} ${formData.lastName}`;
                     Envoyer ma fiche par Email
                 </button>
             </div>
-        </div>
+        </div >
     );
 };
 

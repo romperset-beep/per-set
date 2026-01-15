@@ -128,6 +128,8 @@ export const LogisticsWidget: React.FC = () => {
     const [newLocation, setNewLocation] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newContact, setNewContact] = useState('');
+    const [newVehicle, setNewVehicle] = useState<'HGV' | 'Truck' | 'Van' | 'Car' | 'Scooter'>('Van');
+    const [newDistance, setNewDistance] = useState('');
 
     const getRequests = (dateStr: string, dept: string) => {
         return (project.logistics || []).filter(r => r.date === dateStr && r.department === dept);
@@ -146,7 +148,9 @@ export const LogisticsWidget: React.FC = () => {
             time: newTime,
             location: newLocation,
             description: newDescription,
-            contact: newContact || user?.name || ''
+            contact: newContact || user?.name || '',
+            vehicleType: newVehicle,
+            distanceKm: newDistance ? parseFloat(newDistance) : 0
         };
 
         await addLogisticsRequest(newReq);
@@ -260,6 +264,8 @@ export const LogisticsWidget: React.FC = () => {
                                                                                                 req.type === 'dropoff_set' ? 'Retour Plateau' :
                                                                                                     'A/R'}
                                                                                 </span>
+                                                                                <span className="text-slate-500 mx-1">•</span>
+                                                                                {req.distanceKm ? <><span className="text-slate-500 mx-1">•</span><span className="text-slate-300">{req.distanceKm} km ({req.vehicleType})</span></> : null}
                                                                                 <span className="text-slate-500 mx-1">•</span>
                                                                                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                                                                                 <span className="text-slate-300">{req.location}</span>
@@ -448,15 +454,42 @@ export const LogisticsWidget: React.FC = () => {
                                     <option value="roundtrip">Aller-Retour</option>
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Heure</label>
-                                <input
-                                    type="time"
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
-                                    value={newTime}
-                                    onChange={e => setNewTime(e.target.value)}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Heure</label>
+                                    <input
+                                        type="time"
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                        value={newTime}
+                                        onChange={e => setNewTime(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Type de Véhicule</label>
+                                    <select
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                        value={newVehicle}
+                                        onChange={e => setNewVehicle(e.target.value as any)}
+                                    >
+                                        <option value="Van">Van / Utilitaire</option>
+                                        <option value="Truck">Porteur (Camion)</option>
+                                        <option value="HGV">Poids Lourd</option>
+                                        <option value="Car">Voiture</option>
+                                        <option value="Scooter">2 Roues</option>
+                                    </select>
+                                </div>
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Distance (km)</label>
+                            <input
+                                type="number"
+                                placeholder="Ex: 50"
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                value={newDistance}
+                                onChange={e => setNewDistance(e.target.value)}
+                            />
                         </div>
 
                         <div className="space-y-2">

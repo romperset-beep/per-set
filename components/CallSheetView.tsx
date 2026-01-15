@@ -11,6 +11,11 @@ export const CallSheetView: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
     const [uploadName, setUploadName] = useState('');
+    const [callTime, setCallTime] = useState(''); // New
+    const [location1, setLocation1] = useState(''); // New
+    const [location2, setLocation2] = useState(''); // New
+    const [cateringLocation, setCateringLocation] = useState(''); // New
+
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -81,12 +86,21 @@ export const CallSheetView: React.FC = () => {
                 name: uploadName,
                 url: downloadUrl,
                 uploadedBy: user?.name || 'Inconnu',
-                department: user?.department as (Department | 'PRODUCTION')
+                department: user?.department as (Department | 'PRODUCTION'),
+                callTime, // New
+                location1, // New
+                location2: location2 || null, // Fix: Firestore doesn't accept undefined
+                cateringLocation // New
             });
 
             // Reset Form
             setFile(null);
+            setFile(null);
             setUploadName('');
+            setCallTime('');
+            setLocation1('');
+            setLocation2('');
+            setCateringLocation('');
             setIsUploading(false);
         } catch (err: any) {
             console.error("Upload failed", err);
@@ -144,6 +158,56 @@ export const CallSheetView: React.FC = () => {
                                     onChange={(e) => setUploadName(e.target.value)}
                                     className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                 />
+                            </div>
+                        </div>
+
+                        {/* DAILY LOGISTICS INPUTS */}
+                        <div className="bg-cinema-900/50 p-4 rounded-lg border border-cinema-700/50 space-y-4">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase">Infos Feuille de Service (Visible sur Dashboard)</h4>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Pât (Prêt à Tourner)</label>
+                                    <input
+                                        type="time"
+                                        value={callTime}
+                                        onChange={(e) => setCallTime(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Cantine (Adresse)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="ex: 12 Rue de la Paix, Paris"
+                                        value={cateringLocation}
+                                        onChange={(e) => setCateringLocation(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Décor 1 (Principal)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Adresse du décor principal"
+                                        value={location1}
+                                        onChange={(e) => setLocation1(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Décor 2 (Optionnel)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Adresse du décor secondaire"
+                                        value={location2}
+                                        onChange={(e) => setLocation2(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
+                                    />
+                                </div>
                             </div>
                         </div>
 
