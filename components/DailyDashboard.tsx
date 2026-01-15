@@ -56,6 +56,7 @@ export const DailyDashboard: React.FC = () => {
                             PÂT (Prêt à Tourner)
                         </div>
                         <div className="text-6xl md:text-8xl font-black text-white tracking-tighter">
+                            {callTimeDisplay}
                         </div>
                         {todayCallSheet ? (
                             <a
