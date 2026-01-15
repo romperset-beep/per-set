@@ -1,14 +1,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { Clock, MapPin, Utensils, Activity, Footprints, Calendar, FileText } from 'lucide-react';
-import { CallSheet } from '../types';
+import { Clock, MapPin, Utensils, Activity, Calendar, FileText } from 'lucide-react';
 
 export const DailyDashboard: React.FC = () => {
     const { project, user, callSheets } = useProject();
 
-    // Pedometer State (Mockup/Interactive)
-    const [steps, setSteps] = useState(0); // In a real app, this would use PWA sensors or manual input
+    // Get "Today's" Call Sheet
 
     // Get "Today's" Call Sheet
     const todayCallSheet = useMemo(() => {
@@ -150,35 +148,7 @@ export const DailyDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* PEDOMETER WIDGET */}
-            <div className="bg-cinema-800 rounded-xl p-5 border border-cinema-700 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
-                {/* Decorative */}
-                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-eco-500/10 rounded-full blur-2xl group-hover:bg-eco-500/20 transition-all" />
-
-                <div className="flex items-center gap-4 z-10 w-full">
-                    <div className="p-4 bg-eco-900/50 rounded-full border border-eco-500/30 text-eco-400">
-                        <Footprints className="w-8 h-8" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-white">Podomètre de Tournage</h3>
-                        <p className="text-sm text-slate-400">Gardez la forme (et trackez votre bilan carbone piéton) !</p>
-                    </div>
-                </div>
-
-                {/* Interactive Counter (Since we can't access real hardware easily on web without permission API complexity) */}
-                <div className="flex items-center gap-4 z-10 bg-cinema-900/50 p-2 rounded-lg border border-cinema-700">
-                    <div className="text-right">
-                        <div className="text-3xl font-black text-white font-mono">{steps.toLocaleString()}</div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest text-right">Pas aujourd'hui</div>
-                    </div>
-                    <button
-                        onClick={() => setSteps(s => s + 100)} // Simulator for demo
-                        className="px-3 py-1 bg-eco-600 hover:bg-eco-500 text-white text-xs font-bold rounded shadow active:scale-95 transition-all"
-                    >
-                        + Simuler
-                    </button>
-                </div>
-            </div>
+            {/* PEDOMETER REMOVED BY USER REQUEST (Mockup only) */}
 
             {/* GRID OF OTHER WIDGETS (To be managed by parent or integrated here?) 
                For now this is the "Top" view. The standard grid can follow. 
