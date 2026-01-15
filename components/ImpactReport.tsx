@@ -451,7 +451,12 @@ export const ImpactReport: React.FC = () => {
 
     const getMetricByAction = (action: SurplusAction, view: 'quantity' | 'money' | 'co2') => {
         return surplusItems
-            .filter(i => i.surplusAction === action)
+            .filter(i => {
+                if (action === SurplusAction.NONE) {
+                    return i.surplusAction === SurplusAction.NONE || !i.surplusAction;
+                }
+                return i.surplusAction === action;
+            })
             .reduce((acc, i) => {
                 if (view === 'quantity') return acc + i.quantityCurrent;
                 if (view === 'money') return acc + (i.quantityCurrent * getEstimatedPrice(i));

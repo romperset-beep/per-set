@@ -503,6 +503,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Remove id if present to let Firestore generate one
       const { id, ...itemData } = item;
 
+      // Default surplusAction
+      if (!itemData.surplusAction) {
+        itemData.surplusAction = SurplusAction.NONE;
+      }
+
       // Sanitize undefined values just in case
       const sanitizedData = Object.fromEntries(
         Object.entries(itemData).map(([k, v]) => [k, v === undefined ? null : v])

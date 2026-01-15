@@ -630,7 +630,7 @@ export const SocialFeed: React.FC = () => {
                                             {/* Metadata */}
                                             <div className={`flex items-center gap-2 mt-1 text-[10px] ${isMe ? 'text-pink-200/70' : 'text-slate-400'} justify-end`}>
                                                 <span>
-                                                    {new Date(post.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(post.date).toLocaleDateString([], { day: '2-digit', month: '2-digit' })} • {new Date(post.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                                 {post.likes > 0 && (
                                                     <span className="flex items-center gap-0.5">

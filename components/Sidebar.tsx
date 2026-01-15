@@ -46,13 +46,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Quotidien',
       items: [
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
-        { id: 'timesheet', label: 'Heures Jours/Semaines', icon: Clock, allowedDepts: 'ALL' },
+        { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
         { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
         { id: 'team', label: 'Bible Équipe Tournage', icon: Users },
         { id: 'inventory', label: 'Consommables', icon: Package },
-        { id: 'social', label: 'Mur Social', icon: MessageSquare },
       ]
     },
     {
@@ -69,6 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Compte',
       items: [
         { id: 'profile', label: 'Mon Profil', icon: Settings },
+        { id: 'social', label: 'Mur Social', icon: MessageSquare },
         { id: 'admin', label: 'Administration', icon: ShieldCheck },
       ]
     }

@@ -18,7 +18,7 @@ export const CircularEconomy: React.FC = () => {
     });
 
     // Filtered lists
-    const pendingItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.NONE);
+    const pendingItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.NONE || !item.surplusAction);
     const marketItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.MARKETPLACE);
     const donationItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.DONATION);
     const shortFilmItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.SHORT_FILM);
