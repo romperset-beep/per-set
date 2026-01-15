@@ -1018,7 +1018,12 @@ export const TimesheetWidget: React.FC = () => {
                                                 if (!bd) return <span className="text-emerald-400 font-bold text-sm">Prév. Salaire : -- €</span>;
 
                                                 const jobTitle = userProfileData.role || '';
-                                                const job = availableJobs.find(j => j.title === jobTitle) || {};
+                                                // Try exact match OR match with " cinéma" suffix (common difference between USPA and Annexe 1 lists)
+                                                const job = availableJobs.find(j =>
+                                                    j.title === jobTitle ||
+                                                    j.title === `${jobTitle} cinéma` ||
+                                                    j.title.startsWith(jobTitle) // Safety fallback
+                                                ) || {};
 
                                                 const params = {
                                                     job,
