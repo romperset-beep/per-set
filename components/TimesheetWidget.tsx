@@ -1042,12 +1042,17 @@ export const TimesheetWidget: React.FC = () => {
                                                 const result = calculateEstimatedSalary(params);
 
                                                 return (
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span className="text-emerald-500 text-xs font-bold uppercase">Estimation Salaire Brut :</span>
-                                                        <span className="text-emerald-300 font-bold text-lg">
-                                                            {result && result.grossAmount ? `${result.grossAmount.toFixed(2)} €` : '-- €'}
-                                                        </span>
-                                                    </div>
+                                                    <>
+                                                        <div className="flex justify-between items-center w-full">
+                                                            <span className="text-emerald-500 text-xs font-bold uppercase">Estimation Salaire Brut :</span>
+                                                            <span className="text-emerald-300 font-bold text-lg">
+                                                                {result && result.grossAmount ? `${result.grossAmount.toFixed(2)} €` : '-- €'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-[10px] text-emerald-500/50 mt-1 font-mono text-right">
+                                                            Debug: Role="{jobTitle}" ({availableJobs.length} jobs) - Match: {job.title ? 'Oui' : 'Non'} - Conv: {project.convention || 'None'}
+                                                        </div>
+                                                    </>
                                                 );
                                             })()}
                                         </div>
