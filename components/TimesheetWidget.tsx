@@ -775,51 +775,52 @@ export const TimesheetWidget: React.FC = () => {
                                         </h4>
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
-                                            <div className="md:col-span-2">
-                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">Moyen de Transport</label>
-                                                <div className="flex bg-cinema-900 rounded-lg p-1 border border-cinema-700">
-                                                    <button onClick={() => setTransportMode('TRANSPORT_COMMUN')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'TRANSPORT_COMMUN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Commun</button>
-                                                    <button onClick={() => setTransportMode('VEHICULE_PERSO')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'VEHICULE_PERSO' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Véhicule Perso</button>
-                                                    <button onClick={() => setTransportMode('COVOITURAGE')} className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${transportMode === 'COVOITURAGE' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>Covoit.</button>
+                                            <div className="md:col-span-2 space-y-3">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Moyen de Transport</label>
+                                                    <div className="flex flex-wrap gap-1 bg-cinema-900 rounded-lg p-1 border border-cinema-700">
+                                                        <button onClick={() => setTransportMode('TRANSPORT_COMMUN')} className={`flex-1 min-w-[60px] py-1.5 text-[10px] sm:text-xs rounded-md transition-colors whitespace-nowrap ${transportMode === 'TRANSPORT_COMMUN' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>Commun</button>
+                                                        <button onClick={() => setTransportMode('VEHICULE_PERSO')} className={`flex-1 min-w-[80px] py-1.5 text-[10px] sm:text-xs rounded-md transition-colors whitespace-nowrap ${transportMode === 'VEHICULE_PERSO' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>Véhicule</button>
+                                                        <button onClick={() => setTransportMode('COVOITURAGE')} className={`flex-1 min-w-[60px] py-1.5 text-[10px] sm:text-xs rounded-md transition-colors whitespace-nowrap ${transportMode === 'COVOITURAGE' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>Covoit.</button>
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {transportMode === 'VEHICULE_PERSO' && (
-                                                <>
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Type & CV</label>
-                                                        <div className="flex gap-2">
-                                                            <select
-                                                                value={vehicleType}
-                                                                onChange={(e) => setVehicleType(e.target.value as any)}
-                                                                className="bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white w-20 focus:border-blue-500 outline-none"
-                                                            >
-                                                                <option value="VOITURE">Voiture</option>
-                                                                <option value="MOTO">Moto</option>
-                                                                <option value="SCOOTER">Scooter</option>
-                                                            </select>
+                                                {transportMode === 'VEHICULE_PERSO' && (
+                                                    <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Type & CV</label>
+                                                            <div className="flex gap-1">
+                                                                <select
+                                                                    value={vehicleType}
+                                                                    onChange={(e) => setVehicleType(e.target.value as any)}
+                                                                    className="flex-1 min-w-0 bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white focus:border-blue-500 outline-none"
+                                                                >
+                                                                    <option value="VOITURE">Auto</option>
+                                                                    <option value="MOTO">Moto</option>
+                                                                    <option value="SCOOTER">Scoot</option>
+                                                                </select>
+                                                                <input
+                                                                    type="number"
+                                                                    placeholder="CV"
+                                                                    value={fiscalPower || ''}
+                                                                    onChange={(e) => setFiscalPower(parseFloat(e.target.value))}
+                                                                    className="w-10 bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white focus:border-blue-500 outline-none text-center"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Km</label>
                                                             <input
                                                                 type="number"
-                                                                placeholder="CV"
-                                                                value={fiscalPower || ''}
-                                                                onChange={(e) => setFiscalPower(parseFloat(e.target.value))}
-                                                                className="bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white w-12 focus:border-blue-500 outline-none"
+                                                                placeholder="0"
+                                                                value={commuteDistanceKm || ''}
+                                                                onChange={(e) => setCommuteDistanceKm(parseFloat(e.target.value))}
+                                                                className="w-full bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white focus:border-blue-500 outline-none"
                                                             />
                                                         </div>
                                                     </div>
-
-                                                    <div>
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Distance (km)</label>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="0"
-                                                            value={commuteDistanceKm || ''}
-                                                            onChange={(e) => setCommuteDistanceKm(parseFloat(e.target.value))}
-                                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-md p-1.5 text-xs text-white focus:border-blue-500 outline-none"
-                                                        />
-                                                    </div>
-                                                </>
-                                            )}
+                                                )}
+                                            </div>
 
                                             {transportMode === 'VEHICULE_PERSO' && (
                                                 <div className="col-span-full space-y-2">
