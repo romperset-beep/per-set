@@ -9,7 +9,7 @@ import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calcula
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
-    const { project, updateProjectDetails, user } = useProject();
+    const { project, updateProjectDetails, user, callSheets } = useProject();
 
     // Form State
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -47,6 +47,21 @@ export const TimesheetWidget: React.FC = () => {
         }
         return USPA_JOBS;
     }, [project.projectType, project.convention]);
+
+    // Get Today's Call Sheet Location Logic
+    const todayLocation = useMemo(() => {
+        if (!callSheets) return null;
+        // Match exact date (assuming date state is YYYY-MM-DD from input)
+        const match = callSheets.find(cs => cs.date === date);
+        return match?.location1 || null;
+    }, [callSheets, date]);
+
+    // Auto-fill Destination when opening calculator
+    useEffect(() => {
+        if (showCalculator && !calcDest && todayLocation) {
+            setCalcDest(todayLocation);
+        }
+    }, [showCalculator, todayLocation]);
 
     // Fetch User Profile for current user (to get Role/Name details)
     React.useEffect(() => {
@@ -856,6 +871,15 @@ export const TimesheetWidget: React.FC = () => {
                                                                     onChange={(e) => setCalcDest(e.target.value)}
                                                                     className="bg-cinema-900 border border-cinema-700 rounded p-1.5 text-xs text-white"
                                                                 />
+                                                                {todayLocation && (
+                                                                    <button
+                                                                        onClick={() => setCalcDest(todayLocation)}
+                                                                        className="text-[10px] text-blue-400 text-left hover:text-blue-300 flex items-center gap-1 mt-1"
+                                                                    >
+                                                                        <MapPin className="w-3 h-3" />
+                                                                        Utiliser adresse du décor: {todayLocation}
+                                                                    </button>
+                                                                )}
                                                             </div>
 
                                                             <div className="flex gap-2">

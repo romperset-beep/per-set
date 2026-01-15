@@ -236,9 +236,10 @@ export const calculatePubGross = (params: CalculationParams): PayrollResult => {
     let total = 0;
     let logParams: string[] = [];
 
-    // Get Weekly Rate from Annexe 1 (or job if passed directly)
     // If job comes from Annexe 1, use baseWeekly.
     const cJob = job as CinemaJob;
+    if (!cJob || !cJob.rates) return { grossAmount: 0, details: 'Tarif non défini' };
+
     const weeklyRateReferent = cJob.rates.baseWeekly || (cJob.rates.baseDaily ? cJob.rates.baseDaily * 5 : 0);
 
     // 1. Simple Hourly (Taux Simple)
@@ -345,7 +346,9 @@ export interface ShiftResult {
 // Helper to parse time string "HH:mm" to decimal hours
 const timeToDecimal = (t: string): number => {
     if (!t) return 0;
-    const [h, m] = t.split(':').map(Number);
+    const parts = t.split(':');
+    const h = Number(parts[0]) || 0;
+    const m = Number(parts[1]) || 0;
     return h + (m / 60);
 };
 
