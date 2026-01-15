@@ -1017,13 +1017,15 @@ export const TimesheetWidget: React.FC = () => {
                                                 const bd = getShiftBreakdown();
                                                 if (!bd) return <span className="text-emerald-400 font-bold text-sm">Prév. Salaire : -- €</span>;
 
-                                                const jobTitle = userProfileData.role || '';
-                                                // Try exact match OR match with " cinéma" suffix (common difference between USPA and Annexe 1 lists)
-                                                const job = availableJobs.find(j =>
-                                                    j.title === jobTitle ||
-                                                    j.title === `${jobTitle} cinéma` ||
-                                                    j.title.startsWith(jobTitle) // Safety fallback
-                                                ) || {};
+                                                const jobTitle = (userProfileData.role || '').trim().toLowerCase();
+
+                                                const job = availableJobs.find(j => {
+                                                    const t = j.title.toLowerCase();
+                                                    return t === jobTitle ||
+                                                        t === `${jobTitle} cinéma` ||
+                                                        t.replace(' cinéma', '') === jobTitle ||
+                                                        jobTitle.startsWith(t);
+                                                }) || {};
 
                                                 const params = {
                                                     job,
