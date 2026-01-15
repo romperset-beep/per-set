@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { Clock, MapPin, Utensils, Activity, Footprints, Calendar } from 'lucide-react';
+import { Clock, MapPin, Utensils, Activity, Footprints, Calendar, FileText } from 'lucide-react';
 import { CallSheet } from '../types';
 
 export const DailyDashboard: React.FC = () => {
@@ -56,15 +56,19 @@ export const DailyDashboard: React.FC = () => {
                             PÂT (Prêt à Tourner)
                         </div>
                         <div className="text-6xl md:text-8xl font-black text-white tracking-tighter">
-                            {callTimeDisplay}
                         </div>
-                        {todayCallSheet && (
-                            <div className="text-xs text-blue-400 font-medium px-3 py-1 bg-blue-900/30 rounded-full border border-blue-500/30">
-                                {todayCallSheet.name}
-                            </div>
-                        )}
-                        {!todayCallSheet && (
-                            <p className="text-xs text-slate-500 italic">Aucune feuille de service pour aujourd'hui.</p>
+                        {todayCallSheet ? (
+                            <a
+                                href={todayCallSheet.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold transition-all shadow-lg hover:shadow-blue-500/25 mt-2"
+                            >
+                                <FileText className="w-4 h-4" />
+                                {todayCallSheet.name} (PDF)
+                            </a>
+                        ) : (
+                            <p className="text-xs text-slate-500 italic mt-2">Aucune feuille de service pour aujourd'hui.</p>
                         )}
                     </div>
 
