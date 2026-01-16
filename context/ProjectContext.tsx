@@ -109,6 +109,7 @@ interface ProjectContextType {
   // Call Sheets
   callSheets: CallSheet[];
   addCallSheet: (item: CallSheet) => Promise<void>;
+  deleteCallSheet: (id: string, url?: string) => Promise<void>; // Added
 
   userProfiles: UserProfile[];
   updateUserProfile: (profile: UserProfile) => void;
@@ -472,20 +473,41 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       addNotification(
         `Nouvelle feuille de service disponible pour le ${new Date(sheet.date).toLocaleDateString()}`,
         'INFO',
-        'PRODUCTION' // Notify everyone? Or just production? Usually "INFO" to GLOBAL if possible.
-        // Current addNotification param says 'target'. 
-        // 'PRODUCTION' target is usually restricted??
-        // Let's check notification logic.
-        // If target is undefined or Global... wait default is PRODUCTION.
-        // I should probably make target optional in addNotification signature or handle 'GLOBAL'.
-        // For now, let's use 'PRODUCTION' but usually FS concerns everyone.
-        // The `userNotifications` filter logic:
-        // if (user.department === 'PRODUCTION' || user.department === 'Régie') return true;
-        // return n.targetDept === user.department || n.targetDept === undefined;
-        // So `undefined` target = GLOBAL.
+        'PRODUCTION'
       );
     } catch (err: any) {
       console.error("Error adding call sheet:", err);
+      throw err;
+    }
+  };
+
+  const deleteCallSheet = async (sheetId: string, url?: string) => {
+    try {
+      const projectId = project.id;
+      if (!projectId || projectId === 'default-project') return;
+
+      // 1. Delete from Firestore
+      const docRef = doc(db, 'projects', projectId, 'callSheets', sheetId);
+      await deleteDoc(docRef);
+
+      // 2. Delete from Storage (if URL provided)
+      if (url) {
+        try {
+          const storage = getStorage();
+          const fileRef = ref(storage, url);
+          await deleteObject(fileRef);
+          console.log("[CallSheet] File deleted from storage");
+        } catch (storageErr) {
+          console.warn("[CallSheet] Storage file deletion failed (might be already gone or permission issue):", storageErr);
+          // Don't fail the whole operation if file delete fails, just log
+        }
+      }
+
+      addNotification("Feuille de service supprimée", "INFO", "PRODUCTION");
+
+    } catch (err: any) {
+      console.error("Error deleting call sheet:", err);
+      setError(`Erreur suppression: ${err.message}`);
       throw err;
     }
   };
@@ -1824,6 +1846,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       deleteSocialPost, // Added
       callSheets,
       addCallSheet,
+      deleteCallSheet, // Added
 
       // Catalog
       catalogItems,

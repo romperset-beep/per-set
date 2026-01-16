@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department } from '../types';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { FileText, Upload, Calendar, Download, Eye } from 'lucide-react';
+import { FileText, Upload, Calendar, Download, Eye, Trash2 } from 'lucide-react';
 
 const STORAGE_BUCKET = 'callsheets';
 
 export const CallSheetView: React.FC = () => {
-    const { user, currentDept, callSheets, addCallSheet, t } = useProject();
+    const { user, currentDept, callSheets, addCallSheet, deleteCallSheet, t } = useProject();
     const [isUploading, setIsUploading] = useState(false);
     const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
     const [uploadName, setUploadName] = useState('');
@@ -323,6 +323,25 @@ export const CallSheetView: React.FC = () => {
                                     <Download className="w-4 h-4" />
                                     Télécharger
                                 </a>
+
+                                {/* Delete Button (Restricted) */}
+                                {canUpload && (
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm("Êtes-vous sûr de vouloir supprimer cette feuille de service ?")) {
+                                                try {
+                                                    await deleteCallSheet(sheet.id, sheet.url);
+                                                } catch (e) {
+                                                    // Error handled in context
+                                                }
+                                            }
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium border border-red-500/20"
+                                        title="Supprimer"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))
