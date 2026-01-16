@@ -1013,6 +1013,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         currentProjectId: projectId
       };
 
+      // CRITICAL FIX: Persist to localStorage IMMEDIATELY (Optimistic)
+      // This prevents data loss on mobile reload if Firestore is slow/offline
+      localStorage.setItem('aBetterSetUser', JSON.stringify(updatedUser));
+      setUser({ ...updatedUser }); // Update local state immediately
+
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
         productionName: prod,
         filmTitle: film,
@@ -1029,7 +1034,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         })
       });
 
-      // Update local user state
+      // Update local user state with new history
       const currentHistory = user.projectHistory || [];
       const newHistoryItem: ProjectSummary = {
         id: projectId,
@@ -1037,15 +1042,20 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         filmTitle: film,
         lastAccess: new Date().toISOString()
       };
+
+      // Deduplicate history
       const updatedHistory = [
         newHistoryItem,
         ...currentHistory.filter(p => p.id !== projectId)
       ];
 
-      setUser({
+      const finalUser = {
         ...updatedUser,
         projectHistory: updatedHistory
-      });
+      };
+
+      setUser(finalUser);
+      localStorage.setItem('aBetterSetUser', JSON.stringify(finalUser)); // Update again with history
 
       addNotification(`Bienvenue sur le plateau de "${film}" !`, 'INFO', user.department);
 
@@ -1066,15 +1076,20 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       productionName: '',
       filmTitle: '',
       startDate: undefined,
-      endDate: undefined
+      endDate: undefined,
+      currentProjectId: undefined // Also clear ID
     };
+
+    // CRITICAL FIX: Update localStorage immediately
+    localStorage.setItem('aBetterSetUser', JSON.stringify(updatedUser));
     setUser(updatedUser);
 
     await updateDoc(doc(db, 'users', auth.currentUser.uid), {
       productionName: '',
       filmTitle: '',
       startDate: null,
-      endDate: null
+      endDate: null,
+      currentProjectId: null
     });
   };
 

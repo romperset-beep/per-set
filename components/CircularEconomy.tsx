@@ -20,8 +20,9 @@ export const CircularEconomy: React.FC = () => {
     // Filtered lists
     const pendingItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.NONE || !item.surplusAction);
     const marketItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.MARKETPLACE);
-    const donationItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.DONATION);
-    const shortFilmItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.SHORT_FILM);
+    // Merge Short Film into Donations for display
+    const donationItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.DONATION || item.surplusAction === SurplusAction.SHORT_FILM);
+    // const shortFilmItems = ... Removed
     const storageItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.STORAGE);
 
     const setAction = async (id: string, action: SurplusAction) => {
@@ -165,9 +166,9 @@ export const CircularEconomy: React.FC = () => {
             setAction(item.id, targetAction);
         } else {
             // Split logic
-            const newItemId = `${item.id}_${targetAction === SurplusAction.SHORT_FILM ? 'short' : 'donation'}_${Date.now()}`;
+            const newItemId = `${item.id}_donation_${Date.now()}`;
             const remainingQty = item.quantityCurrent - quantity;
-            const actionName = targetAction === SurplusAction.SHORT_FILM ? 'Court-Métrage' : 'Dons';
+            const actionName = 'Dons';
 
             // Optimistic
             setProject(prev => {
@@ -365,12 +366,7 @@ export const CircularEconomy: React.FC = () => {
                     >
                         <GraduationCap className="h-4 w-4" /> Dons Écoles ({donationItems.length})
                     </button>
-                    <button
-                        onClick={() => setView('shortFilm')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'shortFilm' ? 'bg-orange-600/20 text-orange-400 border border-orange-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                        <Film className="h-4 w-4" /> Court-Métrage ({shortFilmItems.length})
-                    </button>
+
                     <button
                         onClick={() => setView('storage')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'storage' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:text-slate-200'}`}
@@ -385,7 +381,7 @@ export const CircularEconomy: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-cinema-800 border border-cinema-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
                         <h3 className="text-xl font-bold text-white mb-4">
-                            {transferModal.targetAction === SurplusAction.SHORT_FILM ? 'Donner au Court-Métrage' : 'Donner aux Écoles'}
+                            Donner aux Écoles, Courts-Métrages & Asso
                         </h3>
                         <p className="text-slate-300 mb-6">
                             Combien d'unités de <strong>{transferModal.item.name}</strong> souhaitez-vous donner ?
@@ -489,17 +485,7 @@ export const CircularEconomy: React.FC = () => {
                             <p className="text-sm text-slate-400 mt-2">Articles donnés aux écoles partenaires.</p>
                         </button>
 
-                        <button onClick={() => setView('shortFilm')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-orange-500/20 text-orange-400 p-3 rounded-lg">
-                                    <Film className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{shortFilmItems.length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Court-Métrage</h3>
-                            <p className="text-sm text-slate-400 mt-2">Soutien à la création jeune.</p>
-                        </button>
+
 
                         <button onClick={() => setView('storage')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
                             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
@@ -583,15 +569,7 @@ export const CircularEconomy: React.FC = () => {
                                                                 Vers Don
                                                             </button>
                                                         )}
-                                                        {user?.department === 'PRODUCTION' && (
-                                                            <button
-                                                                onClick={() => handleTransferClick(item, SurplusAction.SHORT_FILM)}
-                                                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10"
-                                                            >
-                                                                <Film className="h-3 w-3" />
-                                                                Vers Court-Métrage
-                                                            </button>
-                                                        )}
+
                                                     </div>
                                                 </td>
                                             </tr>
@@ -663,13 +641,7 @@ export const CircularEconomy: React.FC = () => {
                                                     >
                                                         <GraduationCap className="h-5 w-5" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleTransferClick(item, SurplusAction.SHORT_FILM)}
-                                                        className="p-2 text-orange-500 hover:text-orange-300 hover:bg-orange-500/20 rounded-full transition-colors"
-                                                        title="Transférer vers Court-Métrage"
-                                                    >
-                                                        <Film className="h-5 w-5" />
-                                                    </button>
+
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button
@@ -753,15 +725,7 @@ export const CircularEconomy: React.FC = () => {
                                         >
                                             <RefreshCw className="h-5 w-5" />
                                         </button>
-                                        {user?.department === 'PRODUCTION' && (
-                                            <button
-                                                onClick={() => handleTransferClick(item, SurplusAction.SHORT_FILM)}
-                                                className="p-2 text-orange-500 hover:text-orange-300 hover:bg-orange-500/20 rounded-full transition-colors"
-                                                title="Transférer vers Court-Métrage"
-                                            >
-                                                <Film className="h-5 w-5" />
-                                            </button>
-                                        )}
+
                                         <button
                                             onClick={() => setAction(item.id, SurplusAction.NONE)}
                                             className="p-2 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 rounded-full transition-colors"
@@ -777,118 +741,67 @@ export const CircularEconomy: React.FC = () => {
                 </div>
             )}
 
-            {/* SHORT FILM LIST VIEW */}
-            {view === 'shortFilm' && (
-                <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
-                    <div className="bg-orange-900/20 border-b border-orange-500/20 p-4">
-                        <div className="flex items-center gap-3 text-orange-400">
-                            <Film className="h-5 w-5" />
-                            <span className="font-bold">Dons pour Courts-Métrages</span>
-                        </div>
-                    </div>
-                    <div className="divide-y divide-cinema-700">
-                        {shortFilmItems.length === 0 ? (
-                            <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-                                <Film className="h-12 w-12 mb-4 opacity-20" />
-                                <p>Aucun article n'a été attribué aux courts-métrages pour le moment.</p>
-                                <button onClick={() => setView('overview')} className="mt-4 text-orange-400 hover:text-orange-300 text-sm">Retourner à la gestion</button>
-                            </div>
-                        ) : (
-                            shortFilmItems.map(item => (
-                                <div key={item.id} className="p-4 flex justify-between items-center hover:bg-cinema-700/20 transition-colors">
-                                    <div>
-                                        <h4 className="text-white font-medium text-lg">{item.name}</h4>
-                                        <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
-                                            <span className="bg-cinema-900 px-2 py-0.5 rounded border border-cinema-700 text-xs">{item.department}</span>
-                                            <span>{item.status}</span>
-                                            <span className="text-xs font-mono text-slate-500 border border-cinema-800 px-2 py-0.5 rounded ml-2">
-                                                {item.price !== undefined ? `${item.price} €` : '0 €'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-right">
-                                            <span className="block text-2xl font-bold text-orange-400">{item.quantityCurrent}</span>
-                                            <span className="text-xs text-slate-500 uppercase">{item.unit}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
-                                            className="p-2 text-blue-500 hover:text-blue-300 hover:bg-blue-500/20 rounded-full transition-colors"
-                                            title="Transférer vers Stock Virtuel"
-                                        >
-                                            <RefreshCw className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => setAction(item.id, SurplusAction.NONE)}
-                                            className="p-2 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 rounded-full transition-colors"
-                                            title="Retirer des dons"
-                                        >
-                                            <Undo2 className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
+
+
 
             {/* STORAGE LIST VIEW */}
-            {view === 'storage' && (
-                <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
-                    <div className="bg-indigo-900/20 border-b border-indigo-500/20 p-4">
-                        <div className="flex items-center gap-3 text-indigo-400">
-                            <Archive className="h-5 w-5" />
-                            <span className="font-bold">Stock Pour Production Future</span>
+            {
+                view === 'storage' && (
+                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
+                        <div className="bg-indigo-900/20 border-b border-indigo-500/20 p-4">
+                            <div className="flex items-center gap-3 text-indigo-400">
+                                <Archive className="h-5 w-5" />
+                                <span className="font-bold">Stock Pour Production Future</span>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-cinema-700">
+                            {storageItems.length === 0 ? (
+                                <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                                    <Archive className="h-12 w-12 mb-4 opacity-20" />
+                                    <p>Aucun article n'est stocké pour une production future.</p>
+                                    <button onClick={() => setView('overview')} className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm">Retourner à la gestion</button>
+                                </div>
+                            ) : (
+                                storageItems.map(item => (
+                                    <div key={item.id} className="p-4 flex justify-between items-center hover:bg-cinema-700/20 transition-colors">
+                                        <div>
+                                            <h4 className="text-white font-medium text-lg">{item.name}</h4>
+                                            <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
+                                                <span className="bg-cinema-900 px-2 py-0.5 rounded border border-cinema-700 text-xs">{item.department}</span>
+                                                <span>{item.status}</span>
+                                                <span className="text-xs font-mono text-slate-500 border border-cinema-800 px-2 py-0.5 rounded ml-2">
+                                                    {item.price !== undefined ? `${item.price} €` : '0 €'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-6">
+                                            <div className="text-right">
+                                                <span className="block text-2xl font-bold text-indigo-400">{item.quantityCurrent}</span>
+                                                <span className="text-xs text-slate-500 uppercase">{item.unit}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
+                                                className="p-2 text-blue-500 hover:text-blue-300 hover:bg-blue-500/20 rounded-full transition-colors"
+                                                title="Transférer vers Stock Virtuel"
+                                            >
+                                                <RefreshCw className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => setAction(item.id, SurplusAction.NONE)}
+                                                className="p-2 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 rounded-full transition-colors"
+                                                title="Retirer du stockage"
+                                            >
+                                                <Undo2 className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
-                    <div className="divide-y divide-cinema-700">
-                        {storageItems.length === 0 ? (
-                            <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-                                <Archive className="h-12 w-12 mb-4 opacity-20" />
-                                <p>Aucun article n'est stocké pour une production future.</p>
-                                <button onClick={() => setView('overview')} className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm">Retourner à la gestion</button>
-                            </div>
-                        ) : (
-                            storageItems.map(item => (
-                                <div key={item.id} className="p-4 flex justify-between items-center hover:bg-cinema-700/20 transition-colors">
-                                    <div>
-                                        <h4 className="text-white font-medium text-lg">{item.name}</h4>
-                                        <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
-                                            <span className="bg-cinema-900 px-2 py-0.5 rounded border border-cinema-700 text-xs">{item.department}</span>
-                                            <span>{item.status}</span>
-                                            <span className="text-xs font-mono text-slate-500 border border-cinema-800 px-2 py-0.5 rounded ml-2">
-                                                {item.price !== undefined ? `${item.price} €` : '0 €'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-right">
-                                            <span className="block text-2xl font-bold text-indigo-400">{item.quantityCurrent}</span>
-                                            <span className="text-xs text-slate-500 uppercase">{item.unit}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
-                                            className="p-2 text-blue-500 hover:text-blue-300 hover:bg-blue-500/20 rounded-full transition-colors"
-                                            title="Transférer vers Stock Virtuel"
-                                        >
-                                            <RefreshCw className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => setAction(item.id, SurplusAction.NONE)}
-                                            className="p-2 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 rounded-full transition-colors"
-                                            title="Retirer du stockage"
-                                        >
-                                            <Undo2 className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

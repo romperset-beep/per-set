@@ -87,6 +87,9 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             Cherche des titres en MAJUSCULES ou GRAS comme "IMAGE", "IMAG", "CAMÉRA", "MACHINERIE", "ÉLECTRICITÉ", "SON", "ACCESSOIRES", "M.E.S", "MISE EN SCÈNE", "HMC", etc.
             Tout texte qui suit ces titres et qui donne des instructions techniques (ex: "Stead, Ronin 2", "Grue", "Prévoir...", "Attention à...") DOIT être ajouté dans "departmentNotes" sous le nom du département correspondant.
             
+            IMPORTANT: Normalise les clés des départements dans "departmentCallTimes" et "departmentNotes". 
+            Exemple: Si tu trouves "M.E.S" ou "MES", utilise la clé "Mise en Scène". Si tu trouves "Imago" ou "Cam", utilise "Caméra".
+            
             Pour la date, essaye de déduire l'année si elle n'est pas explicite (nous sommes probalement en ${new Date().getFullYear()}).
         `;
 

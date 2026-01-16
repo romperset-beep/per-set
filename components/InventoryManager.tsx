@@ -722,12 +722,6 @@ export const InventoryManager: React.FC = () => {
                                     >
                                         Valider vers Dons
                                     </button>
-                                    <button
-                                        onClick={() => handleSurplusClick(item, SurplusAction.SHORT_FILM)}
-                                        className="px-3 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-medium transition-colors"
-                                    >
-                                        Court-Métrage
-                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -784,13 +778,11 @@ export const InventoryManager: React.FC = () => {
                     <div className="bg-cinema-800 border border-cinema-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
                         <h3 className="text-xl font-bold text-white mb-4">
                             {priceModal.action === SurplusAction.DONATION ? 'Valeur du Don' :
-                                priceModal.action === SurplusAction.SHORT_FILM ? 'Valeur pour Court-Métrage' :
-                                    'Prix de Revente'}
+                                'Prix de Revente'}
                         </h3>
                         <p className="text-slate-300 mb-6">
                             {priceModal.action === SurplusAction.DONATION ? 'Souhaitez-vous définir une valeur pour ce don ? (Facultatif)' :
-                                priceModal.action === SurplusAction.SHORT_FILM ? 'Souhaitez-vous définir un prix ou une valeur pour ce transfert ?' :
-                                    'À quel prix souhaitez-vous proposer cet article sur le Stock Virtuel Global ?'}
+                                'À quel prix souhaitez-vous proposer cet article sur le Stock Virtuel Global ?'}
                         </p>
 
                         <div className="mb-6">
@@ -827,8 +819,7 @@ export const InventoryManager: React.FC = () => {
                                     }
                                 }}
                                 className={`px-4 py-2 rounded-lg font-bold transition-colors text-white ${priceModal.action === SurplusAction.DONATION ? 'bg-purple-600 hover:bg-purple-500' :
-                                    priceModal.action === SurplusAction.SHORT_FILM ? 'bg-orange-600 hover:bg-orange-500' :
-                                        'bg-emerald-600 hover:bg-emerald-500'
+                                    'bg-emerald-600 hover:bg-emerald-500'
                                     }`}
                             >
                                 {priceModal.action === SurplusAction.MARKETPLACE ? 'Valider la mise en vente' : 'Valider'}
@@ -1163,28 +1154,16 @@ export const InventoryManager: React.FC = () => {
                                                                     </button>
                                                                 )}
                                                                 {user?.department === 'PRODUCTION' && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                                if (target) handleSurplusClick(target, SurplusAction.DONATION);
-                                                                            }}
-                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
-                                                                            title="Envoyer aux Dons"
-                                                                        >
-                                                                            <GraduationCap className="h-4 w-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                                if (target) handleSurplusClick(target, SurplusAction.SHORT_FILM);
-                                                                            }}
-                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-orange-500 hover:text-orange-400 hover:bg-orange-500/10 transition-all"
-                                                                            title="Envoyer aux Dons Court-Métrage"
-                                                                        >
-                                                                            <Film className="h-4 w-4" />
-                                                                        </button>
-                                                                    </>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                            if (target) handleSurplusClick(target, SurplusAction.DONATION);
+                                                                        }}
+                                                                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                                                                        title="Envoyer aux Dons"
+                                                                    >
+                                                                        <GraduationCap className="h-4 w-4" />
+                                                                    </button>
                                                                 )}
                                                             </div>
                                                         )}
@@ -1256,57 +1235,60 @@ export const InventoryManager: React.FC = () => {
                                             );
                                         })}
                                     </div>
-                                )}
+                                )
+                                }
                             </div>
                         );
                     })
                 )}
             </div>
             {/* Transfer Confirmation Modal */}
-            {transferConfirmation && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
-                        <div className="text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
-                                <ArrowRightLeft className="h-6 w-6 text-blue-400" />
+            {
+                transferConfirmation && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
+                            <div className="text-center">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
+                                    <ArrowRightLeft className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white">Transférer cet article ?</h3>
+                                <p className="text-slate-400 mt-2 text-sm">
+                                    Vous allez transférer <strong>{transferConfirmation.item.name}</strong>.
+                                    <br />Veuillez choisir le département destinataire :
+                                </p>
                             </div>
-                            <h3 className="text-lg font-bold text-white">Transférer cet article ?</h3>
-                            <p className="text-slate-400 mt-2 text-sm">
-                                Vous allez transférer <strong>{transferConfirmation.item.name}</strong>.
-                                <br />Veuillez choisir le département destinataire :
-                            </p>
-                        </div>
 
-                        <div>
-                            <select
-                                value={targetDept}
-                                onChange={(e) => setTargetDept(e.target.value as Department | 'PRODUCTION')}
-                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            >
-                                <option value="PRODUCTION">PRODUCTION</option>
-                                {Object.values(Department).filter(d => d !== currentDept).map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
-                        </div>
+                            <div>
+                                <select
+                                    value={targetDept}
+                                    onChange={(e) => setTargetDept(e.target.value as Department | 'PRODUCTION')}
+                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                >
+                                    <option value="PRODUCTION">PRODUCTION</option>
+                                    {Object.values(Department).filter(d => d !== currentDept).map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={() => setTransferConfirmation(null)}
-                                className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleTransfer}
-                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                            >
-                                Confirmer
-                            </button>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setTransferConfirmation(null)}
+                                    className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleTransfer}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

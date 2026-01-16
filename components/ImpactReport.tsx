@@ -50,7 +50,7 @@ export const ImpactReport: React.FC = () => {
             economy: "Économie (€)",
             carbon: "Carbone (CO2)",
             chart: {
-                donation: "Don Pédagogique",
+                donation: "Dons (Écoles & Asso.)",
                 stock: "Stock Virtuel",
                 shortFilm: "Court-Métrage",
                 none: "Non Valorisé"
@@ -124,7 +124,7 @@ export const ImpactReport: React.FC = () => {
             economy: "Savings (€)",
             carbon: "Carbon (CO2)",
             chart: {
-                donation: "Educational Donation",
+                donation: "Dons (Écoles & Asso.)",
                 stock: "Virtual Stock",
                 shortFilm: "Short Film",
                 none: "Non-Valued"
@@ -193,9 +193,9 @@ export const ImpactReport: React.FC = () => {
             economy: "Ahorro (€)",
             carbon: "Carbono (CO2)",
             chart: {
-                donation: "Donación Educativa",
+                donation: "Donaciones (Escuelas y Asoc.)",
                 stock: "Stock Virtual",
-                shortFilm: "Cortometraje",
+                // shortFilm: "Cortometraje", // Deprecated
                 none: "No Valorizado"
             },
             consumedTitle: "Artículos Totalmente Consumidos",
@@ -466,9 +466,9 @@ export const ImpactReport: React.FC = () => {
     };
 
     const pieData = [
-        { name: t.chart.donation, value: getMetricByAction(SurplusAction.DONATION, chartView), color: '#d946ef' }, // Fuchsia
+        { name: t.chart.donation, value: getMetricByAction(SurplusAction.DONATION, chartView) + getMetricByAction(SurplusAction.SHORT_FILM, chartView), color: '#d946ef' }, // Fuchsia
         { name: t.chart.stock, value: getMetricByAction(SurplusAction.MARKETPLACE, chartView), color: '#06b6d4' }, // Cyan
-        { name: t.chart.shortFilm, value: getMetricByAction(SurplusAction.SHORT_FILM, chartView), color: '#f59e0b' }, // Amber
+        // { name: t.chart.shortFilm, value: getMetricByAction(SurplusAction.SHORT_FILM, chartView), color: '#f59e0b' }, // Amber (Merged above)
         { name: t.chart.none, value: getMetricByAction(SurplusAction.NONE, chartView), color: '#ef4444' }, // Red
     ].filter(d => d.value > 0);
 
@@ -488,8 +488,8 @@ export const ImpactReport: React.FC = () => {
         text += `Score Durabilité : ${displayScore}/100\n\n`;
 
         text += `✨ Impact "A Better Set" (Économie Circulaire) :\n`;
-        text += `- ${donationCount} dons pédagogiques (écoles)\n`;
-        text += `- ${shortFilmCount} dons aux courts-métrages\n`;
+        text += `- ${donationCount + shortFilmCount} dons (écoles, courts-métrages, asso)\n`;
+        // text += `- ${shortFilmCount} dons aux courts-métrages\n`;
         text += `- ${stockCount} articles en stock virtuel (réemploi)\n`;
         text += `- ${salesTotal}€ de ventes internes (rachats)\n\n`;
 
