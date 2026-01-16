@@ -858,12 +858,33 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
 
             // Self-Healing: Force Admin Status for whitelist
-            if (['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(userData.email) &&
-              (userData.status !== 'approved' || !userData.isAdmin)) {
-              console.log("Auto-Fixing Admin Account permissions...");
-              await updateDoc(userRef, { status: 'approved', isAdmin: true });
-              userData.status = 'approved';
-              userData.isAdmin = true;
+            if (['romain.perset@abatterset.com', 'romperset@gmail.com'].includes(userData.email)) {
+              let needsUpdate = false;
+              const updates: Partial<User> = {};
+
+              // 1. Fix Permissions
+              if (userData.status !== 'approved' || !userData.isAdmin) {
+                console.log("Auto-Fixing Admin Account permissions...");
+                updates.status = 'approved';
+                updates.isAdmin = true;
+                needsUpdate = true;
+              }
+
+              // 2. Fix Name (Requested by User)
+              if (userData.email === 'romperset@gmail.com' && (userData.name === 'romperset' || !userData.name)) {
+                console.log("Auto-Fixing Admin Name to 'Romain Perset'...");
+                updates.name = 'Romain Perset';
+                needsUpdate = true;
+              }
+
+              if (needsUpdate) {
+                await updateDoc(userRef, updates);
+                // Update local state immediately
+                Object.assign(userData, updates);
+                Object.assign(fullUser, updates);
+                setUser({ ...fullUser });
+                localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
+              }
             }
 
             // Security: Enforce View restriction for non-production users
