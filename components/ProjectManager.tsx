@@ -317,6 +317,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     const renderWidget = (id: string) => {
         // Permissions checks
         if (id === 'catering' && currentDept !== 'Régie' && currentDept !== 'PRODUCTION') return null;
+        if (id === 'energy' && currentDept !== 'Régie' && currentDept !== 'REGIE' && currentDept !== 'PRODUCTION') return null;
 
 
         switch (id) {
