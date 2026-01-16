@@ -25,16 +25,19 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { MarketplacePage } from './components/MarketplacePage'; // Added
 import { PendingApprovalScreen } from './components/PendingApprovalScreen';
 import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
+import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
 import { Department } from './types';
 
 const AppContent: React.FC = () => {
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isOnlineUsersOpen, setIsOnlineUsersOpen] = useState(false); // Added
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
   const {
@@ -363,12 +366,22 @@ const AppContent: React.FC = () => {
           <div className="flex items-center gap-3 md:gap-6">
 
             {/* Connection Status (Mobile & Desktop) */}
-            <div className="hidden md:flex items-center gap-2 text-xs text-gray-400 bg-cinema-800 px-3 py-1.5 rounded-full border border-cinema-700">
-              <div className={`w-2 h-2 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className="hidden lg:inline">{typeof navigator !== 'undefined' && navigator.onLine ? 'En ligne' : 'Hors ligne'}</span>
-            </div>
+            <button
+              onClick={() => setIsOnlineUsersOpen(true)}
+              className="hidden md:flex items-center gap-2 text-xs text-gray-400 bg-cinema-800 px-3 py-1.5 rounded-full border border-cinema-700 hover:bg-cinema-700 hover:border-green-500/50 transition-all cursor-pointer group"
+              title="Voir qui est en ligne"
+            >
+              <div className={`w-2 h-2 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500 group-hover:animate-pulse' : 'bg-red-500'}`} />
+              <span className="hidden lg:inline group-hover:text-white transition-colors">
+                {typeof navigator !== 'undefined' && navigator.onLine ? 'En ligne' : 'Hors ligne'}
+              </span>
+            </button>
             {/* Mobile simplified indicator */}
-            <div className={`md:hidden w-3 h-3 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500' : 'bg-red-500'} border border-cinema-900`} title={typeof navigator !== 'undefined' && navigator.onLine ? 'En ligne' : 'Hors ligne'} />
+            <button
+              onClick={() => setIsOnlineUsersOpen(true)}
+              className={`md:hidden w-3 h-3 rounded-full ${typeof navigator !== 'undefined' && navigator.onLine ? 'bg-green-500' : 'bg-red-500'} border border-cinema-900`}
+              title={typeof navigator !== 'undefined' && navigator.onLine ? 'Voir qui est en ligne' : 'Hors ligne'}
+            />
 
             <button
               onClick={() => setActiveTab('profile')}
@@ -482,6 +495,20 @@ const AppContent: React.FC = () => {
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
       />
+
+      {/* Online Users Modal */}
+      {isOnlineUsersOpen && (
+        <OnlineUsersModal
+          onClose={() => setIsOnlineUsersOpen(false)}
+          onMessage={(userId) => {
+            setSocialTargetUserId(userId);
+            setSocialAudience('USER');
+            setActiveTab('social');
+            setIsOnlineUsersOpen(false);
+            setIsSidebarOpen(false); // Close sidebar if on mobile
+          }}
+        />
+      )}
     </div >
   );
 };
