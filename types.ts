@@ -353,6 +353,8 @@ export interface User {
   hasAcceptedSaaSTerms?: boolean; // Added: Mandatory for Production
   deletedAt?: string; // Added: ISO timestamp of deletion
   originalEmail?: string; // Added: Original email before anonymization
+  firstName?: string; // Added for Profile Sync
+  lastName?: string; // Added for Profile Sync
 }
 
 export interface MealCount {

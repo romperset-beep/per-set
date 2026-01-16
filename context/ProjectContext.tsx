@@ -874,16 +874,18 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
               if (userData.email === 'romperset@gmail.com' && (userData.name === 'romperset' || !userData.name)) {
                 console.log("Auto-Fixing Admin Name to 'Romain Perset'...");
                 updates.name = 'Romain Perset';
+                // Also update First/Last names for Profile if missing
+                if (!userData.firstName) updates.firstName = 'Romain';
+                if (!userData.lastName) updates.lastName = 'Perset';
                 needsUpdate = true;
               }
 
               if (needsUpdate) {
                 await updateDoc(userRef, updates);
-                // Update local state immediately
-                Object.assign(userData, updates);
-                Object.assign(fullUser, updates);
-                setUser({ ...fullUser });
-                localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
+                // CRITICAL: Update local state immediately but PRESERVE existing data
+                const mergedUser = { ...fullUser, ...updates };
+                setUser(mergedUser);
+                localStorage.setItem('aBetterSetUser', JSON.stringify(mergedUser));
               }
             }
 
