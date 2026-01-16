@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Building2, Users, ArrowRight, TrendingUp, ShieldCheck, Leaf, ShoppingBag, MessageSquare, Clapperboard, FileText, Package } from 'lucide-react';
+import { Building2, Users, ArrowRight, TrendingUp, ShieldCheck, Leaf, ShoppingBag, MessageSquare, Clapperboard, FileText, Package, RefreshCw } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
 interface LandingPageProps {
@@ -27,6 +28,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     {
                         title: "Gestion Simplifiée",
                         desc: "Suivez les stocks, les fiches de renseignements et les notes de frais en temps réel."
+                    },
+                    {
+                        title: "Revente entre Productions",
+                        desc: "Achetez moins cher vos consommables, gagnez des points RSE et revendez vos surplus en fin de tournage."
                     }
                 ]
             },
@@ -71,6 +76,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     {
                         title: "Simplified Management",
                         desc: "Track stocks, information sheets, and expense reports in real time."
+                    },
+                    {
+                        title: "Resale between Productions",
+                        desc: "Buy consumables cheaper, earn CSR points, and resell your surplus at the end of filming."
                     }
                 ]
             },
@@ -115,6 +124,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     {
                         title: "Gestión Simplificada",
                         desc: "Sigue los stocks, las fichas de información y los informes de gastos en tiempo real."
+                    },
+                    {
+                        title: "Reventa entre Producciones",
+                        desc: "Compra consumibles más baratos, gana puntos RSE y revende tus excedentes al final del rodaje."
                     }
                 ]
             },
@@ -198,6 +211,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                             <div>
                                 <h3 className="font-bold text-slate-200">{t.production.points[2].title}</h3>
                                 <p className="text-sm text-slate-400">{t.production.points[2].desc}</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <div className="mt-1 min-w-[20px]"><RefreshCw className="h-5 w-5 text-orange-400" /></div>
+                            <div>
+                                <h3 className="font-bold text-slate-200">{t.production.points[3].title}</h3>
+                                <p className="text-sm text-slate-400">{t.production.points[3].desc}</p>
                             </div>
                         </li>
                     </ul>
