@@ -4,7 +4,16 @@ import { useProject } from '../context/ProjectContext';
 import { Clock, MapPin, Utensils, Activity, Calendar, FileText } from 'lucide-react';
 
 export const DailyDashboard: React.FC = () => {
-    const { project, user, callSheets } = useProject();
+    const { project, user, callSheets, userProfiles } = useProject();
+
+    // Resolve Display Name (First Name from Profile > User Name)
+    const displayName = useMemo(() => {
+        if (!user) return '';
+        const profile = userProfiles?.find(p => p.email === user.email);
+        if (profile && profile.firstName) return profile.firstName;
+        if (user.name.includes(' ')) return user.name.split(' ')[0];
+        return user.name;
+    }, [user, userProfiles]);
 
     // Get "Today's" Call Sheet
 
@@ -34,7 +43,7 @@ export const DailyDashboard: React.FC = () => {
             {/* Header / Date */}
             <div className="flex justify-between items-end mb-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Bonjour, {user?.name.split(' ')[0]} 👋</h1>
+                    <h1 className="text-3xl font-bold text-white">Bonjour, {displayName} 👋</h1>
                     <p className="text-slate-400 text-sm mt-1 uppercase tracking-wider font-semibold">
                         {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>

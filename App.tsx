@@ -69,6 +69,18 @@ const AppContent: React.FC = () => {
     return relevant.slice(0, 10); // Show top 10
   }, [notifications, user]);
 
+  // Resolve Display Name (First Name from Profile > User Name)
+  const displayName = React.useMemo(() => {
+    if (!user) return '';
+    const profile = userProfiles.find(p => p.email === user.email);
+    if (profile && profile.firstName) return profile.firstName; // Use Profile First Name
+
+    // Fallback: If user.name has space (e.g. "Romain Perset"), take first part
+    if (user.name.includes(' ')) return user.name.split(' ')[0];
+
+    return user.name; // Fallback to full string (e.g. "romperset")
+  }, [user, userProfiles]);
+
   const handleNotificationClick = (n: any) => {
     markAsRead(n.id);
     setShowNotifications(false);
@@ -366,7 +378,7 @@ const AppContent: React.FC = () => {
                 <UserIcon className="h-4 w-4 text-eco-400" />
               </div>
               <div className="hidden md:block text-right">
-                <p className="text-sm text-white font-medium leading-none">{user.name}</p>
+                <p className="text-sm text-white font-medium leading-none">{displayName}</p>
                 <p className="text-[10px] text-slate-400 leading-none mt-1">{user.department}</p>
               </div>
             </button>
