@@ -366,6 +366,7 @@ export interface CallSheet {
 
   // Daily Logistics
   callTime?: string;
+  endTime?: string; // New: Fin de journée estimée
   location1?: string;
   location2?: string | null;
   cateringLocation?: string;

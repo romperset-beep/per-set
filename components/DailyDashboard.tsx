@@ -51,10 +51,10 @@ export const DailyDashboard: React.FC = () => {
                     <div className="flex flex-col justify-center items-center md:items-start space-y-2">
                         <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest">
                             <Clock className="w-4 h-4" />
-                            PÂT (Prêt à Tourner)
+                            HORAIRES DE LA JOURNÉE
                         </div>
-                        <div className="text-6xl md:text-8xl font-black text-white tracking-tighter">
-                            {callTimeDisplay}
+                        <div className={`font-black text-white tracking-tighter ${todayCallSheet?.endTime ? 'text-4xl md:text-6xl' : 'text-6xl md:text-8xl'}`}>
+                            {todayCallSheet?.endTime ? `${callTimeDisplay} - ${todayCallSheet.endTime}` : callTimeDisplay}
                         </div>
                         {todayCallSheet ? (
                             <a

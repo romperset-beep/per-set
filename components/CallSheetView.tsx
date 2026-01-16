@@ -12,6 +12,7 @@ export const CallSheetView: React.FC = () => {
     const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
     const [uploadName, setUploadName] = useState('');
     const [callTime, setCallTime] = useState(''); // New
+    const [endTime, setEndTime] = useState(''); // New
     const [location1, setLocation1] = useState(''); // New
     const [location2, setLocation2] = useState(''); // New
     const [cateringLocation, setCateringLocation] = useState(''); // New
@@ -87,7 +88,9 @@ export const CallSheetView: React.FC = () => {
                 url: downloadUrl,
                 uploadedBy: user?.name || 'Inconnu',
                 department: user?.department as (Department | 'PRODUCTION'),
+
                 callTime, // New
+                endTime, // New
                 location1, // New
                 location2: location2 || null, // Fix: Firestore doesn't accept undefined
                 cateringLocation // New
@@ -98,6 +101,7 @@ export const CallSheetView: React.FC = () => {
             setFile(null);
             setUploadName('');
             setCallTime('');
+            setEndTime('');
             setLocation1('');
             setLocation2('');
             setCateringLocation('');
@@ -172,6 +176,15 @@ export const CallSheetView: React.FC = () => {
                                         type="time"
                                         value={callTime}
                                         onChange={(e) => setCallTime(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Fin Estimée</label>
+                                    <input
+                                        type="time"
+                                        value={endTime}
+                                        onChange={(e) => setEndTime(e.target.value)}
                                         className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                     />
                                 </div>
