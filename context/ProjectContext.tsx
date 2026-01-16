@@ -909,7 +909,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
               id: firebaseUser.uid // Ensure ID is set
             };
 
-            await setDoc(userRef, recoveredUser);
+            await setDoc(userRef, recoveredUser, { merge: true }); // SAFER: Merge instead of overwrite
             // The listener will catch this update immediately
           }
         }, (error) => {
