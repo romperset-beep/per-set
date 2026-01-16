@@ -340,7 +340,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     return (
         <div className="space-y-6 pb-20">
             {/* NEW: Daily Dashboard (First Page View) */}
-            <DailyDashboard />
+            <DailyDashboard overrideDepartment={currentDept} />
 
             {/* Department Selection Header */}
             <div className="bg-cinema-800 rounded-xl p-6 border border-cinema-700 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">

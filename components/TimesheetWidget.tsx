@@ -56,6 +56,76 @@ export const TimesheetWidget: React.FC = () => {
         return match?.location1 || null;
     }, [callSheets, date]);
 
+    // Helper for fuzzy department matching (replicated from DailyDashboard)
+    const getDepartmentTime = (sheet: any, userDept: string) => {
+        if (!sheet || !sheet.departmentCallTimes || !userDept) return null;
+
+        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        const target = normalize(userDept);
+
+        // 1. Exact match
+        if (sheet.departmentCallTimes[userDept]) return sheet.departmentCallTimes[userDept];
+
+        // 2. Fuzzy match keys
+        const keys = Object.keys(sheet.departmentCallTimes);
+        const match = keys.find(k => normalize(k) === target);
+        if (match) return sheet.departmentCallTimes[match];
+
+        // 3. Synonym Matching
+        const synonyms: Record<string, string[]> = {
+            'camera': ['image', 'photo', 'cadre', 'opv'],
+            'costume': ['habillage', 'wardrobe', 'costumes'],
+            'maquillage': ['hmc', 'makeup', 'make-up'],
+            'coiffure': ['hmc', 'coiff'],
+            'regie': ['general', 'transport', 'cantine'],
+            'mise en scene': ['realisation', 'real', 'assistant', 'mes'],
+            'lumiere': ['electro', 'elec', 'electricien'],
+            'machinerie': ['machino', 'grip', 'machiniste'],
+            'decoration': ['deco', 'art'],
+            'son': ['sound', 'audio', 'perchman']
+        };
+
+        const targetSynonyms = synonyms[target] || [];
+        const foundKey = keys.find(k => {
+            const normKey = normalize(k);
+            if (normKey.includes(target)) return true;
+            if (target.includes(normKey)) return true;
+            return targetSynonyms.some(syn => normKey.includes(syn) || syn.includes(normKey));
+        });
+
+        return foundKey ? sheet.departmentCallTimes[foundKey] : null;
+    };
+
+    // Auto-fill Times from Call Sheet when Date Changes
+    useEffect(() => {
+        if (!callSheets || !date) return;
+
+        const sheet = callSheets.find(cs => cs.date === date);
+        if (sheet) {
+            // 1. Call Time
+            if (user?.department) {
+                const specificTime = getDepartmentTime(sheet, user.department);
+                if (specificTime) {
+                    setCallTime(specificTime);
+                } else if (sheet.callTime) {
+                    setCallTime(sheet.callTime);
+                }
+            } else if (sheet.callTime) {
+                setCallTime(sheet.callTime);
+            }
+
+            // 2. End Time
+            if (sheet.endTime) {
+                setEndTime(sheet.endTime);
+            }
+
+            // 3. Meal Time
+            if (sheet.cateringTime) {
+                setMealTime(sheet.cateringTime);
+            }
+        }
+    }, [date, callSheets, user]); // Run when date changes
+
     // Auto-fill Destination when opening calculator
     useEffect(() => {
         if (showCalculator && !calcDest && todayLocation) {

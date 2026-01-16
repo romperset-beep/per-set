@@ -24,7 +24,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 async function analyzePdf() {
     try {
-        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/CinéStock/A Better Set/A Better Set/CINEMA_Salaires-mini_11-avril-2025.pdf";
+        const filePath = "/Users/romainperset/Desktop/dossier gestion des conso/fds J1.pdf";
         if (!fs.existsSync(filePath)) {
             console.error("PDF file not found at:", filePath);
             process.exit(1);
@@ -34,27 +34,21 @@ async function analyzePdf() {
         const base64Data = fileBuffer.toString("base64");
 
         const prompt = `
-            Tu es un expert en paie cinéma.
-            ANALYSE le PDF fourni (Salaires Cinéma).
+            Tu es un assistant de production expert.
+            ANALYSE cette Feuille de Service (Call Sheet).
             
-            OBJECTIF : Extraire UNIQUEMENT la grille de salaire pour l'**ANNEXE III** (Films petit budget / Titre III).
-            IGNORE Annexe I et II.
+            OBJECTIF : Resumer les informations clés pour l'équipe.
             
-            Extrait TOUS les postes (Techniciens, Ouvriers, Cadres - Intermittents) de A à Z.
-            
-            FORMAT DE SORTIE ATTENDU (JSON STRICT) :
-            {
-              "annexe3": [
-                { "title": "Nom du poste", "rates": { "baseDaily": 123.45, "baseWeekly": 456.78 } }
-              ]
-            }
-            
-            RÈGLES :
-            - "baseDaily" : Salaire journalier.
-            - "baseWeekly" : Salaire hebdomadaire.
-            - Si valeur manquante, null.
-            - Copie les chiffres exacts (1 234,56).
-            - Output ONLY valid JSON.
+            Informations à extraire :
+            - Date du tournage
+            - Heure de Prêt à Tourner (P.A.T)
+            - Heure de fin estimée (si indiquée)
+            - Lieux (Décors) avec adresses
+            - Lieu Cantine (si différent)
+            - Séquences à tourner (résumé rapide)
+            - Notes importantes (Météo, Sécurité, etc.)
+
+            Format de sortie : JSON pur.
         `;
 
         const result = await model.generateContent([

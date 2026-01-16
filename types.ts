@@ -355,21 +355,65 @@ export interface User {
   originalEmail?: string; // Added: Original email before anonymization
 }
 
+export interface MealCount {
+  id: string; // date_userId
+  date: string; // YYYY-MM-DD
+  userId?: string;
+  userName?: string;
+  department: Department | 'PRODUCTION';
+  mealCount: number; // e.g., 25
+  specialDietCount?: number; // e.g., 2 (Vegetarian/GlutenFree)
+  location?: string; // e.g., "Cantine Base Arrière"
+  isValidated: boolean;
+}
+
+// Digital Call Sheet Types
+export interface CallSheetSequence {
+  id: string;
+  sequenceNumber: string; // "155"
+  description: string; // "TAMARA saute d'un ascenseur..."
+  decor: string; // "TOUR EIFFEL - Pilier Est"
+  characters?: string[]; // ["TAMARA", "PRUDENCE"]
+  dayNight?: 'DAY' | 'NIGHT';
+}
+
+export interface CallSheetWeather {
+  morningTemp?: number;
+  afternoonTemp?: number;
+  condition?: string; // "Pluie", "Ensoleillé"
+  sunrise?: string;
+  sunset?: string;
+}
+
 export interface CallSheet {
   id: string;
-  date: string; // Target date of the call sheet (e.g. "2023-10-25")
-  uploadDate: string; // ISO Date of upload
-  name: string; // e.g., "Feuille de service J12"
-  url: string; // PDF URL or Base64
-  uploadedBy: string; // User Name
+  date: string; // Target date (YYYY-MM-DD)
+  uploadDate: string; // ISO Date
+  name: string; // "Feuille de service J12"
+  url?: string; // Optional for Digital
+  uploadedBy: string;
   department: Department | 'PRODUCTION';
 
-  // Daily Logistics
+  // Digital Fields
+  isDigital?: boolean;
   callTime?: string;
-  endTime?: string; // New: Fin de journée estimée
+  endTime?: string;
   location1?: string;
+  location1Address?: string; // New: GPS/Address
+  location1MapsLink?: string; // New
   location2?: string | null;
+  location2Address?: string; // New
   cateringLocation?: string;
+  cateringAddress?: string; // New
+  cateringTime?: string; // New: Meal break time
+  hmcAddress?: string; // New: HMC / Loges address
+
+  nearestHospital?: string;
+  weather?: CallSheetWeather;
+  sequences?: CallSheetSequence[];
+  notes?: string[]; // List of general notes
+  departmentCallTimes?: Record<string, string>; // e.g. { "Caméra": "08:00", "Régie": "07:30" }
+  departmentNotes?: Record<string, string[]>; // New: specific notes per dept
 }
 
 export interface CatalogItem {

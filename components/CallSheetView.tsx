@@ -1,27 +1,60 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { Department } from '../types';
+import { Department, CallSheet } from '../types';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FileText, Upload, Calendar, Download, Eye, Trash2 } from 'lucide-react';
-
-const STORAGE_BUCKET = 'callsheets';
+import { CallSheetBuilder } from './CallSheetBuilder';
 
 export const CallSheetView: React.FC = () => {
     const { user, currentDept, callSheets, addCallSheet, deleteCallSheet, t } = useProject();
     const [isUploading, setIsUploading] = useState(false);
+    const [mode, setMode] = useState<'UPLOAD' | 'BUILDER'>('UPLOAD');
+
+    // --- UPLOAD STATE ---
     const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
     const [uploadName, setUploadName] = useState('');
-    const [callTime, setCallTime] = useState(''); // New
-    const [endTime, setEndTime] = useState(''); // New
-    const [location1, setLocation1] = useState(''); // New
-    const [location2, setLocation2] = useState(''); // New
-    const [cateringLocation, setCateringLocation] = useState(''); // New
-
+    const [callTime, setCallTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [location1, setLocation1] = useState('');
+    const [location2, setLocation2] = useState('');
+    const [cateringLocation, setCateringLocation] = useState('');
     const [file, setFile] = useState<File | null>(null);
+    const [editingSheet, setEditingSheet] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const canUpload = user?.department === 'PRODUCTION' || user?.department === Department.MISE_EN_SCENE;
 
+    // --- HANDLERS ---
+
+    const handleDigitalSave = async (data: any) => {
+        try {
+            await addCallSheet({
+                id: editingSheet ? editingSheet.id : '', // Use existing ID if editing
+                department: user?.department as any || 'PRODUCTION',
+                uploadedBy: user?.name || 'Inconnu',
+                uploadDate: new Date().toISOString(),
+                url: '', // Digital => Empty URL
+                ...data
+            });
+            setMode('UPLOAD');
+            setEditingSheet(null);
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la sauvegarde.");
+        }
+    };
+
+    const handleEdit = (sheet: any) => {
+        setEditingSheet(sheet);
+        setMode('BUILDER');
+    };
+
+    const handleCancel = () => {
+        setMode('UPLOAD');
+        setEditingSheet(null);
+    };
+
+    // ... (File handlers remain same) ...
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
@@ -29,16 +62,13 @@ export const CallSheetView: React.FC = () => {
                 setError('Seuls les fichiers PDF sont acceptés.');
                 return;
             }
-            if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
+            if (selectedFile.size > 10 * 1024 * 1024) {
                 setError('Le fichier est trop volumineux (max 10Mo).');
                 return;
             }
             setFile(selectedFile);
             setError(null);
-
-            // Auto-fill name if empty
             if (!uploadName) {
-                // Remove extension and clean up
                 const cleanName = selectedFile.name.replace('.pdf', '').replace(/[-_]/g, ' ');
                 setUploadName(cleanName);
             }
@@ -53,51 +83,45 @@ export const CallSheetView: React.FC = () => {
         setError(null);
 
         try {
-            // 1. Upload to Firebase Storage
-            // Use storage from firebase.ts to ensure correct initialization
-            // const storage = getStorage(); // OLD
             const { storage } = await import('../services/firebase');
+            const { analyzeCallSheetPDF } = await import('../services/aiService');
 
-            // Organize by Project ID if possible, but context doesn't give clean project ID directly safely without checking
+            // 1. AI Analysis
+            let extractedData: Partial<CallSheet> = {};
+            try {
+                extractedData = await analyzeCallSheetPDF(file);
+                console.log("AI Data Extracted:", extractedData);
+            } catch (aiError) {
+                console.warn("AI extraction failed, proceeding with basic upload.", aiError);
+            }
             const storageRef = ref(storage, `callsheets/${Date.now()}_${file.name}`);
+            const metadata = { customMetadata: { uploadedBy: user?.name || 'Unknown', department: user?.department || 'Unknown' } };
 
-            // Add metadata
-            const metadata = {
-                customMetadata: {
-                    uploadedBy: user?.name || 'Unknown',
-                    department: user?.department || 'Unknown'
-                }
-            };
-
-            // Race against a timeout to detect hangs (common with permission issues)
             const uploadTask = uploadBytes(storageRef, file, metadata);
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Délai d'attente dépassé (15s). Vérifiez votre connexion ou les permissions.")), 15000)
-            );
-
-            await Promise.race([uploadTask, timeoutPromise]);
-
+            await uploadTask;
             const downloadUrl = await getDownloadURL(storageRef);
 
-            // 2. Add to Firestore via Context
             await addCallSheet({
-                id: '', // Generated by Firestore
+                id: '',
                 date: uploadDate,
                 uploadDate: new Date().toISOString(),
                 name: uploadName,
                 url: downloadUrl,
                 uploadedBy: user?.name || 'Inconnu',
-                department: user?.department as (Department | 'PRODUCTION'),
+                department: user?.department as any,
 
-                callTime, // New
-                endTime, // New
-                location1, // New
-                location2: location2 || null, // Fix: Firestore doesn't accept undefined
-                cateringLocation // New
+                // Fallback / Manual
+                callTime: extractedData.callTime || callTime,
+                endTime: extractedData.endTime || endTime,
+                location1: extractedData.location1 || location1 || undefined,
+
+                ...extractedData, // Merge AI data
+
+                location2: extractedData.location2 || location2 || null,
+                cateringLocation: extractedData.cateringLocation || cateringLocation || undefined
             });
 
-            // Reset Form
-            setFile(null);
+            // Reset
             setFile(null);
             setUploadName('');
             setCallTime('');
@@ -107,246 +131,234 @@ export const CallSheetView: React.FC = () => {
             setCateringLocation('');
             setIsUploading(false);
         } catch (err: any) {
-            console.error("Upload failed", err);
-            let msg = "Échec du téléchargement.";
-            if (err.message.includes("permission")) msg = "Erreur de permission (Storage).";
-            if (err.message.includes("Délai")) msg = err.message;
-            if (err.code === 'storage/unauthorized') msg = "Non autorisé à envoyer des fichiers.";
-
-            setError(`${msg} (${err.code || err.message})`);
+            console.error(err);
+            const errorMessage = err?.message || "Erreur inconnue";
+            setError(`Erreur lors de l'upload: ${errorMessage}`);
             setIsUploading(false);
         }
     };
 
+    const handleDelete = async (id: string, url?: string) => {
+        if (window.confirm('Voulez-vous vraiment supprimer cette feuille de service ?')) {
+            try {
+                await deleteCallSheet(id, url || '');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
     return (
-        <div className="space-y-6 pb-20">
-            {/* Header */}
-            <div className="flex justify-between items-center bg-cinema-800 p-4 rounded-xl shadow-sm border border-cinema-700">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-cinema-700 rounded-lg">
-                        <FileText className="w-5 h-5 text-gray-300" />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-bold text-white">Feuilles de Service</h2>
-                        <p className="text-sm text-gray-400">Consultez et téléchargez les feuilles de service</p>
-                    </div>
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-white">Feuilles de Service</h2>
+                    <p className="text-slate-400">Consultez et téléchargez les FDS quotidiennes.</p>
                 </div>
-            </div>
+            </header>
 
-            {/* Upload Section (Restricted) */}
             {canUpload && (
-                <div className="bg-cinema-800 p-6 rounded-xl shadow-sm border border-cinema-700">
-                    <h3 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
-                        <Upload className="w-4 h-4" /> Ajouter une feuille de service
-                    </h3>
+                <div className="bg-cinema-800/50 p-1 rounded-xl flex gap-1 w-full max-w-md mx-auto border border-cinema-700">
+                    <button
+                        onClick={() => { setMode('UPLOAD'); setEditingSheet(null); }}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'UPLOAD' ? 'bg-cinema-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Importer PDF
+                    </button>
+                    <button
+                        onClick={() => { setMode('BUILDER'); setEditingSheet(null); }}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'BUILDER' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        {editingSheet ? 'Mode Édition' : 'Créer Digitale'}
+                    </button>
+                </div>
+            )}
 
-                    <form onSubmit={handleUpload} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* BUILDER MODE */}
+            {canUpload && mode === 'BUILDER' && (
+                <CallSheetBuilder
+                    onSave={handleDigitalSave}
+                    onCancel={handleCancel}
+                    initialData={editingSheet}
+                />
+            )}
+
+            {/* UPLOAD MODE */}
+            {canUpload && mode === 'UPLOAD' && (
+                <form onSubmit={handleUpload} className="bg-cinema-800 p-6 rounded-2xl border border-cinema-700 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* File Drop */}
+                        <div className="border-2 border-dashed border-cinema-600 rounded-xl p-8 flex flex-col items-center justify-center gap-4 hover:border-eco-500/50 hover:bg-cinema-700/30 transition-all group relative">
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={handleFileChange}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="p-4 bg-cinema-700 rounded-full group-hover:scale-110 transition-transform">
+                                <Upload className="h-8 w-8 text-eco-400" />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-white font-medium">
+                                    {file ? file.name : "Glissez votre PDF ici"}
+                                </p>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    ou cliquez pour parcourir
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Date de la feuille</label>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Date du document</label>
                                 <input
                                     type="date"
-                                    required
                                     value={uploadDate}
                                     onChange={(e) => setUploadDate(e.target.value)}
                                     className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                 />
                             </div>
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Nom (ex: J12 - Décor Appartement)</label>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Nom du fichier</label>
                                 <input
                                     type="text"
-                                    required
-                                    placeholder="Nom de la feuille de service"
                                     value={uploadName}
                                     onChange={(e) => setUploadName(e.target.value)}
+                                    placeholder="ex: FDS J12 - Lundi 24 Oct"
                                     className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
                                 />
                             </div>
-                        </div>
-
-                        {/* DAILY LOGISTICS INPUTS */}
-                        <div className="bg-cinema-900/50 p-4 rounded-lg border border-cinema-700/50 space-y-4">
-                            <h4 className="text-xs font-bold text-gray-400 uppercase">Infos Feuille de Service (Visible sur Dashboard)</h4>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1">Pât (Prêt à Tourner)</label>
-                                    <input
-                                        type="time"
-                                        value={callTime}
-                                        onChange={(e) => setCallTime(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
-                                    />
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">P.A.T</label>
+                                    <input type="time" value={callTime} onChange={e => setCallTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1">Fin Estimée</label>
-                                    <input
-                                        type="time"
-                                        value={endTime}
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1">Cantine (Adresse)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="ex: 12 Rue de la Paix, Paris"
-                                        value={cateringLocation}
-                                        onChange={(e) => setCateringLocation(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
-                                    />
+                                    <label className="block text-xs font-medium text-gray-400 mb-1">Fin Est.</label>
+                                    <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500" />
                                 </div>
                             </div>
-
-                            <div className="space-y-2">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1">Décor 1 (Principal)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Adresse du décor principal"
-                                        value={location1}
-                                        onChange={(e) => setLocation1(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1">Décor 2 (Optionnel)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Adresse du décor secondaire"
-                                        value={location2}
-                                        onChange={(e) => setLocation2(e.target.value)}
-                                        className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500"
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Lieu Principal</label>
+                                <input type="text" value={location1} onChange={e => setLocation1(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-cinema-900 border border-cinema-700 text-white focus:outline-none focus:ring-2 focus:ring-eco-500" />
                             </div>
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1">Fichier PDF</label>
-                            <div className="flex items-center gap-4">
-                                <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleFileChange}
-                                    className="block w-full text-sm text-gray-400
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-cinema-700 file:text-white
-                                    hover:file:bg-cinema-600
-                                    cursor-pointer"
-                                />
-                                {file && (
-                                    <span className="text-xs text-eco-400 font-medium whitespace-nowrap">
-                                        {(file.size / 1024 / 1024).toFixed(2)} Mo
-                                    </span>
-                                )}
-                            </div>
+                    {error && (
+                        <div className="p-3 bg-red-900/30 text-red-400 text-sm rounded-lg border border-red-500/30">
+                            {error}
                         </div>
+                    )}
 
-                        {error && (
-                            <div className="p-3 bg-red-900/30 text-red-400 text-sm rounded-lg border border-red-500/30">
-                                {error}
-                            </div>
-                        )}
-
-                        <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={!file || isUploading}
-                                className={`px-6 py-2 rounded-xl text-white font-medium shadow-sm transition-all
-                                    ${!file || isUploading
-                                        ? 'bg-cinema-700 cursor-not-allowed text-gray-500'
-                                        : 'bg-eco-600 hover:bg-eco-500 shadow-md hover:shadow-lg'
-                                    }`}
-                            >
-                                {isUploading ? 'Envoi en cours...' : 'Publier la feuille'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={!file || isUploading}
+                            className={`px-6 py-2 rounded-xl text-white font-medium shadow-sm transition-all flex items-center gap-2
+                                ${!file || isUploading
+                                    ? 'bg-cinema-700 cursor-not-allowed text-gray-500'
+                                    : 'bg-eco-600 hover:bg-eco-500 shadow-md hover:shadow-lg'
+                                }`}
+                        >
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                                    <span>Analyse & Envoi...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="h-4 w-4" />
+                                    <span>Publier la feuille</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
             )}
 
-            {/* List */}
-            <div className="space-y-3">
-                {callSheets.length === 0 ? (
-                    <div className="text-center py-12 bg-cinema-800 rounded-xl border border-cinema-700">
-                        <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-500">Aucune feuille de service disponible pour le moment.</p>
-                    </div>
-                ) : (
-                    callSheets.map((sheet) => (
-                        <div key={sheet.id} className="bg-cinema-800 p-4 rounded-xl border border-cinema-700 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-red-900/20 text-red-500 rounded-xl">
-                                    <FileText className="w-6 h-6" />
+            {/* LIST (Only show if NOT in Builder mode) */}
+            {mode !== 'BUILDER' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {callSheets.map((sheet) => (
+                        <div key={sheet.id} className="bg-cinema-800 rounded-xl p-4 border border-cinema-700 flex flex-col justify-between group hover:border-eco-500/50 transition-all">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-xs font-bold text-eco-400 bg-eco-400/10 px-2 py-1 rounded-full border border-eco-500/20">
+                                        {new Date(sheet.date).toLocaleDateString()}
+                                    </span>
+                                    {canUpload && (
+                                        <button
+                                            onClick={() => handleDelete(sheet.id, sheet.url)}
+                                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                            title="Supprimer la feuille"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-white">{sheet.name}</h3>
-                                        <span className="text-xs px-2 py-0.5 bg-cinema-700 text-gray-300 rounded-full border border-cinema-600">
-                                            {new Date(sheet.date).toLocaleDateString()}
-                                        </span>
-                                        {/* New Badge if recent (e.g. uploaded today) */}
-                                        {new Date(sheet.uploadDate).toDateString() === new Date().toDateString() && (
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-red-900/30 text-red-400 rounded-full font-bold border border-red-500/30">
-                                                NOUVEAU
-                                            </span>
+                                <h3 className="text-lg font-bold text-white mb-1">{sheet.name}</h3>
+                                <p className="text-xs text-gray-400 flex items-center gap-1">
+                                    <Upload className="w-3 h-3" /> {sheet.uploadedBy}
+                                </p>
+
+                                {(sheet.callTime || sheet.location1) && (
+                                    <div className="mt-3 pt-3 border-t border-cinema-700 grid grid-cols-2 gap-2 text-xs text-gray-300">
+                                        {sheet.callTime && (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-eco-500">P.A.T:</span> {sheet.callTime}
+                                            </div>
+                                        )}
+                                        {sheet.location1 && (
+                                            <div className="col-span-2 truncate">
+                                                <span className="text-orange-400">Lieu:</span> {sheet.location1}
+                                            </div>
                                         )}
                                     </div>
-                                    <p className="text-xs text-gray-500">
-                                        Mise en ligne par {sheet.uploadedBy} le {new Date(sheet.uploadDate).toLocaleDateString()} à {new Date(sheet.uploadDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                </div>
+                                )}
                             </div>
 
-                            <div className="flex gap-2 w-full sm:w-auto">
-                                <a
-                                    href={sheet.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-cinema-700 text-gray-200 rounded-lg hover:bg-cinema-600 transition-colors text-sm font-medium"
-                                >
-                                    <Eye className="w-4 h-4" />
-                                    Voir
-                                </a>
-                                <a
-                                    href={sheet.url}
-                                    download // Note: download attribute often ignored for cross-origin, but good intent
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-eco-600 text-white rounded-lg hover:bg-eco-500 transition-colors text-sm font-medium"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    Télécharger
-                                </a>
-
-                                {/* Delete Button (Restricted) */}
-                                {canUpload && (
+                            <div className="mt-4 pt-4 border-t border-cinema-700 flex gap-2">
+                                {sheet.url ? (
+                                    <>
+                                        <a
+                                            href={sheet.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex-1 bg-cinema-900 hover:bg-black text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Eye className="w-4 h-4" /> Voir
+                                        </a>
+                                        <a
+                                            href={sheet.url}
+                                            download
+                                            className="flex-1 bg-eco-600 hover:bg-eco-500 text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Download className="w-4 h-4" /> PDF
+                                        </a>
+                                    </>
+                                ) : (
+                                    // Use handleEdit here
                                     <button
-                                        onClick={async () => {
-                                            if (window.confirm("Êtes-vous sûr de vouloir supprimer cette feuille de service ?")) {
-                                                try {
-                                                    await deleteCallSheet(sheet.id, sheet.url);
-                                                } catch (e) {
-                                                    // Error handled in context
-                                                }
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium border border-red-500/20"
-                                        title="Supprimer"
+                                        onClick={() => handleEdit(sheet)}
+                                        className="flex-1 bg-blue-600/20 text-blue-400 py-2 rounded-lg text-sm font-medium hover:bg-blue-600/30 transition-colors flex items-center justify-center gap-2 border border-blue-500/30"
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <FileText className="w-4 h-4" /> Digital / Éditer
                                     </button>
                                 )}
                             </div>
                         </div>
-                    ))
-                )}
-            </div>
+                    ))}
+
+                    {callSheets.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-gray-500 bg-cinema-800/30 rounded-xl border border-dashed border-cinema-700">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p>Aucune feuille de service disponible.</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
