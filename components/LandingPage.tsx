@@ -57,6 +57,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 ]
             },
             cta: "Découvrir l'expérience",
+            ctaProd: "Connexion Production",
+            ctaTeam: "Connexion Équipes",
             footer: "Une production plus verte, une équipe plus heureuse."
         },
         en: {
@@ -105,6 +107,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 ]
             },
             cta: "Discover the experience",
+            ctaProd: "Production Login",
+            ctaTeam: "Team Login",
             footer: "A greener production, a happier team."
         },
         es: {
@@ -153,6 +157,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 ]
             },
             cta: "Descubrir la experiencia",
+            ctaProd: "Conexión Producción",
+            ctaTeam: "Conexión Equipos",
             footer: "Una producción más verde, un equipo más feliz."
         }
     };
@@ -265,16 +271,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 </div>
             </div>
 
-            {/* CTA */}
-            <button
-                onClick={onStart}
-                className="group relative px-8 py-4 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold text-lg rounded-full shadow-2xl shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 transition-all duration-300"
-            >
-                <span className="flex items-center gap-3">
-                    {t.cta}
-                    <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </span>
-            </button>
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-center gap-6 w-full justify-center">
+                {/* Production CTA */}
+                <button
+                    onClick={onStart}
+                    className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-full shadow-2xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-105 transition-all duration-300 w-full sm:w-auto min-w-[280px]"
+                >
+                    <span className="flex items-center justify-center gap-3">
+                        <Building2 className="h-6 w-6 opacity-80" />
+                        {t.ctaProd}
+                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform opacity-70" />
+                    </span>
+                </button>
+
+                {/* Team CTA */}
+                <button
+                    onClick={onStart}
+                    className="group relative px-8 py-4 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold text-lg rounded-full shadow-2xl shadow-pink-600/30 hover:shadow-pink-600/50 hover:scale-105 transition-all duration-300 w-full sm:w-auto min-w-[280px]"
+                >
+                    <span className="flex items-center justify-center gap-3">
+                        <Users className="h-6 w-6 opacity-80" />
+                        {t.ctaTeam}
+                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform opacity-70" />
+                    </span>
+                </button>
+            </div>
 
             <p className="mt-6 text-slate-500 text-sm">
                 {t.footer}
