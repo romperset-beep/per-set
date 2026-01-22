@@ -28,7 +28,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
             Tu es un assistant de production expert (1er Assistant Réal).

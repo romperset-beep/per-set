@@ -38,7 +38,7 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
       Agis en tant qu'expert auditeur RSE spécialisé dans le secteur audiovisuel (méthodologie Ecoprod / Carbon'Clap).
@@ -125,7 +125,7 @@ export const generateEcoImpactReport = async (items: ConsumableItem[], projectNa
 export const suggestEcoAlternatives = async (itemName: string): Promise<string> => {
   if (!genAI) return "Conseil éco non disponible (Clé API manquante).";
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(`Give me a very short (1 sentence) eco-friendly alternative for: "${itemName}". Answer in French.`);
     return result.response.text() || "Pas de suggestion.";
   } catch (e) {
@@ -163,7 +163,7 @@ const fileToGenerativePart = async (file: File): Promise<Part> => {
 export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<ConsumableItem>[], rawResponse: string }> => {
   if (!genAI) return { items: [], rawResponse: "API Key Missing" };
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     let contentPart: Part;
     const isText = file.type.includes('text') || file.type.includes('csv') || file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt');
@@ -206,7 +206,7 @@ export const analyzeOrderFile = async (file: File): Promise<{ items: Partial<Con
 export const analyzeReceipt = async (file: File): Promise<{ data: any, rawResponse: string }> => {
   if (!genAI) return { data: null, rawResponse: "API Key Missing" };
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const imagePart = await fileToGenerativePart(file);
 
     const prompt = `
