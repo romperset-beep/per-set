@@ -483,6 +483,53 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                     return null;
                                 })()}
 
+                                {/* 4c. TRANSPORTS (Regie & Mise en Scene) */}
+                                {(() => {
+                                    const allowedDepts = ['regie', 'mise en scene'];
+                                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                                    const isAllowed = effectiveDept && allowedDepts.some(d => normalize(effectiveDept).includes(d));
+
+                                    if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
+                                        return (
+                                            <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
+                                                <div className="bg-cinema-800/50 px-4 py-3 border-b border-cinema-700">
+                                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                        <span className="text-base">🚕</span>
+                                                        Transports
+                                                    </h4>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left text-xs border-collapse">
+                                                        <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                            <tr>
+                                                                <th className="p-2 border border-cinema-700">Nom</th>
+                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Pick-Up</th>
+                                                                <th className="p-2 border border-cinema-700">Lieu</th>
+                                                                <th className="p-2 border border-cinema-700">Conducteur</th>
+                                                                <th className="p-2 border border-cinema-700">Dest.</th>
+                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Sur Place</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {todayCallSheet.transports.map((t, i) => (
+                                                                <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                    <td className="p-2 border-r border-cinema-700 font-bold text-white">{t.name}</td>
+                                                                    <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{t.pickupTime || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.pickupLocation || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-400">{t.driver || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.destination || '-'}</td>
+                                                                    <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{t.arrivalTime || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
                                 {/* 5. MÉTÉO (Below Sequences) */}
                                 {
                                     (todayCallSheet.weather || todayCallSheet.nearestHospital) && (

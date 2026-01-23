@@ -404,6 +404,16 @@ export interface ExtrasGroup {
   readyTime?: string; // PAR
 }
 
+export interface TransportInfo {
+  id: string; // Unique ID for key management
+  name: string;
+  pickupTime?: string;
+  pickupLocation?: string;
+  driver?: string; // Taxi, VTC, Driver Name
+  destination?: string;
+  arrivalTime?: string; // Sur Place / HMC / Set
+}
+
 export interface CallSheet {
   id: string;
   date: string; // Target date (YYYY-MM-DD)
@@ -432,6 +442,7 @@ export interface CallSheet {
   sequences?: CallSheetSequence[];
   cast?: CastMember[]; // Added
   extras?: ExtrasGroup[]; // Updated: List of extras groups with times
+  transports?: TransportInfo[]; // New: Transport list
   notes?: string[]; // List of general notes
   departmentCallTimes?: Record<string, string>; // e.g. { "Caméra": "08:00", "Régie": "07:30" }
   departmentNotes?: Record<string, string[]>; // New: specific notes per dept

@@ -159,6 +159,32 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
         setExtras(extras.filter((_, i) => i !== index));
     };
 
+    // Transports State
+    const [transports, setTransports] = useState<any[]>(initialData?.transports || []);
+
+    const addTransport = () => {
+        setTransports([
+            ...transports,
+            {
+                id: Math.random().toString(36).substr(2, 9),
+                name: '',
+                pickupTime: '',
+                pickupLocation: '',
+                driver: '',
+                destination: '',
+                arrivalTime: ''
+            }
+        ]);
+    };
+
+    const updateTransport = (id: string, field: string, value: string) => {
+        setTransports(transports.map(t => t.id === id ? { ...t, [field]: value } : t));
+    };
+
+    const removeTransport = (id: string) => {
+        setTransports(transports.filter(t => t.id !== id));
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -194,6 +220,15 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
                 mealTime: e.mealTime || null,
                 readyTime: e.readyTime || null
             })), // Sanitize
+            transports: transports.map(t => ({
+                id: t.id,
+                name: t.name || "",
+                pickupTime: t.pickupTime || null,
+                pickupLocation: t.pickupLocation || null,
+                driver: t.driver || null,
+                destination: t.destination || null,
+                arrivalTime: t.arrivalTime || null
+            })),
             sequences,
             notes,
             isDigital: true
@@ -484,6 +519,58 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Transports Section */}
+                    <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-teal-400 flex items-center gap-2">
+                                <span className="text-xl">🚕</span>
+                                Transports
+                            </h3>
+                            <button type="button" onClick={addTransport} className="bg-teal-600/20 text-teal-400 hover:bg-teal-600 hover:text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1">
+                                <Plus className="w-3 h-3" /> Ajouter
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {transports.map((t) => (
+                                <div key={t.id} className="bg-cinema-900/50 p-3 rounded-lg border border-cinema-700 relative group">
+                                    <button type="button" onClick={() => removeTransport(t.id)} className="absolute top-2 right-2 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2 pr-6">
+                                        <input type="text" placeholder="Nom (ex: Camille LOU)" value={t.name} onChange={e => updateTransport(t.id, 'name', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-2 py-1 text-sm text-white font-bold" />
+                                        <input type="text" placeholder="Conducteur / Taxi" value={t.driver} onChange={e => updateTransport(t.id, 'driver', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-2 py-1 text-sm text-white" />
+                                    </div>
+
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Pick-Up</label>
+                                            <input type="time" value={t.pickupTime || ''} onChange={e => updateTransport(t.id, 'pickupTime', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-1 py-1 text-xs text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Lieu</label>
+                                            <input type="text" placeholder="Lieu..." value={t.pickupLocation || ''} onChange={e => updateTransport(t.id, 'pickupLocation', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-1 py-1 text-xs text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Dest.</label>
+                                            <input type="text" placeholder="HMC..." value={t.destination || ''} onChange={e => updateTransport(t.id, 'destination', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-1 py-1 text-xs text-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Sur Place</label>
+                                            <input type="time" value={t.arrivalTime || ''} onChange={e => updateTransport(t.id, 'arrivalTime', e.target.value)} className="w-full bg-black/20 border border-cinema-700 rounded px-1 py-1 text-xs text-white" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {transports.length === 0 && (
+                                <div className="text-center py-4 text-slate-500 text-xs italic">
+                                    Aucun transport planifié.
+                                </div>
+                            )}
                         </div>
                     </div>
 

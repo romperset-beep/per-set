@@ -78,6 +78,22 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                         "hmcTime": "22:50", 
                         "readyTime": "23:30"
                     }
+                "extras": [
+                    { 
+                        "name": "Policiers (5)", 
+                        "hmcTime": "22:50", 
+                        "readyTime": "23:30"
+                    }
+                ],
+                "transports": [
+                    {
+                        "name": "Camille LOU",
+                        "pickupTime": "20h15",
+                        "pickupLocation": "Domicile",
+                        "driver": "Taxi",
+                        "destination": "HMC",
+                        "arrivalTime": "21h00"
+                    }
                 ],
                 "sequences": [
                     {
@@ -169,6 +185,15 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                     readyTime: e.readyTime || e.parTime || null
                 };
             }),
+            transports: data.transports?.map((t: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                name: t.name || "Inconnu",
+                pickupTime: t.pickupTime || null,
+                pickupLocation: t.pickupLocation || null,
+                driver: t.driver || null,
+                destination: t.destination || null,
+                arrivalTime: t.arrivalTime || t.surPlace || null
+            })),
             isDigital: true // Force Digital mode for AI-pdf
         };
 
