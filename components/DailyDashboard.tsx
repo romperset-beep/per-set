@@ -485,9 +485,13 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
 
                                 {/* 4c. TRANSPORTS (Regie & Mise en Scene) */}
                                 {(() => {
-                                    const allowedKeywords = ['regie', 'mise en scene'];
-                                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                                    const isAllowed = effectiveDept && allowedKeywords.some(k => normalize(effectiveDept).includes(k));
+                                    // Bulletproof check: normalize and check for key substrings
+                                    const normalize = (str?: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+                                    const deptInfo = normalize(effectiveDept);
+
+                                    const isMiseEnScene = deptInfo.includes("mise") && deptInfo.includes("scene");
+                                    const isRegie = deptInfo.includes("regie");
+                                    const isAllowed = isMiseEnScene || isRegie;
 
                                     if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
                                         return (
