@@ -485,7 +485,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
 
                                 {/* 4c. TRANSPORTS (Regie & Mise en Scene) */}
                                 {(() => {
-                                    const allowedDepts = ['regie', 'mise en scene'];
+                                    const allowedDepts = ['regie', 'miseenscene'];
                                     const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
                                     const isAllowed = effectiveDept && allowedDepts.some(d => normalize(effectiveDept).includes(d));
 
