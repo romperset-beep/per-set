@@ -1,8 +1,7 @@
-
 import React, { useMemo, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department } from '../types';
-import { Clock, MapPin, Utensils, Activity, Calendar, FileText, AlertTriangle, CloudRain, Film } from 'lucide-react';
+import { Clock, MapPin, Utensils, Activity, Calendar, FileText, AlertTriangle, CloudRain, Film, ChevronRight, ChevronDown } from 'lucide-react';
 
 export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ overrideDepartment }) => {
     const { project, user, callSheets, userProfiles } = useProject();
@@ -19,13 +18,10 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
     }, [user, userProfiles]);
 
     // Get "Today's" Call Sheet
-
-    // Get "Today's" Call Sheet
     const todayCallSheet = useMemo(() => {
         if (!callSheets) return null;
 
         // Explicitly construct Local YYYY-MM-DD to match the Upload format
-        // This avoids any UTC/Local offset issues that simple ISOString might introduce
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -48,11 +44,10 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
         // 2. Fuzzy match keys
         const keys = Object.keys(sheet.departmentCallTimes);
 
-        // Check exact target first in keys (normalized)
         let match = keys.find(k => normalize(k) === target);
         if (match) return sheet.departmentCallTimes[match];
 
-        // 3. Synonym Matching (Common French Set Terms)
+        // 3. Synonym Matching
         const synonyms: Record<string, string[]> = {
             'camera': ['image', 'photo', 'cadre', 'opv'],
             'costume': ['habillage', 'wardrobe', 'costumes'],
@@ -66,20 +61,12 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
             'son': ['sound', 'audio', 'perchman']
         };
 
-        // Get known synonyms for the user's department
         const targetSynonyms = synonyms[target] || [];
 
-        // Find a key that matches target OR one of its synonyms
         match = keys.find(k => {
             const normKey = normalize(k);
-
-            // Key contains target? (e.g. "Equipe Camera" matches "camera")
             if (normKey.includes(target)) return true;
-
-            // Target contains key?
             if (target.includes(normKey)) return true;
-
-            // Key matches any synonym?
             return targetSynonyms.some(syn => normKey.includes(syn) || syn.includes(normKey));
         });
 
@@ -99,6 +86,17 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
     // Helper for Google Maps Link
     const getMapsLink = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
+    // Collapsible Sections State
+    const [openSections, setOpenSections] = useState<{ sequences: boolean, cast: boolean, transports: boolean }>({
+        sequences: false,
+        cast: false,
+        transports: false
+    });
+
+    const toggleSection = (section: 'sequences' | 'cast' | 'transports') => {
+        setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-20">
             {/* Header / Date */}
@@ -117,10 +115,8 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                 <div className="relative z-10 flex flex-col gap-8">
-                    {/* LEFT: SCHEDULE */}
                     {/* TOP HERO: SCHEDULE */}
                     <div className="w-full flex flex-col justify-center items-center gap-3 py-2">
-
                         {/* 1. Title Badge */}
                         <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm">
                             <Clock className="w-3 h-3" />
@@ -129,16 +125,15 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                 : 'P.A.T GÉNÉRAL'}
                         </div>
 
-                        {/* 2. Main Time Display - Reduced Size */}
+                        {/* 2. Main Time Display */}
                         <div className="relative z-10">
                             <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">
                                 {callTimeDisplay}
                             </span>
                         </div>
 
-                        {/* 3. Stats Row (PAT & End Time) */}
+                        {/* 3. Stats Row */}
                         <div className="flex flex-wrap justify-center gap-8 items-center w-full max-w-xl px-4 mt-1">
-
                             {/* P.A.T */}
                             {(effectiveDept &&
                                 todayCallSheet?.departmentCallTimes &&
@@ -159,7 +154,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                             )}
                         </div>
 
-                        {/* 4. PDF Button - Compact */}
+                        {/* 4. PDF Button */}
                         {todayCallSheet ? (
                             <a
                                 href={todayCallSheet.url}
@@ -175,7 +170,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                         )}
                     </div>
 
-                    {/* RIGHT column: Stacked Widgets as per user request */}
+                    {/* RIGHT column: Stacked Widgets */}
                     <div className="space-y-4">
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <MapPin className="w-4 h-4" /> Localisations & Infos
@@ -207,7 +202,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                             </div>
                         )}
 
-                        {/* 1b. ADRESSE : HMC (Si présent) */}
+                        {/* 1b. ADRESSE : HMC */}
                         {todayCallSheet?.hmcAddress && (
                             <a
                                 href={getMapsLink(todayCallSheet.hmcAddress)}
@@ -228,7 +223,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                             </a>
                         )}
 
-                        {/* 2. ADRESSE : CANTINE (et Decor Secondaire si existe) */}
+                        {/* 2. ADRESSE : CANTINE */}
                         {todayCallSheet?.cateringLocation && (
                             <a
                                 href={getMapsLink(todayCallSheet.cateringLocation)}
@@ -256,7 +251,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                             </a>
                         )}
 
-                        {/* Optional: Second Location if exists, tucked under Cantine or between */}
+                        {/* Decor Secondaire */}
                         {todayCallSheet?.location2 && (
                             <a
                                 href={getMapsLink(todayCallSheet.location2)}
@@ -277,17 +272,14 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                             </a>
                         )}
 
-                        {/* DIGITAL CONTENT: NOTES -> SEQUENCES -> WEATHER */}
+                        {/* DIGITAL CONTENT */}
                         {todayCallSheet && (todayCallSheet.isDigital ?? true) && (
                             <>
-                                {/* 3. NOTE DU DÉPARTEMENT (Full Width) */}
+                                {/* 3. NOTE DU DÉPARTEMENT */}
                                 {(() => {
-                                    // 1. If PRODUCTION (or Admin) -> Hide notes as per request
                                     if (effectiveDept === 'PRODUCTION' || effectiveDept === 'Production') {
                                         return null;
                                     }
-
-                                    // 2. Specific Dept Logic
                                     if (effectiveDept) {
                                         const getDeptNotes = (sheet: any, dept: string) => {
                                             if (!sheet?.departmentNotes) return null;
@@ -344,43 +336,52 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                     return null;
                                 })()}
 
-                                {/* 4. SÉQUENCES DU JOUR (Full Width - Horizontal) */}
+                                {/* 4. SÉQUENCES DU JOUR (Collapsible) */}
                                 {todayCallSheet.sequences && todayCallSheet.sequences.length > 0 && (
                                     <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
-                                        <div className="bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center">
-                                            <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
-                                                <Film className="w-4 h-4 text-purple-400" />
-                                                Séquences du Jour
-                                            </h4>
+                                        <button
+                                            onClick={() => toggleSection('sequences')}
+                                            className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {openSections.sequences ? <ChevronDown className="w-4 h-4 text-purple-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                                <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                    <Film className="w-4 h-4 text-purple-400" />
+                                                    Séquences du Jour
+                                                </h4>
+                                            </div>
                                             <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full">
                                                 {todayCallSheet.sequences.length} seq.
                                             </span>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-xs">
-                                                <thead className="bg-cinema-900 text-gray-400 font-medium">
-                                                    <tr>
-                                                        <th className="px-4 py-2 w-12 text-center">N°</th>
-                                                        <th className="px-4 py-2">Décor / Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-cinema-700">
-                                                    {todayCallSheet.sequences.map((seq) => (
-                                                        <tr key={seq.id} className="hover:bg-cinema-800/50 transition-colors">
-                                                            <td className="px-4 py-3 text-center font-bold text-white bg-cinema-800/30">{seq.sequenceNumber}</td>
-                                                            <td className="px-4 py-3">
-                                                                <div className="font-bold text-purple-200 mb-0.5">{seq.decor}</div>
-                                                                <div className="text-gray-400 line-clamp-2">{seq.description}</div>
-                                                            </td>
+                                        </button>
+
+                                        {openSections.sequences && (
+                                            <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                                <table className="w-full text-left text-xs">
+                                                    <thead className="bg-cinema-900 text-gray-400 font-medium">
+                                                        <tr>
+                                                            <th className="px-4 py-2 w-12 text-center">N°</th>
+                                                            <th className="px-4 py-2">Décor / Action</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-cinema-700">
+                                                        {todayCallSheet.sequences.map((seq) => (
+                                                            <tr key={seq.id} className="hover:bg-cinema-800/50 transition-colors">
+                                                                <td className="px-4 py-3 text-center font-bold text-white bg-cinema-800/30">{seq.sequenceNumber}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="font-bold text-purple-200 mb-0.5">{seq.decor}</div>
+                                                                    <div className="text-gray-400 line-clamp-2">{seq.description}</div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
-                                {/* 4b. CAST & FIGURATION (Mise en Scène Only) */}
+                                {/* 4b. CAST & FIGURATION (Collapsible) */}
                                 {(() => {
                                     const isMiseEnScene = (dept?: string) => {
                                         if (!dept) return false;
@@ -392,100 +393,102 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                             <>
                                                 {(todayCallSheet.cast?.length || todayCallSheet.extras?.length) ? (
                                                     <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
-                                                        <div className="bg-cinema-800/50 px-4 py-3 border-b border-cinema-700">
-                                                            <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
-                                                                <Film className="w-4 h-4 text-pink-400" />
-                                                                Comédiens & Figuration
-                                                            </h4>
-                                                        </div>
-                                                        <div className="p-4 space-y-4">
-                                                            {/* CAST */}
-                                                            {todayCallSheet.cast && todayCallSheet.cast.length > 0 && (
-                                                                <div>
-                                                                    <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens</h5>
-                                                                    <div className="overflow-x-auto">
-                                                                        <table className="w-full text-left text-xs border-collapse">
-                                                                            <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
-                                                                                <tr>
-                                                                                    <th className="p-2 border border-cinema-700">Rôle</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">P-U</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {todayCallSheet.cast.map((c, i) => (
-                                                                                    <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
-                                                                                        <td className="p-2 border-r border-cinema-700">
-                                                                                            <div className="font-bold text-white">{c.role}</div>
-                                                                                            <div className="text-slate-400 text-[10px]">{c.actor}</div>
-                                                                                        </td>
-                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.pickupTime || '-'}</td>
-                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.hmcTime || '-'}</td>
-                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.mealTime || '-'}</td>
-                                                                                        <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{c.readyTime || '-'}</td>
+                                                        <button
+                                                            onClick={() => toggleSection('cast')}
+                                                            className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                {openSections.cast ? <ChevronDown className="w-4 h-4 text-pink-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                                                <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                                    <Film className="w-4 h-4 text-pink-400" />
+                                                                    Comédiens & Figuration
+                                                                </h4>
+                                                            </div>
+                                                        </button>
+
+                                                        {openSections.cast && (
+                                                            <div className="p-4 space-y-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                                                                {todayCallSheet.cast && todayCallSheet.cast.length > 0 && (
+                                                                    <div>
+                                                                        <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens</h5>
+                                                                        <div className="overflow-x-auto">
+                                                                            <table className="w-full text-left text-xs border-collapse">
+                                                                                <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                                    <tr>
+                                                                                        <th className="p-2 border border-cinema-700">Rôle</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">P-U</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
                                                                                     </tr>
-                                                                                ))}
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {/* EXTRAS */}
-                                                            {todayCallSheet.extras && todayCallSheet.extras.length > 0 && (
-                                                                <div className="mt-4 pt-4 border-t border-cinema-700">
-                                                                    <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h5>
-                                                                    <div className="overflow-x-auto">
-                                                                        <table className="w-full text-left text-xs border-collapse">
-                                                                            <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
-                                                                                <tr>
-                                                                                    <th className="p-2 border border-cinema-700">Groupe</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">Qté</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
-                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {todayCallSheet.extras.map((e, i) => {
-                                                                                    // Handle legacy string extras
-                                                                                    const isObj = typeof e !== 'string';
-                                                                                    const name = isObj ? e.name : e;
-                                                                                    const qty = isObj ? e.quantity : '';
-                                                                                    const hmc = isObj ? e.hmcTime : '';
-                                                                                    const meal = isObj ? e.mealTime : '';
-                                                                                    const ready = isObj ? e.readyTime : '';
-
-                                                                                    return (
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {todayCallSheet.cast.map((c, i) => (
                                                                                         <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
-                                                                                            <td className="p-2 border-r border-cinema-700 font-medium text-white">{name}</td>
-                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-slate-400">{qty}</td>
-                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{hmc || '-'}</td>
-                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{meal || '-'}</td>
-                                                                                            <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{ready || '-'}</td>
+                                                                                            <td className="p-2 border-r border-cinema-700">
+                                                                                                <div className="font-bold text-white">{c.role}</div>
+                                                                                                <div className="text-slate-400 text-[10px]">{c.actor}</div>
+                                                                                            </td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.pickupTime || '-'}</td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.hmcTime || '-'}</td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.mealTime || '-'}</td>
+                                                                                            <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{c.readyTime || '-'}</td>
                                                                                         </tr>
-                                                                                    );
-                                                                                })}
-                                                                            </tbody>
-                                                                        </table>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                                )}
+                                                                {todayCallSheet.extras && todayCallSheet.extras.length > 0 && (
+                                                                    <div className="mt-4 pt-4 border-t border-cinema-700">
+                                                                        <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h5>
+                                                                        <div className="overflow-x-auto">
+                                                                            <table className="w-full text-left text-xs border-collapse">
+                                                                                <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                                    <tr>
+                                                                                        <th className="p-2 border border-cinema-700">Groupe</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">Qté</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                                        <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {todayCallSheet.extras.map((e, i) => {
+                                                                                        const isObj = typeof e !== 'string';
+                                                                                        const name = isObj ? e.name : e;
+                                                                                        const qty = isObj ? e.quantity : '';
+                                                                                        const hmc = isObj ? e.hmcTime : '';
+                                                                                        const meal = isObj ? e.mealTime : '';
+                                                                                        const ready = isObj ? e.readyTime : '';
+                                                                                        return (
+                                                                                            <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                                                <td className="p-2 border-r border-cinema-700 font-medium text-white">{name}</td>
+                                                                                                <td className="p-2 text-center border-r border-cinema-700 text-slate-400">{qty}</td>
+                                                                                                <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{hmc || '-'}</td>
+                                                                                                <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{meal || '-'}</td>
+                                                                                                <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{ready || '-'}</td>
+                                                                                            </tr>
+                                                                                        );
+                                                                                    })}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : null}
                                             </>
-                                        )
+                                        );
                                     }
-
                                     return null;
                                 })()}
 
-                                {/* 4c. TRANSPORTS (Regie & Mise en Scene) */}
+                                {/* 4c. TRANSPORTS (Collapsible) */}
                                 {(() => {
-                                    // Bulletproof check: normalize and check for key substrings
                                     const normalize = (str?: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
                                     const deptInfo = normalize(effectiveDept);
 
@@ -496,86 +499,86 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                     if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
                                         return (
                                             <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
-                                                <div className="bg-cinema-800/50 px-4 py-3 border-b border-cinema-700">
-                                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
-                                                        <span className="text-base">🚕</span>
-                                                        Transports
-                                                    </h4>
-                                                </div>
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-left text-xs border-collapse">
-                                                        <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
-                                                            <tr>
-                                                                <th className="p-2 border border-cinema-700">Nom</th>
-                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Pick-Up</th>
-                                                                <th className="p-2 border border-cinema-700">Lieu</th>
-                                                                <th className="p-2 border border-cinema-700">Conducteur</th>
-                                                                <th className="p-2 border border-cinema-700">Dest.</th>
-                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Sur Place</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {todayCallSheet.transports.map((t, i) => (
-                                                                <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
-                                                                    <td className="p-2 border-r border-cinema-700 font-bold text-white">{t.name}</td>
-                                                                    <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{t.pickupTime || '-'}</td>
-                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.pickupLocation || '-'}</td>
-                                                                    <td className="p-2 border-r border-cinema-700 text-slate-400">{t.driver || '-'}</td>
-                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.destination || '-'}</td>
-                                                                    <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{t.arrivalTime || '-'}</td>
+                                                <button
+                                                    onClick={() => toggleSection('transports')}
+                                                    className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {openSections.transports ? <ChevronDown className="w-4 h-4 text-gray-300" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                                        <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                            <span className="text-base">🚕</span>
+                                                            Transports
+                                                        </h4>
+                                                    </div>
+                                                </button>
+                                                {openSections.transports && (
+                                                    <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                                        <table className="w-full text-left text-xs border-collapse">
+                                                            <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                <tr>
+                                                                    <th className="p-2 border border-cinema-700">Nom</th>
+                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">Pick-Up</th>
+                                                                    <th className="p-2 border border-cinema-700">Lieu</th>
+                                                                    <th className="p-2 border border-cinema-700">Conducteur</th>
+                                                                    <th className="p-2 border border-cinema-700">Dest.</th>
+                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">Sur Place</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
+                                                            </thead>
+                                                            <tbody>
+                                                                {todayCallSheet.transports.map((t, i) => (
+                                                                    <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                        <td className="p-2 border-r border-cinema-700 font-bold text-white">{t.name}</td>
+                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{t.pickupTime || '-'}</td>
+                                                                        <td className="p-2 border-r border-cinema-700 text-slate-300">{t.pickupLocation || '-'}</td>
+                                                                        <td className="p-2 border-r border-cinema-700 text-slate-400">{t.driver || '-'}</td>
+                                                                        <td className="p-2 border-r border-cinema-700 text-slate-300">{t.destination || '-'}</td>
+                                                                        <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{t.arrivalTime || '-'}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     }
                                     return null;
                                 })()}
 
-                                {/* 5. MÉTÉO (Below Sequences) */}
-                                {
-                                    (todayCallSheet.weather || todayCallSheet.nearestHospital) && (
-                                        <div className="mt-6 bg-cinema-900/50 p-4 rounded-xl border border-cinema-700">
-                                            <h4 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
-                                                <AlertTriangle className="w-4 h-4 text-orange-400" />
-                                                Sécurité & Météo
-                                            </h4>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {todayCallSheet.weather && (
-                                                    <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <CloudRain className="w-4 h-4 text-blue-400" />
-                                                            <span className="text-blue-200 font-bold">{todayCallSheet.weather.morningTemp}°C</span>
-                                                        </div>
-                                                        <p className="text-xs text-blue-300 capitalize">{todayCallSheet.weather.condition}</p>
+                                {/* 5. MÉTÉO */}
+                                {(todayCallSheet.weather || todayCallSheet.nearestHospital) && (
+                                    <div className="mt-6 bg-cinema-900/50 p-4 rounded-xl border border-cinema-700">
+                                        <h4 className="text-sm font-bold text-gray-400 mb-3 flex items-center gap-2">
+                                            <AlertTriangle className="w-4 h-4 text-orange-400" />
+                                            Sécurité & Météo
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {todayCallSheet.weather && (
+                                                <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/20">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <CloudRain className="w-4 h-4 text-blue-400" />
+                                                        <span className="text-blue-200 font-bold">{todayCallSheet.weather.morningTemp}°C</span>
                                                     </div>
-                                                )}
-                                                {todayCallSheet.nearestHospital && (
-                                                    <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/20">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">+</div>
-                                                            <span className="text-red-200 font-bold text-xs">Hôpital</span>
-                                                        </div>
-                                                        <p className="text-xs text-red-300 line-clamp-2">{todayCallSheet.nearestHospital}</p>
+                                                    <p className="text-xs text-blue-300 capitalize">{todayCallSheet.weather.condition}</p>
+                                                </div>
+                                            )}
+                                            {todayCallSheet.nearestHospital && (
+                                                <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/20">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">+</div>
+                                                        <span className="text-red-200 font-bold text-xs">Hôpital</span>
                                                     </div>
-                                                )}
-                                            </div>
+                                                    <p className="text-xs text-red-300 line-clamp-2">{todayCallSheet.nearestHospital}</p>
+                                                </div>
+                                            )}
                                         </div>
-                                    )
-                                }
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
                 </div>
             </div>
-
-            {/* PEDOMETER REMOVED BY USER REQUEST (Mockup only) */}
-
-            {/* GRID OF OTHER WIDGETS (To be managed by parent or integrated here?) 
-               For now this is the "Top" view. The standard grid can follow. 
-             */}
         </div>
     );
 };
