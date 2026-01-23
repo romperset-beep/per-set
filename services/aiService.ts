@@ -57,6 +57,28 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                     "morningTemp": 12 (nombre, degres celsius),
                     "afternoonTemp": 15
                 },
+                "weather": {
+                    "condition": "ex: Ensoleillé, Pluvieux",
+                    "morningTemp": 12 (nombre, degres celsius),
+                    "afternoonTemp": 15
+                },
+                "cast": [
+                    { 
+                        "role": "TAMARA", 
+                        "actor": "Camille LOU",
+                        "pickupTime": "20:15",
+                        "hmcTime": "21:00",
+                        "mealTime": "22:30",
+                        "readyTime": "23:30" 
+                    }
+                ],
+                "extras": [
+                    { 
+                        "name": "Policiers (5)", 
+                        "hmcTime": "22:50", 
+                        "readyTime": "23:30"
+                    }
+                ],
                 "sequences": [
                     {
                         "sequenceNumber": "1/1A",
@@ -129,6 +151,24 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             notes: data.notes,
             departmentCallTimes: data.departmentCallTimes,
             departmentNotes: data.departmentNotes,
+            cast: data.cast?.map((c: any) => ({
+                role: c.role || "",
+                actor: c.actor || "",
+                pickupTime: c.pickupTime || null,
+                hmcTime: c.hmcTime || null,
+                mealTime: c.mealTime || null,
+                readyTime: c.readyTime || c.parTime || null
+            })),
+            extras: data.extras?.map((e: any) => {
+                if (typeof e === 'string') return { name: e }; // Legacy fallback
+                return {
+                    name: e.name || "",
+                    quantity: e.quantity || null,
+                    hmcTime: e.hmcTime || null,
+                    mealTime: e.mealTime || null,
+                    readyTime: e.readyTime || e.parTime || null
+                };
+            }),
             isDigital: true // Force Digital mode for AI-pdf
         };
 

@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { Department } from '../types';
 import { Clock, MapPin, Utensils, Activity, Calendar, FileText, AlertTriangle, CloudRain, Film } from 'lucide-react';
 
 export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ overrideDepartment }) => {
@@ -377,6 +378,98 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                             </table>
                                         </div>
                                     </div>
+                                )}
+
+                                {/* 4b. CAST & FIGURATION (Mise en Scène Only) */}
+                                {effectiveDept === Department.MISE_EN_SCENE && (
+                                    <>
+                                        {(todayCallSheet.cast?.length || todayCallSheet.extras?.length) ? (
+                                            <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
+                                                <div className="bg-cinema-800/50 px-4 py-3 border-b border-cinema-700">
+                                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                        <Film className="w-4 h-4 text-pink-400" />
+                                                        Comédiens & Figuration
+                                                    </h4>
+                                                </div>
+                                                <div className="p-4 space-y-4">
+                                                    {/* CAST */}
+                                                    {todayCallSheet.cast && todayCallSheet.cast.length > 0 && (
+                                                        <div>
+                                                            <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens</h5>
+                                                            <div className="overflow-x-auto">
+                                                                <table className="w-full text-left text-xs border-collapse">
+                                                                    <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                        <tr>
+                                                                            <th className="p-2 border border-cinema-700">Rôle</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">P-U</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {todayCallSheet.cast.map((c, i) => (
+                                                                            <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                                <td className="p-2 border-r border-cinema-700">
+                                                                                    <div className="font-bold text-white">{c.role}</div>
+                                                                                    <div className="text-slate-400 text-[10px]">{c.actor}</div>
+                                                                                </td>
+                                                                                <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.pickupTime || '-'}</td>
+                                                                                <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.hmcTime || '-'}</td>
+                                                                                <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.mealTime || '-'}</td>
+                                                                                <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{c.readyTime || '-'}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* EXTRAS */}
+                                                    {todayCallSheet.extras && todayCallSheet.extras.length > 0 && (
+                                                        <div className="mt-4 pt-4 border-t border-cinema-700">
+                                                            <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h5>
+                                                            <div className="overflow-x-auto">
+                                                                <table className="w-full text-left text-xs border-collapse">
+                                                                    <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                        <tr>
+                                                                            <th className="p-2 border border-cinema-700">Groupe</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">Qté</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                            <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {todayCallSheet.extras.map((e, i) => {
+                                                                            // Handle legacy string extras
+                                                                            const isObj = typeof e !== 'string';
+                                                                            const name = isObj ? e.name : e;
+                                                                            const qty = isObj ? e.quantity : '';
+                                                                            const hmc = isObj ? e.hmcTime : '';
+                                                                            const meal = isObj ? e.mealTime : '';
+                                                                            const ready = isObj ? e.readyTime : '';
+
+                                                                            return (
+                                                                                <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                                    <td className="p-2 border-r border-cinema-700 font-medium text-white">{name}</td>
+                                                                                    <td className="p-2 text-center border-r border-cinema-700 text-slate-400">{qty}</td>
+                                                                                    <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{hmc || '-'}</td>
+                                                                                    <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{meal || '-'}</td>
+                                                                                    <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{ready || '-'}</td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </>
                                 )}
 
                                 {/* 5. MÉTÉO (Below Sequences) */}

@@ -387,6 +387,23 @@ export interface CallSheetWeather {
   sunset?: string;
 }
 
+export interface CastMember {
+  role: string;
+  actor: string;
+  pickupTime?: string; // P-U
+  hmcTime?: string;    // HMC
+  mealTime?: string;   // DÎNER
+  readyTime?: string;  // PAR (Prêt à Raccorder/Tourner)
+}
+
+export interface ExtrasGroup {
+  name: string; // "Passants (10)" or just "Passants"
+  quantity?: number;
+  hmcTime?: string;
+  mealTime?: string;
+  readyTime?: string; // PAR
+}
+
 export interface CallSheet {
   id: string;
   date: string; // Target date (YYYY-MM-DD)
@@ -413,6 +430,8 @@ export interface CallSheet {
   nearestHospital?: string;
   weather?: CallSheetWeather;
   sequences?: CallSheetSequence[];
+  cast?: CastMember[]; // Added
+  extras?: ExtrasGroup[]; // Updated: List of extras groups with times
   notes?: string[]; // List of general notes
   departmentCallTimes?: Record<string, string>; // e.g. { "Caméra": "08:00", "Régie": "07:30" }
   departmentNotes?: Record<string, string[]>; // New: specific notes per dept

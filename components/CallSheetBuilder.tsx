@@ -109,6 +109,56 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
         });
     };
 
+    // Cast & Extras State
+    // We now use full CastMember and ExtrasGroup objects
+    const [cast, setCast] = useState<{ role: string, actor: string, pickupTime?: string, hmcTime?: string, mealTime?: string, readyTime?: string }[]>(initialData?.cast || []);
+    const [extras, setExtras] = useState<{ name: string, quantity?: number, hmcTime?: string, mealTime?: string, readyTime?: string }[]>(
+        (initialData?.extras || []).map(e => typeof e === 'string' ? { name: e } : e)
+    );
+
+    // New Cast Inputs
+    const [newCastRole, setNewCastRole] = useState('');
+    const [newCastActor, setNewCastActor] = useState('');
+    // New Extra Inputs
+    const [newExtraName, setNewExtraName] = useState('');
+
+    const addCastMember = () => {
+        if (newCastRole && newCastActor) {
+            setCast([...cast, { role: newCastRole, actor: newCastActor }]);
+            setNewCastRole('');
+            setNewCastActor('');
+        }
+    };
+
+    const updateCastMember = (index: number, field: string, value: string) => {
+        const newCast = [...cast];
+        // @ts-ignore - dynamic key assignment
+        newCast[index][field] = value;
+        setCast(newCast);
+    };
+
+    const removeCastMember = (index: number) => {
+        setCast(cast.filter((_, i) => i !== index));
+    };
+
+    const addExtra = () => {
+        if (newExtraName.trim()) {
+            setExtras([...extras, { name: newExtraName.trim() }]);
+            setNewExtraName('');
+        }
+    };
+
+    const updateExtra = (index: number, field: string, value: string) => {
+        const newExtras = [...extras];
+        // @ts-ignore
+        newExtras[index][field] = value;
+        setExtras(newExtras);
+    };
+
+    const removeExtra = (index: number) => {
+        setExtras(extras.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -130,6 +180,20 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
             weather,
             departmentCallTimes, // Now properly in scope
             departmentNotes, // Added
+            cast: cast.map(c => ({
+                ...c,
+                pickupTime: c.pickupTime || null,
+                hmcTime: c.hmcTime || null,
+                mealTime: c.mealTime || null,
+                readyTime: c.readyTime || null
+            })), // Sanitize
+            extras: extras.map(e => ({
+                ...e,
+                quantity: e.quantity || null,
+                hmcTime: e.hmcTime || null,
+                mealTime: e.mealTime || null,
+                readyTime: e.readyTime || null
+            })), // Sanitize
             sequences,
             notes,
             isDigital: true
@@ -305,6 +369,124 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
                         </div>
                     </div>
 
+                    {/* Cast & Extras Section */}
+                    <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700">
+                        <h3 className="text-lg font-bold text-pink-400 flex items-center gap-2 mb-4">
+                            <Film className="w-5 h-5" />
+                            Comédiens & Figuration
+                        </h3>
+
+                        {/* Cast */}
+                        <div className="mb-6">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens (Rôles Principaux)</h4>
+
+                            {/* Input Form */}
+                            <div className="flex gap-2 mb-3">
+                                <input
+                                    type="text"
+                                    placeholder="Rôle (ex: TAMARA)..."
+                                    value={newCastRole}
+                                    onChange={e => setNewCastRole(e.target.value)}
+                                    className="flex-1 bg-cinema-900 border border-cinema-700 rounded p-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Interprète (ex: Camille LOU)..."
+                                    value={newCastActor}
+                                    onChange={e => setNewCastActor(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCastMember())}
+                                    className="flex-1 bg-cinema-900 border border-cinema-700 rounded p-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                                />
+                                <button type="button" onClick={addCastMember} className="bg-cinema-700 hover:bg-pink-600 hover:text-white px-3 py-2 rounded text-slate-300 transition-colors">
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Cast List / Table */}
+                            <div className="space-y-2">
+                                {cast.map((c, idx) => (
+                                    <div key={idx} className="bg-pink-500/5 p-3 rounded-lg border border-pink-500/20">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <span className="font-bold text-pink-200">{c.role}</span>
+                                                <span className="text-slate-400 text-sm ml-2">({c.actor})</span>
+                                            </div>
+                                            <button type="button" onClick={() => removeCastMember(idx)} className="text-pink-500/50 hover:text-pink-500">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {/* Timing Fields */}
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">P-U</label>
+                                                <input type="time" value={c.pickupTime || ''} onChange={e => updateCastMember(idx, 'pickupTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">HMC</label>
+                                                <input type="time" value={c.hmcTime || ''} onChange={e => updateCastMember(idx, 'hmcTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">DÎNER</label>
+                                                <input type="time" value={c.mealTime || ''} onChange={e => updateCastMember(idx, 'mealTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">PAR</label>
+                                                <input type="time" value={c.readyTime || ''} onChange={e => updateCastMember(idx, 'readyTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Extras */}
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h4>
+                            <div className="flex gap-2 mb-3">
+                                <input
+                                    type="text"
+                                    placeholder="Groupe (ex: Passants (10))..."
+                                    value={newExtraName}
+                                    onChange={e => setNewExtraName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addExtra())}
+                                    className="flex-1 bg-cinema-900 border border-cinema-700 rounded p-2 text-white text-sm focus:outline-none focus:border-pink-500"
+                                />
+                                <button type="button" onClick={addExtra} className="bg-cinema-700 hover:bg-pink-600 hover:text-white px-3 py-2 rounded text-slate-300 transition-colors">
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {extras.map((e, idx) => (
+                                    <div key={idx} className="bg-pink-500/5 p-3 rounded-lg border border-pink-500/20">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="font-medium text-pink-200">{e.name}</span>
+                                            <button type="button" onClick={() => removeExtra(idx)} className="text-pink-500/50 hover:text-pink-500">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {/* Timing Fields */}
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {/* Spacer for P-U which is rarely used for extras/group but keeping grid alignment */}
+                                            <div></div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">HMC</label>
+                                                <input type="time" value={e.hmcTime || ''} onChange={e => updateExtra(idx, 'hmcTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">DÎNER</label>
+                                                <input type="time" value={e.mealTime || ''} onChange={e => updateExtra(idx, 'mealTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase">PAR</label>
+                                                <input type="time" value={e.readyTime || ''} onChange={e => updateExtra(idx, 'readyTime', e.target.value)} className="w-full bg-black/20 border border-pink-500/10 rounded px-1 py-1 text-xs text-white" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Notes */}
                     <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700">
                         <h3 className="text-lg font-bold text-yellow-400 flex items-center gap-2 mb-4">
@@ -387,7 +569,7 @@ export const CallSheetBuilder: React.FC<CallSheetBuilderProps> = ({ onSave, onCa
 
                 </div>
             </div>
-        </form>
+        </form >
     );
 };
 
