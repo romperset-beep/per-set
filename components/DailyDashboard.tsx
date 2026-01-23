@@ -23,8 +23,8 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
     const todayCallSheet = useMemo(() => {
         if (!callSheets) return null;
 
-        // Ensure robust date comparison (Local vs UTC issues)
-        // Since CallSheet upload uses YYYY-MM-DD string from input type="date", we should compare against local YYYY-MM-DD
+        // Explicitly construct Local YYYY-MM-DD to match the Upload format
+        // This avoids any UTC/Local offset issues that simple ISOString might introduce
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');

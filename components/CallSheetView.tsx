@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Department, CallSheet } from '../types';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { analyzeCallSheetPDF } from '../services/aiService'; // Static Import
 import { FileText, Upload, Calendar, Download, Eye, Trash2 } from 'lucide-react';
 import { CallSheetBuilder } from './CallSheetBuilder';
 
@@ -11,7 +12,13 @@ export const CallSheetView: React.FC = () => {
     const [mode, setMode] = useState<'UPLOAD' | 'BUILDER'>('UPLOAD');
 
     // --- UPLOAD STATE ---
-    const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
+    const [uploadDate, setUploadDate] = useState(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    });
     const [uploadName, setUploadName] = useState('');
     const [callTime, setCallTime] = useState('');
     const [endTime, setEndTime] = useState('');
@@ -84,8 +91,6 @@ export const CallSheetView: React.FC = () => {
 
         try {
             const { storage } = await import('../services/firebase');
-            const { analyzeCallSheetPDF } = await import('../services/aiService');
-
             // 1. AI Analysis
             let extractedData: Partial<CallSheet> = {};
             try {
@@ -110,15 +115,15 @@ export const CallSheetView: React.FC = () => {
                 uploadedBy: user?.name || 'Inconnu',
                 department: user?.department as any,
 
-                // Fallback / Manual
+                // Fallback / Manual - Use NULL instead of undefined for Firestore
                 callTime: extractedData.callTime || callTime,
                 endTime: extractedData.endTime || endTime,
-                location1: extractedData.location1 || location1 || undefined,
+                location1: extractedData.location1 || location1 || null,
 
                 ...extractedData, // Merge AI data
 
                 location2: extractedData.location2 || location2 || null,
-                cateringLocation: extractedData.cateringLocation || cateringLocation || undefined
+                cateringLocation: extractedData.cateringLocation || cateringLocation || null
             });
 
             // Reset
