@@ -30,11 +30,12 @@ self.addEventListener('activate', (event) => {
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
     // Customize notification here
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/logo.png' // Ensure this path is correct
-    };
+    // const notificationTitle = payload.notification.title;
+    // const notificationOptions = {
+    //    body: payload.notification.body,
+    //    icon: '/logo.png' // Ensure this path is correct
+    // };
 
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    // self.registration.showNotification(notificationTitle, notificationOptions);
+    // ^ duplicate of SDK auto-display for notification messages
 });
