@@ -509,6 +509,8 @@ const AppContent: React.FC = () => {
           }}
         />
       )}
+
+      <DebugFooter />
     </div >
   );
 };

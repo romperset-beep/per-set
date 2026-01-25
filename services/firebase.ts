@@ -27,3 +27,7 @@ export const storage = getStorage(app);
 
 // Initialize Analytics conditionally (client-side only)
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+
+// Initialize Messaging
+import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
+export const messaging = isMessagingSupported().then(yes => yes ? getMessaging(app) : null);
