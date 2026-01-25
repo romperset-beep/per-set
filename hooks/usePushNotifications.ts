@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { messaging, db } from '../services/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, setDoc, arrayRemove } from 'firebase/firestore';
 
 export const usePushNotifications = (userId?: string) => {
     const [permission, setPermission] = useState<NotificationPermission>(Notification.permission);
@@ -35,6 +35,7 @@ export const usePushNotifications = (userId?: string) => {
     };
 
     const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     // Listen for foreground messages & fetch token if granted
     useEffect(() => {
@@ -44,6 +45,7 @@ export const usePushNotifications = (userId?: string) => {
                     // 1. Get Token automatically if not present
                     if (!fcmToken) {
                         try {
+                            setLoading(true); // START LOADING
                             // Explicitly register service worker first to avoid timeout/path issues
                             let registration;
                             try {
@@ -63,6 +65,8 @@ export const usePushNotifications = (userId?: string) => {
                         } catch (err: any) {
                             console.error("Failed to fetch flush token:", err);
                             setError(err.message || "Failed to fetch token");
+                        } finally {
+                            setLoading(false); // STOP LOADING
                         }
                     }
 
@@ -75,7 +79,7 @@ export const usePushNotifications = (userId?: string) => {
                 }
             });
         }
-    }, [permission, fcmToken]);
+    }, [permission]); // REMOVED fcmToken dependency to prevent loop
 
     // Save token to user profile
     useEffect(() => {
@@ -101,11 +105,32 @@ export const usePushNotifications = (userId?: string) => {
         }
     }, [fcmToken, userId]);
 
+    // Added: Disable notifications (remove token from server + wipe local state)
+    const disableNotifications = async () => {
+        if (!fcmToken || !userId) return;
+        setLoading(true);
+        try {
+            const userRef = doc(db, 'users', userId);
+            await updateDoc(userRef, {
+                fcmTokens: arrayRemove(fcmToken)
+            });
+            console.log('[Push] Token removed from server');
+            setFcmToken(null);
+        } catch (error) {
+            console.error('[Push] Failed to remove token:', error);
+            setError("Impossible de désactiver les notifications (Erreur serveur)");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         permission,
         requestPermission,
+        disableNotifications,
         fcmToken,
-        error
+        error,
+        loading
     };
 };
 

@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { UserProfile, Department } from '../types';
-import { Save, Upload, FileText, CheckCircle, Trash2 } from 'lucide-react';
+import { Save, Upload, FileText, CheckCircle, Trash2, Bell, BellOff, AlertTriangle } from 'lucide-react';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '../services/firebase';
 import { USPA_JOBS } from '../data/uspaRates';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export const UserProfilePage: React.FC = () => {
     const { user, userProfiles, updateUserProfile } = useProject();
     const [formData, setFormData] = useState<Partial<UserProfile>>({});
     const [isEditing, setIsEditing] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Notification Logic
+    const { permission, requestPermission, disableNotifications, fcmToken, loading } = usePushNotifications(user?.id);
+
 
     useEffect(() => {
         const loadUserData = async () => {
@@ -333,6 +338,70 @@ ${formData.firstName} ${formData.lastName}`;
                         <p className="text-xs text-slate-500 mt-1">Ces informations seront visibles par la Régie pour l'organisation des repas.</p>
                     </div>
 
+                </section>
+
+                {/* Notification Preferences */}
+                <section className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 space-y-4">
+                    <h3 className="text-xl font-bold text-pink-400 border-b border-cinema-700 pb-2 flex items-center gap-2">
+                        <Bell className="h-5 w-5" />
+                        Notifications & Alertes
+                    </h3>
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-cinema-900/50 p-4 rounded-lg border border-cinema-700">
+                        <div>
+                            <p className="font-bold text-white mb-1">Notifications Push</p>
+                            <p className="text-xs text-slate-400 max-w-md">
+                                Recevez des alertes en temps réel pour les nouvelles demandes de renforts,
+                                les messages urgents et les mises à jour importantes de la production.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            {permission === 'denied' ? (
+                                <div className="flex items-center gap-2 text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20">
+                                    <BellOff className="h-4 w-4" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Bloquées par le navigateur</span>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* ON / OFF Toggle Logic */}
+                                    {fcmToken ? (
+                                        <button
+                                            type="button"
+                                            onClick={disableNotifications}
+                                            disabled={loading}
+                                            className="group flex items-center gap-2 bg-green-500/10 border border-green-500/30 px-4 py-2 rounded-lg hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+                                            title="Cliquez pour désactiver"
+                                        >
+                                            <div className="flex items-center gap-2 group-hover:hidden">
+                                                <CheckCircle className="h-4 w-4 text-green-400" />
+                                                <span className="text-green-400 font-bold uppercase text-xs">Active</span>
+                                            </div>
+                                            <div className="hidden group-hover:flex items-center gap-2">
+                                                <BellOff className="h-4 w-4 text-red-400" />
+                                                <span className="text-red-400 font-bold uppercase text-xs">Désactiver</span>
+                                            </div>
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={requestPermission}
+                                            disabled={loading}
+                                            className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg hover:scale-105 disabled:opacity-50 disabled:scale-100"
+                                        >
+                                            <Bell className="h-4 w-4" />
+                                            {loading ? 'Activation...' : 'Activer les notifications'}
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    {permission === 'denied' && (
+                        <div className="flex items-center gap-2 text-yellow-500 text-xs bg-yellow-500/10 p-3 rounded border border-yellow-500/20">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <p>Les notifications sont bloquées par votre navigateur. Veuillez cliquer sur l'icône de cadenas ou de paramètres dans la barre d'adresse pour les autoriser.</p>
+                        </div>
+                    )}
                 </section>
 
                 {/* Transport Defaults */}
