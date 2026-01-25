@@ -202,11 +202,13 @@ export const RenfortsWidget: React.FC = () => {
         await updateProjectDetails({ reinforcements: newReinforcements });
 
         if (user?.department !== 'PRODUCTION') {
+            /*
             addNotification(
                 `Nouveau Renfort: ${newStaff.name} (${targetDept}) pour le ${new Date(dateStr).toLocaleDateString()} `,
                 'INFO',
                 'PRODUCTION'
             );
+            */
         }
         setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setAddingToDate(null);
     };

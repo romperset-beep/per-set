@@ -16,7 +16,8 @@ import {
   Clock,
   Truck, // Added
   Globe, // Added
-  Zap // Added
+  Zap, // Added
+  ClipboardList // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -46,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     {
       title: 'Quotidien',
       items: [
+        { id: 'orders', label: 'Gestion Commandes', icon: ClipboardList, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
         { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
         { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
@@ -85,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
 
     // 3. Define Restricted Items Groups
     const prodOnlyItems = ['inter_marketplace', 'donations', 'report'];
-    const prodAndRegieItems = ['catering'];
+    const prodAndRegieItems = ['catering', 'orders'];
 
     // 4. Check Restrictions
     if (item.id === 'energy') {
@@ -147,7 +149,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
                     const isActive = activeTab === item.id;
 
                     let badgeCount = 0;
-                    if (item.id === 'inventory') badgeCount = unreadCount;
+                    if (item.id === 'orders') badgeCount = unreadCount; // Moved from inventory
+                    // if (item.id === 'inventory') badgeCount = unreadCount; // Removed
                     if (item.id === 'inter_marketplace') badgeCount = unreadMarketplaceCount; // Assume global badges go here? 
                     // Or split? For now assign to global checks.
                     if (item.id === 'social') badgeCount = unreadSocialCount;

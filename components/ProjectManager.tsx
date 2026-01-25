@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction } from '../types';
-import { DailyDashboard } from './DailyDashboard'; // New Import
-import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap } from 'lucide-react';
+import { DailyDashboard } from './DailyDashboard';
+import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap, ClipboardList } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { DndContext, closestCenter, TouchSensor, MouseSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -31,6 +31,20 @@ const SortableWidget = ({ id, children }: { id: string, children: React.ReactNod
             </div>
             {children}
         </div>
+    );
+};
+
+const OrdersWidget = ({ onClick }: { onClick: () => void }) => {
+    const { unreadCount } = useProject();
+    return (
+        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+            <div className="flex justify-between items-start">
+                <h3 className="text-lg font-semibold opacity-70">Gestion Commandes</h3>
+                <ClipboardList className="h-6 w-6 text-red-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-4xl font-bold mt-2 text-red-500">{unreadCount}</p>
+            <p className="text-xs text-slate-400 mt-1">Demandes en attente</p>
+        </button>
     );
 };
 
@@ -273,6 +287,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
 
     // --- Dashboard Order Logic ---
     const allWidgets = [
+        'orders', // Added
         'inventory', 'callsheets', 'timesheet', 'renforts', 'logistics',
         'catering', 'energy', 'expenses', 'team', 'buyback', 'social'
     ];
@@ -318,9 +333,11 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
         // Permissions checks
         if (id === 'catering' && currentDept !== 'Régie' && currentDept !== 'PRODUCTION') return null;
         if (id === 'energy' && currentDept !== 'Régie' && currentDept !== 'REGIE' && currentDept !== 'PRODUCTION') return null;
+        if (id === 'orders' && currentDept !== 'Régie' && currentDept !== 'REGIE' && currentDept !== 'PRODUCTION') return null;
 
 
         switch (id) {
+            case 'orders': return <OrdersWidget onClick={() => setActiveTab('orders')} />;
             case 'inventory': return <InventoryWidget onClick={() => setActiveTab('inventory')} />;
             case 'callsheets': return <CallSheetWidget onClick={() => setActiveTab('callsheets')} />;
             case 'timesheet': return <HoursWidget onClick={() => setActiveTab('timesheet')} />;

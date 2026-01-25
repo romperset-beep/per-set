@@ -154,32 +154,63 @@ export const InventoryManager: React.FC = () => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        const changes = { isBought: true };
-        const updatedItem = { ...item, ...changes };
+        // Prompt for Price (using the modal logic)
+        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
+            const changes = { isBought: true };
+            // If price is provided (and > 0), update it.
+            // If user leaves 0, we assume 0 or keep existing?
+            // Logic: If user enters a price, we save it.
+            const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
 
-        setProject(prev => ({
-            ...prev,
-            items: prev.items.map(i => i.id === id ? updatedItem : i)
-        }));
+            const updatedItem = { ...item, ...changes, ...priceUpdate };
 
-        if (updateItem) await updateItem({ id, ...changes });
-        markNotificationAsReadByItemId(id);
+            setProject(prev => ({
+                ...prev,
+                items: prev.items.map(i => i.id === id ? updatedItem : i)
+            }));
+
+            if (updateItem) await updateItem({ id, ...changes, ...priceUpdate });
+            markNotificationAsReadByItemId(id);
+
+            // Notify Requester
+            if (item.department) {
+                addNotification(
+                    `Commande achetée : ${item.name}`,
+                    'SUCCESS',
+                    item.department
+                );
+            }
+        });
     };
 
     const markAsPurchased = async (id: string) => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        const changes = { purchased: true, isBought: false };
-        const updatedItem = { ...item, ...changes };
+        // Prompt for Price (using the modal logic)
+        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
+            const changes = { purchased: true, isBought: false };
+            const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
 
-        setProject(prev => ({
-            ...prev,
-            items: prev.items.map(i => i.id === id ? updatedItem : i)
-        }));
+            const updatedItem = { ...item, ...changes, ...priceUpdate };
 
-        if (updateItem) await updateItem({ id, ...changes });
-        markNotificationAsReadByItemId(id);
+            setProject(prev => ({
+                ...prev,
+                items: prev.items.map(i => i.id === id ? updatedItem : i)
+            }));
+
+            if (updateItem) await updateItem({ id, ...changes, ...priceUpdate });
+            markNotificationAsReadByItemId(id);
+
+            // Notify Requester
+            if (item.department) {
+                addNotification(
+                    `Commande disponible/reçue : ${item.name}`,
+                    'SUCCESS',
+                    item.department
+                );
+            }
+        });
     };
 
     const incrementStarted = async (id: string) => {
@@ -212,11 +243,13 @@ export const InventoryManager: React.FC = () => {
             else if (action === SurplusAction.SHORT_FILM) actionName = 'Court-Métrage';
             else if (action === SurplusAction.RELEASED_TO_PROD) actionName = 'Libération Production';
 
+            /*
             addNotification(
                 `♻️ Surplus : ${item.name} (${item.department}) déplacé vers ${actionName} par ${user?.name || 'Département'}`,
                 'STOCK_MOVE',
                 'PRODUCTION'
             );
+            */
         }
 
         const changes: any = { surplusAction: action };
@@ -277,7 +310,7 @@ export const InventoryManager: React.FC = () => {
     const promptForMarketplacePrice = (item: any, action: SurplusAction, onConfirm?: (price: number) => void) => {
         const currentPrice = item.price || 0;
         // Default to 0 for Donations/Short Film unless user wants to set it
-        const defaultFactor = action === SurplusAction.MARKETPLACE ? 0.9 : 0;
+        const defaultFactor = action === SurplusAction.MARKETPLACE ? 0.9 : 1.0;
         const suggestedPrice = currentPrice > 0 ? Math.round(currentPrice * defaultFactor * 100) / 100 : 0;
 
         // We need a custom modal for this. Using window.prompt is ugly but functional for MVP. 
@@ -366,11 +399,13 @@ export const InventoryManager: React.FC = () => {
                         items: [...prev.items.filter(i => i.id !== item.id), updatedOriginalItem, newItem]
                     }));
 
+                    /*
                     addNotification(
                         `♻️ Surplus (Split) : ${item.name} -> ${newQty} Neufs et ${startedQty} Entamés vers Stock Virtuel`,
                         'STOCK_MOVE',
                         'PRODUCTION'
                     );
+                    */
                 } catch (err: any) {
                     console.error("Error splitting item:", err);
                     alert(`Erreur lors du basculement : ${err.message}`);
@@ -421,11 +456,13 @@ export const InventoryManager: React.FC = () => {
                 items: [...prev.items.filter(i => i.id !== item.id), updatedOriginalItem, newItem]
             }));
 
+            /*
             addNotification(
                 `♻️ Surplus (Split) : ${newQty} Neufs vers ${action}, ${startedQty} gardés en Stock`,
                 'STOCK_MOVE',
                 'PRODUCTION'
             );
+            */
         }
 
         setSurplusConfirmation(null);
@@ -444,11 +481,13 @@ export const InventoryManager: React.FC = () => {
             items: prev.items.map(i => i.id === item.id ? { ...i, department: targetDept } : i)
         }));
 
+        /*
         addNotification(
             `Transfert de stock : ${currentDept} vous a transféré "${item.name}"`,
             'INFO',
             targetDept
         );
+        */
 
         setTransferConfirmation(null);
     };
@@ -606,7 +645,8 @@ export const InventoryManager: React.FC = () => {
 
             addNotification(
                 `Commande envoyée à ${op.marketItem.productionName}`,
-                'SUCCESS'
+                'SUCCESS',
+                Department.REGIE
             );
 
             // Quick fix to update UI
@@ -778,16 +818,18 @@ export const InventoryManager: React.FC = () => {
                     <div className="bg-cinema-800 border border-cinema-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
                         <h3 className="text-xl font-bold text-white mb-4">
                             {priceModal.action === SurplusAction.DONATION ? 'Valeur du Don' :
-                                'Prix de Revente'}
+                                priceModal.action === SurplusAction.NONE ? "Prix d'Achat (Optionnel)" :
+                                    'Prix de Revente'}
                         </h3>
                         <p className="text-slate-300 mb-6">
                             {priceModal.action === SurplusAction.DONATION ? 'Souhaitez-vous définir une valeur pour ce don ? (Facultatif)' :
-                                'À quel prix souhaitez-vous proposer cet article sur le Stock Virtuel Global ?'}
+                                priceModal.action === SurplusAction.NONE ? "Veuillez indiquer le prix d'achat si vous l'avez (sinon laissez 0)." :
+                                    'À quel prix souhaitez-vous proposer cet article sur le Stock Virtuel Global ?'}
                         </p>
 
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-slate-400 mb-2">
-                                {priceModal.action === SurplusAction.MARKETPLACE ? 'Prix de vente (€)' : 'Valeur / Prix (€)'}
+                                {priceModal.action === SurplusAction.MARKETPLACE ? 'Prix de vente (€)' : 'Prix (€)'}
                             </label>
                             <input
                                 type="number"
@@ -925,26 +967,30 @@ export const InventoryManager: React.FC = () => {
                         </div>
                     ) : (
                         Object.entries(requestsByDept).map(([dept, items]) => {
-                            const isExpanded = expandedDepts.has(dept);
+                            const isProductionOrRegie = currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE';
+                            const isExpanded = isProductionOrRegie ? expandedDepts.has(dept) : true;
+
                             return (
                                 <div key={dept} className="border-b border-cinema-700/50 last:border-0">
-                                    {/* Department Header - Clickable Accordion */}
-                                    <button
-                                        onClick={() => toggleDeptExpansion(dept)}
-                                        className="w-full bg-cinema-900/40 px-6 py-3 border-y border-cinema-800 flex items-center justify-between hover:bg-cinema-800/60 transition-colors group"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-1 rounded-full bg-cinema-800 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                    {/* Department Header - Clickable Accordion (Only for Prod/Regie) */}
+                                    {isProductionOrRegie && (
+                                        <button
+                                            onClick={() => toggleDeptExpansion(dept)}
+                                            className="w-full bg-cinema-900/40 px-6 py-3 border-y border-cinema-800 flex items-center justify-between hover:bg-cinema-800/60 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-1 rounded-full bg-cinema-800 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                                </div>
+                                                <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider group-hover:text-white transition-colors">{dept}</h4>
                                             </div>
-                                            <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider group-hover:text-white transition-colors">{dept}</h4>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs bg-cinema-800 px-2 py-1 rounded-full text-slate-400 font-medium border border-cinema-700">
-                                                {items.length} {items.length > 1 ? 'articles' : 'article'}
-                                            </span>
-                                        </div>
-                                    </button>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs bg-cinema-800 px-2 py-1 rounded-full text-slate-400 font-medium border border-cinema-700">
+                                                    {items.length} {items.length > 1 ? 'articles' : 'article'}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    )}
 
                                     {/* Collapsible Content */}
                                     {isExpanded && (

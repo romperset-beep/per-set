@@ -1,6 +1,6 @@
 import React from 'react';
 import { SurplusAction, ItemStatus, Transaction } from '../types';
-import { Recycle, Heart, ShoppingBag, ArrowRight, Check, LayoutDashboard, RefreshCw, GraduationCap, Box, Undo2, Film, Edit2, Archive, DollarSign, Download, FileText } from 'lucide-react';
+import { Recycle, Heart, ShoppingBag, ArrowRight, Check, LayoutDashboard, RefreshCw, GraduationCap, Box, Undo2, Film, Edit2, Archive, DollarSign, Download, FileText, Mail, Printer } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { db } from '../services/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -31,11 +31,13 @@ export const CircularEconomy: React.FC = () => {
             const item = prev.items.find(i => i.id === id);
             if (item && action !== SurplusAction.NONE) {
                 const actionName = action === SurplusAction.MARKETPLACE ? 'Stock Virtuel' : 'Dons';
+                /*
                 addNotification(
                     `♻️ Surplus : ${item.name} (${item.department}) déplacé vers ${actionName} par ${user?.name}`,
                     'STOCK_MOVE',
                     'PRODUCTION'
                 );
+                */
             }
             return {
                 ...prev,
@@ -88,7 +90,7 @@ export const CircularEconomy: React.FC = () => {
 
             await addDoc(collection(db, 'transactions'), transactionData);
             await setAction(item.id, SurplusAction.BUYBACK);
-            addNotification("Demande de rachat A Better Set envoyée", "SUCCESS");
+            // addNotification("Demande de rachat A Better Set envoyée", "SUCCESS");
 
         } catch (error: any) {
             console.error("Buyback error", error);
@@ -186,11 +188,13 @@ export const CircularEconomy: React.FC = () => {
                     surplusAction: targetAction
                 };
 
+                /*
                 addNotification(
                     `♻️ Transfert Partiel : ${item.name} (${quantity} unités) vers ${actionName}`,
                     'STOCK_MOVE',
                     'PRODUCTION'
                 );
+                */
 
                 return { ...prev, items: [...updatedItems, newItem] };
             });
@@ -372,6 +376,97 @@ export const CircularEconomy: React.FC = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'storage' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         <Archive className="h-4 w-4" /> Stock Futur ({storageItems.length})
+                    </button>
+                </div>
+
+                {/* EXPORT ACTIONS */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => {
+                            const getCurrentItems = () => {
+                                switch (view) {
+                                    case 'marketplace': return marketItems;
+                                    case 'donations': return donationItems;
+                                    case 'storage': return storageItems;
+                                    case 'sales_abs': return totalSurplusItems.filter(i => i.surplusAction === SurplusAction.BUYBACK);
+                                    default: return pendingItems;
+                                }
+                            };
+                            const items = getCurrentItems();
+                            if (items.length === 0) return alert("Aucun article à exporter dans cette vue.");
+
+                            const emailSubject = `Export A Better Set - ${getTitle()}`;
+                            const emailBody = items.map(i => `- ${i.name}: ${i.quantityCurrent} ${i.unit} (${i.department})`).join('%0D%0A');
+                            window.location.href = `mailto:?subject=${emailSubject}&body=Voici la liste :%0D%0A%0D%0A${emailBody}`;
+                        }}
+                        className="p-2 text-slate-400 hover:text-white bg-cinema-800 border border-cinema-700 rounded-lg transition-colors"
+                        title="Envoyer par Email"
+                    >
+                        <Mail className="h-5 w-5" />
+                    </button>
+                    <button
+                        onClick={() => {
+                            const getCurrentItems = () => {
+                                switch (view) {
+                                    case 'marketplace': return marketItems;
+                                    case 'donations': return donationItems;
+                                    case 'storage': return storageItems;
+                                    case 'sales_abs': return totalSurplusItems.filter(i => i.surplusAction === SurplusAction.BUYBACK);
+                                    default: return pendingItems;
+                                }
+                            };
+                            const items = getCurrentItems();
+                            if (items.length === 0) return alert("Aucun article à imprimer.");
+
+                            const printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                                printWindow.document.write(`
+                                    <html>
+                                    <head>
+                                        <title>Export - ${getTitle()}</title>
+                                        <style>
+                                            body { font-family: sans-serif; padding: 20px; }
+                                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                                            th { background-color: #f2f2f2; }
+                                            h1 { color: #333; }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <h1>${getTitle()}</h1>
+                                        <p>${getSubtitle()}</p>
+                                        <p>Date: ${new Date().toLocaleDateString()}</p>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Article</th>
+                                                    <th>Quantité</th>
+                                                    <th>Département</th>
+                                                    <th>Statut</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${items.map(i => `
+                                                    <tr>
+                                                        <td>${i.name}</td>
+                                                        <td>${i.quantityCurrent} ${i.unit}</td>
+                                                        <td>${i.department || '-'}</td>
+                                                        <td>${i.status || '-'}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </body>
+                                    </html>
+                                `);
+                                printWindow.document.close();
+                                printWindow.print();
+                            }
+                        }}
+                        className="p-2 text-slate-400 hover:text-white bg-cinema-800 border border-cinema-700 rounded-lg transition-colors"
+                        title="Imprimer"
+                    >
+                        <Printer className="h-5 w-5" />
                     </button>
                 </div>
             </header>

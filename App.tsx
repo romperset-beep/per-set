@@ -26,6 +26,7 @@ import { MarketplacePage } from './components/MarketplacePage'; // Added
 import { PendingApprovalScreen } from './components/PendingApprovalScreen';
 import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
 import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
+import { DepartmentOrders } from './components/DepartmentOrders'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
@@ -41,6 +42,35 @@ const AppContent: React.FC = () => {
   const [isOnlineUsersOpen, setIsOnlineUsersOpen] = useState(false); // Added
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [groupingEnabled, setGroupingEnabled] = useState(() => localStorage.getItem('notif_grouping') !== 'false');
+  const [filters, setFilters] = useState({
+    stock: localStorage.getItem('notif_filter_stock') !== 'false',
+    social: localStorage.getItem('notif_filter_social') !== 'false',
+    purchases: localStorage.getItem('notif_filter_purchases') !== 'false',
+    team: localStorage.getItem('notif_filter_team') !== 'false',
+  });
+
+  const toggleGrouping = () => {
+    const newVal = !groupingEnabled;
+    setGroupingEnabled(newVal);
+    localStorage.setItem('notif_grouping', String(newVal));
+  };
+
+  const toggleFilter = (key: keyof typeof filters) => {
+    const newVal = !filters[key];
+    setFilters(prev => ({ ...prev, [key]: newVal }));
+    localStorage.setItem(`notif_filter_${key}`, String(newVal));
+  };
+
+  const getNotificationCategory = (n: any): 'STOCK' | 'SOCIAL' | 'PURCHASES' | 'TEAM' | 'OTHER' => {
+    const content = (n.message || '').toLowerCase() + (n.title || '').toLowerCase();
+    if (n.type === 'SOCIAL' || content.match(/post|social|publié|commentaire|feed/)) return 'SOCIAL';
+    if (content.match(/commande|achat|rachat|marketplace|order/)) return 'PURCHASES';
+    if (content.match(/stock|surplus|article|inventaire|matériel|transfert/)) return 'STOCK';
+    if (content.match(/renfort|équipe|team|bienvenue|profil|service|frais|projet/)) return 'TEAM';
+    return 'OTHER';
+  };
 
 
 
@@ -72,12 +102,55 @@ const AppContent: React.FC = () => {
   // Actually, user wants to see "Red Dot" gone. So show unread first.
   const displayNotifications = React.useMemo(() => {
     // Filter relevant like ProjectContext does but sorted
-    const relevant = notifications.filter(n => {
+    let relevant = notifications.filter(n => {
       if (user?.department === 'PRODUCTION' || user?.department === 'Régie') return true;
       return n.targetDept === user?.department || n.targetDept === undefined;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return relevant.slice(0, 10); // Show top 10
-  }, [notifications, user]);
+    });
+
+    // Apply Filters
+    relevant = relevant.filter(n => {
+      const cat = getNotificationCategory(n);
+      if (cat === 'STOCK' && !filters.stock) return false;
+      if (cat === 'SOCIAL' && !filters.social) return false;
+      if (cat === 'PURCHASES' && !filters.purchases) return false;
+      if (cat === 'TEAM' && !filters.team) return false;
+      return true;
+    });
+
+    return relevant.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20); // Show top 20
+  }, [notifications, user, filters]);
+
+  // Grouping Logic
+  const groupedNotifications = React.useMemo(() => {
+    if (!groupingEnabled) return displayNotifications;
+
+    const groups: Record<string, any> = {};
+    const result: any[] = [];
+
+    displayNotifications.forEach(n => {
+      // Group by TYPE + DEPT
+      const key = `${n.type}_${n.targetDept || 'ALL'}`;
+      if (!groups[key]) {
+        groups[key] = {
+          ...n,
+          count: 1,
+          instances: [n],
+          isGroup: true
+        };
+        result.push(groups[key]);
+      } else {
+        groups[key].count++;
+        groups[key].instances.push(n);
+        // Keep the most recent date
+        if (new Date(n.date) > new Date(groups[key].date)) {
+          groups[key].date = n.date;
+          groups[key].message = n.message; // Update preview to latest
+        }
+      }
+    });
+
+    return result;
+  }, [displayNotifications, groupingEnabled]);
 
   // Resolve Display Name (First Name from Profile > User Name)
   const displayName = React.useMemo(() => {
@@ -92,7 +165,12 @@ const AppContent: React.FC = () => {
   }, [user, userProfiles]);
 
   const handleNotificationClick = (n: any) => {
-    markAsRead(n.id);
+    if (n.isGroup && n.count > 1) {
+      // Expand group logic? For now, just mark all read an go to tab
+      n.instances.forEach((i: any) => markAsRead(i.id));
+    } else {
+      markAsRead(n.id);
+    }
     setShowNotifications(false);
 
     // Routing Logic
@@ -208,6 +286,8 @@ const AppContent: React.FC = () => {
         return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
       case 'inventory':
         return <InventoryManager />;
+      case 'orders':
+        return <DepartmentOrders />;
       case 'inter_marketplace':
         return <MarketplacePage />; // Global Inter-Production
       case 'local_marketplace':
@@ -465,7 +545,14 @@ const AppContent: React.FC = () => {
                   <div className="p-3 border-b border-cinema-700 flex flex-col gap-3 bg-cinema-900/50">
                     <div className="flex justify-between items-center">
                       <h3 className="font-bold text-white text-sm">Notifications</h3>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
+                        <button
+                          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                          className={`p-1 rounded-md transition-colors ${isSettingsOpen ? 'bg-blue-500/20 text-blue-400' : 'text-slate-400 hover:text-white'}`}
+                          title="Paramètres de notification"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
                         {/* Integrated Push Toggle */}
                         {loading ? (
                           <div className="md:flex items-center">
@@ -502,62 +589,119 @@ const AppContent: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 border-t border-white/5 pt-2">
-                      {unreadNotificationCount > 0 && (
-                        <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
-                          Tout marquer lu
-                        </button>
-                      )}
-                      {notifications.length > 0 && (
-                        <button onClick={handleClearAllNotifications} className="text-[10px] text-red-400 hover:text-red-300 font-medium">
-                          Tout effacer
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {displayNotifications.length === 0 ? (
-                      <div className="p-8 text-center text-slate-500 text-sm">
-                        Aucune notification récente.
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-cinema-700/50">
-                        {displayNotifications.map((n: any) => (
+                    {/* SETTINGS PANEL */}
+                    {isSettingsOpen && (
+                      <div className="p-2 bg-cinema-800 rounded border border-cinema-700 mb-2 animate-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-slate-300">Grouper les messages</span>
                           <div
-                            key={n.id}
-                            className={`w-full flex items-start gap-3 p-3 hover:bg-white/5 transition-colors border-b border-cinema-700/50 last:border-0 ${!n.read ? 'bg-blue-500/5' : ''}`}
+                            onClick={toggleGrouping}
+                            className={`w-8 h-4 rounded-full p-0.5 cursor-pointer transition-colors ${groupingEnabled ? 'bg-blue-500' : 'bg-slate-600'}`}
                           >
-                            <button
-                              onClick={() => handleNotificationClick(n)}
-                              className="flex-1 text-left flex gap-3 min-w-0"
-                            >
-                              <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.read ? 'bg-blue-500' : 'bg-transparent'}`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-slate-400'}`}>
-                                  {n.message}
-                                </p>
-                                <p className="text-[10px] text-slate-500 mt-1">
-                                  {new Date(n.date).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteNotification(n.id);
-                              }}
-                              className="p-1 text-slate-500 hover:text-red-400 transition-colors opacity-50 hover:opacity-100"
-                              title="Supprimer la notification"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${groupingEnabled ? 'translate-x-4' : ''}`} />
                           </div>
-                        ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-white/5 flex flex-col gap-2">
+                          <h4 className="text-[10px] font-bold text-slate-500 uppercase">Filtrer par catégorie</h4>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-300">📦 Stock & Matériel</span>
+                            <div onClick={() => toggleFilter('stock')} className={`w-8 h-4 rounded-full p-0.5 cursor-pointer transition-colors ${filters.stock ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${filters.stock ? 'translate-x-4' : ''}`} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-300">💬 Social</span>
+                            <div onClick={() => toggleFilter('social')} className={`w-8 h-4 rounded-full p-0.5 cursor-pointer transition-colors ${filters.social ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${filters.social ? 'translate-x-4' : ''}`} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-300">🛒 Achats</span>
+                            <div onClick={() => toggleFilter('purchases')} className={`w-8 h-4 rounded-full p-0.5 cursor-pointer transition-colors ${filters.purchases ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${filters.purchases ? 'translate-x-4' : ''}`} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-300">👥 Équipe & Admin</span>
+                            <div onClick={() => toggleFilter('team')} className={`w-8 h-4 rounded-full p-0.5 cursor-pointer transition-colors ${filters.team ? 'bg-blue-500' : 'bg-slate-600'}`}>
+                              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${filters.team ? 'translate-x-4' : ''}`} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isSettingsOpen && (
+                      <div className="flex justify-end gap-3 border-t border-white/5 pt-2">
+                        {unreadNotificationCount > 0 && (
+                          <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
+                            Tout marquer lu
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button onClick={handleClearAllNotifications} className="text-[10px] text-red-400 hover:text-red-300 font-medium">
+                            Tout effacer
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
+
+                  {!isSettingsOpen && (
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {groupedNotifications.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500 text-sm">
+                          Aucune notification récente.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-cinema-700/50">
+                          {groupedNotifications.map((n: any) => {
+                            const isMulti = n.isGroup && n.count > 1;
+                            return (
+                              <div
+                                key={n.id}
+                                className={`w-full flex items-start gap-3 p-3 hover:bg-white/5 transition-colors border-b border-cinema-700/50 last:border-0 ${!n.read ? 'bg-blue-500/5' : ''}`}
+                              >
+                                <button
+                                  onClick={() => handleNotificationClick(n)}
+                                  className="flex-1 text-left flex gap-3 min-w-0"
+                                >
+                                  <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!n.read ? 'bg-blue-500' : 'bg-transparent'}`} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm ${!n.read ? 'text-white font-medium' : 'text-slate-400'}`}>
+                                      {isMulti ? (
+                                        <span className="text-blue-400 font-bold mr-1">[{n.count}]</span>
+                                      ) : null}
+                                      {n.message}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 mt-1">
+                                      {new Date(n.date).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(n.id);
+                                  }}
+                                  className="p-1 text-slate-500 hover:text-red-400 transition-colors opacity-50 hover:opacity-100"
+                                  title="Supprimer la notification"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

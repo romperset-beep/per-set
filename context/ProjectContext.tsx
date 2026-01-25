@@ -540,11 +540,22 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLastLog(`[AddItem] SUCCÈS ! Ajouté dans ${projectId}`);
       console.log(`[AddItem] Success`);
 
-      addNotification(
-        `Nouvel article ajouté : ${item.name}`,
-        'INFO',
-        item.department
-      );
+      // Notification Logic: If not purchased (Request) -> Regie. If purchased (Stock) -> Silent/Dept
+      if (!itemData.purchased) {
+        addNotification(
+          `Nouvelle demande : ${item.name} (${item.department})`,
+          'INFO',
+          Department.REGIE
+        );
+      } else {
+        /* Silenced Stock Move
+        addNotification(
+          `Nouvel article ajouté : ${item.name}`,
+          'INFO',
+          item.department
+        );
+        */
+      }
     } catch (err: any) {
       console.error("[AddItem] Error:", err);
       setLastLog(`[AddItem] ERREUR: ${err.message}`);
@@ -745,11 +756,13 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         date: new Date().toISOString()
       });
 
+      /*
       addNotification(
         `Nouvel article à vendre : ${item.name} (${item.price}€) par ${item.sellerDepartment}`,
         'INFO',
         'PRODUCTION'
       );
+      */
     } catch (err: any) {
       console.error("[BuyBack] Add Error:", err);
       setError(`Erreur ajout vente: ${err.message}`);
@@ -794,7 +807,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       await updateDoc(itemRef, {
         status: 'SOLD'
       });
-      addNotification("Transaction confirmée : Article récupéré", "SUCCESS", "PRODUCTION");
+      // addNotification("Transaction confirmée : Article récupéré", "SUCCESS", "PRODUCTION");
     } catch (err: any) {
       console.error("[BuyBack] Confirm Error:", err);
       setError(`Erreur confirmation: ${err.message}`);
@@ -807,7 +820,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const projectId = project.id;
       const itemRef = doc(db, 'projects', projectId, 'buyBackItems', itemId);
       await deleteDoc(itemRef);
-      addNotification("Article supprimé de la vente", "INFO", "PRODUCTION");
+      // addNotification("Article supprimé de la vente", "INFO", "PRODUCTION");
     } catch (err: any) {
       console.error("[BuyBack] Delete Error:", err);
       setError(`Erreur suppression: ${err.message}`);
@@ -1187,7 +1200,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         }) : null);
       }
 
-      addNotification("Projet supprimé définitivement", "SUCCESS", "PRODUCTION");
+      // addNotification("Projet supprimé définitivement", "SUCCESS", "PRODUCTION");
 
     } catch (err: any) {
       console.error("[deleteProject] Error:", err);
@@ -1224,7 +1237,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     try {
       console.log("⚠️ STARTING GLOBAL RESET ⚠️");
-      addNotification("Réinitialisation globale en cours...", "WARNING", "PRODUCTION");
+      // addNotification("Réinitialisation globale en cours...", "WARNING", "PRODUCTION");
 
       // 1. DELETE ALL PROJECTS
       const projectsSnap = await getDocs(collection(db, 'projects'));
@@ -1271,7 +1284,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         projectHistory: []
       }) : null);
 
-      addNotification("Système remis à zéro avec succès.", "SUCCESS", "PRODUCTION");
+      // addNotification("Système remis à zéro avec succès.", "SUCCESS", "PRODUCTION");
       console.log("✅ GLOBAL RESET COMPLETED");
 
     } catch (err: any) {
@@ -1828,7 +1841,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const unreadCount = project.items.filter(i =>
     !i.purchased &&
-    (user?.department === 'PRODUCTION' || user?.department === 'Régie' || i.department === user?.department)
+    (
+      ((currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE') ? true : i.department === currentDept)
+    )
   ).length;
 
   return (

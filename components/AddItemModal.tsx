@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Department, ConsumableItem, ItemStatus, SurplusAction } from '../types';
-import { X, Plus, Leaf, List, Search, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { X, Plus, Leaf, List, Search, Upload, Loader2, AlertCircle, ToggleLeft, ToggleRight, Euro } from 'lucide-react';
 import { analyzeOrderFile } from '../services/geminiService';
 import { useProject } from '../context/ProjectContext';
 
@@ -105,7 +105,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // New States for "Already Bought"
+    const [isAlreadyBought, setIsAlreadyBought] = useState(false);
+    const [customPrice, setCustomPrice] = useState<string>(''); // string to handle empty state better input
+
     const suggestionsListRef = useRef<HTMLDivElement>(null);
 
     // Flatten all items for global autocomplete with case-insensitive deduplication
@@ -245,7 +251,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
             unit: 'unités',
             status: ItemStatus.NEW,
             surplusAction: SurplusAction.NONE,
-            purchased: false // Request/Need
+            purchased: isAlreadyBought, // Directly to Stock if true
+            price: (isAlreadyBought && customPrice) ? parseFloat(customPrice.replace(',', '.')) : 0,
+            originalPrice: (isAlreadyBought && customPrice) ? parseFloat(customPrice.replace(',', '.')) : 0
         };
 
         // Use Firestore Action instead of local state
@@ -273,6 +281,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         setNewItemName('');
         setNewItemQty(1);
         setSuggestion(null);
+        setIsAlreadyBought(false);
+        setCustomPrice('');
         if (shouldClose) {
             onClose();
         }
@@ -400,6 +410,34 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                         </div>
                     </div>
 
+                    {/* Already Bought Toggle & Price */}
+                    <div className="bg-cinema-900/30 border border-cinema-700/50 rounded-xl p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm text-slate-300 font-medium">J'ai déjà cet article (Achat direct)</label>
+                            <button
+                                onClick={() => setIsAlreadyBought(!isAlreadyBought)}
+                                className={`w-12 h-6 rounded-full p-1 transition-colors ${isAlreadyBought ? 'bg-eco-600' : 'bg-cinema-700'}`}
+                            >
+                                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${isAlreadyBought ? 'translate-x-6' : ''}`} />
+                            </button>
+                        </div>
+
+                        {isAlreadyBought && (
+                            <div className="animate-in slide-in-from-top-2">
+                                <label className="block text-xs font-medium text-slate-400 mb-1 uppercase">Prix d'achat (Total estimé) €</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00 €"
+                                    value={customPrice}
+                                    onChange={(e) => setCustomPrice(e.target.value)}
+                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-eco-500 focus:outline-none"
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <div className="relative">
                         <label className="block text-xs font-medium text-slate-400 mb-1 uppercase">Nom du consommable</label>
                         <div className="flex gap-2">
@@ -464,7 +502,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                         Annuler
                     </button>
                     <button
-                        onClick={handleAddItem}
+                        onClick={() => handleAddItem()}
                         disabled={!newItemName || isSubmitting}
                         className="bg-eco-600 hover:bg-eco-500 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-eco-900/20 flex items-center gap-2"
                     >
