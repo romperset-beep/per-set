@@ -28,6 +28,7 @@ import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
 import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
 import { Department } from './types';
 
@@ -40,6 +41,9 @@ const AppContent: React.FC = () => {
   const [isOnlineUsersOpen, setIsOnlineUsersOpen] = useState(false); // Added
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
+
+
+
   const {
     user,
     currentDept,
@@ -54,6 +58,9 @@ const AppContent: React.FC = () => {
     logout,
     t,
     project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
+
+  // Auto-init Push Notifications & Save Token if logged in
+  usePushNotifications(user?.id);
 
 
 

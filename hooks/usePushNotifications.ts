@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { messaging } from '../services/firebase';
+import { messaging, db } from '../services/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
+import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 
-export const usePushNotifications = () => {
+export const usePushNotifications = (userId?: string) => {
     const [permission, setPermission] = useState<NotificationPermission>(Notification.permission);
     const [fcmToken, setFcmToken] = useState<string | null>(null);
 
@@ -76,6 +77,30 @@ export const usePushNotifications = () => {
         }
     }, [permission, fcmToken]);
 
+    // Save token to user profile
+    useEffect(() => {
+        if (fcmToken && userId) {
+            const saveToken = async () => {
+                try {
+                    const userRef = doc(db, 'users', userId);
+                    await updateDoc(userRef, {
+                        fcmTokens: arrayUnion(fcmToken)
+                    });
+                    console.log('[Push] Token saved to user profile');
+                } catch (err) {
+                    // Fallback if doc doesn't exist (e.g. legacy user), try setDoc merge
+                    try {
+                        const userRef = doc(db, 'users', userId);
+                        await setDoc(userRef, { fcmTokens: arrayUnion(fcmToken) }, { merge: true });
+                    } catch (retryErr) {
+                        console.error('[Push] Failed to save token to firestore:', retryErr);
+                    }
+                }
+            };
+            saveToken();
+        }
+    }, [fcmToken, userId]);
+
     return {
         permission,
         requestPermission,
@@ -83,3 +108,5 @@ export const usePushNotifications = () => {
         error
     };
 };
+
+
