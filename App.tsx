@@ -29,7 +29,7 @@ import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
-import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings } from 'lucide-react';
+import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings, BellOff, CheckCircle, Loader2 } from 'lucide-react';
 import { Department } from './types';
 
 const AppContent: React.FC = () => {
@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
     project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
 
   // Auto-init Push Notifications & Save Token if logged in
-  usePushNotifications(user?.id);
+  const { permission, requestPermission, disableNotifications, fcmToken, loading } = usePushNotifications(user?.id);
 
 
 
@@ -372,6 +372,8 @@ const AppContent: React.FC = () => {
 
           <div className="flex items-center gap-3 md:gap-6">
 
+
+
             {/* Connection Status (Mobile & Desktop) */}
             <button
               onClick={() => setIsOnlineUsersOpen(true)}
@@ -404,25 +406,103 @@ const AppContent: React.FC = () => {
             </button>
 
             {/* Notification Bell (Global) */}
-            {/* Notification Bell (Global) */}
-            <div className="relative">
+            {/* Unified Notification Center */}
+            <div className="relative flex items-center bg-cinema-800 rounded-full border border-cinema-700 p-0.5">
+              {/* Bell Trigger (Inbox) */}
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-slate-400 hover:text-white transition-colors"
+                className="relative p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
                 title="Notifications"
               >
-                <Bell className="h-6 w-6" />
+                <Bell className="h-5 w-5" />
                 {hasUnread && (
-                  <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-pink-500 rounded-full border-2 border-cinema-900 animate-pulse"></span>
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-pink-500 rounded-full border-2 border-cinema-800 animate-pulse"></span>
                 )}
               </button>
+
+              {/* Separator */}
+              <div className="w-px h-4 bg-cinema-700 mx-0.5"></div>
+
+              {/* Status Trigger (Push) */}
+              <div className="px-1">
+                {loading ? (
+                  <div className="px-2 py-1 flex items-center justify-center">
+                    <Loader2 className="w-3 h-3 text-slate-400 animate-spin" />
+                  </div>
+                ) : permission === 'denied' ? (
+                  <div className="flex items-center gap-1 px-2 py-1 text-red-400 cursor-help" title="Notifications bloquées par le navigateur">
+                    <BellOff className="w-3 h-3" />
+                  </div>
+                ) : fcmToken ? (
+                  <button
+                    onClick={disableNotifications}
+                    className="group flex items-center gap-1 bg-green-500/10 hover:bg-red-500/10 border border-green-500/20 hover:border-red-500/20 px-2.5 py-1 rounded-full transition-all cursor-pointer"
+                    title="Push Actif. Cliquer pour désactiver."
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 group-hover:hidden"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500 group-hover:bg-red-500 transition-colors"></span>
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-green-400 group-hover:hidden">ON</span>
+                    <span className="text-[10px] uppercase font-bold text-red-400 hidden group-hover:block">OFF</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={requestPermission}
+                    className="text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 px-2 py-1 rounded-full transition-colors"
+                    title="Activer les notifications"
+                  >
+                    PUSH
+                  </button>
+                )}
+              </div>
+
+
 
               {/* Notification Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 top-full mt-2 w-80 bg-cinema-800 border border-cinema-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                  <div className="p-3 border-b border-cinema-700 flex justify-between items-center bg-cinema-900/50">
-                    <h3 className="font-bold text-white text-sm">Notifications</h3>
-                    <div className="flex gap-2">
+                  <div className="p-3 border-b border-cinema-700 flex flex-col gap-3 bg-cinema-900/50">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-white text-sm">Notifications</h3>
+                      <div className="flex gap-2">
+                        {/* Integrated Push Toggle */}
+                        {loading ? (
+                          <div className="md:flex items-center">
+                            <Loader2 className="w-3 h-3 text-slate-400 animate-spin" />
+                          </div>
+                        ) : permission === 'denied' ? (
+                          <div className="flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20" title="Bloqué par navigateur">
+                            <BellOff className="w-3 h-3" />
+                            <span className="text-[9px] uppercase font-bold">Bloqué</span>
+                          </div>
+                        ) : fcmToken ? (
+                          <button
+                            onClick={disableNotifications}
+                            className="group flex items-center gap-1 bg-green-500/10 hover:bg-red-500/10 border border-green-500/20 hover:border-red-500/20 px-2 py-0.5 rounded-full transition-all cursor-pointer"
+                            title="Push Actif. Cliquer pour désactiver."
+                          >
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 group-hover:hidden"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 group-hover:bg-red-500 transition-colors"></span>
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-green-400 group-hover:hidden">ON</span>
+                            <span className="text-[9px] uppercase font-bold text-red-400 hidden group-hover:block">OFF</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={requestPermission}
+                            className="flex items-center gap-1 bg-cinema-800 hover:bg-pink-600 border border-cinema-600 hover:border-pink-500 px-2 py-0.5 rounded-full transition-all cursor-pointer group"
+                            title="Activer Push"
+                          >
+                            <Bell className="w-3 h-3 text-slate-400 group-hover:text-white" />
+                            <span className="text-[9px] uppercase font-bold text-slate-400 group-hover:text-white">Push</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 border-t border-white/5 pt-2">
                       {unreadNotificationCount > 0 && (
                         <button onClick={markAllNofiticationsRead} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">
                           Tout marquer lu
