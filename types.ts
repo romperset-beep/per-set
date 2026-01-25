@@ -163,9 +163,10 @@ export interface TimeLog {
 
   // Transport / Mileage
   transportMode?: 'TRANSPORT_COMMUN' | 'VEHICULE_PERSO' | 'COVOITURAGE';
-  vehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER';
+  vehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER' | 'CAMION' | 'UTILITAIRE';
   fiscalPower?: number; // CV
   commuteDistanceKm?: number;
+  greyCardUrl?: string; // Added: URL of uploaded Grey Card
 
   // Detailed User Info for Export
   userFirstName?: string;
@@ -286,9 +287,10 @@ export interface UserProfile {
 
   // Default Transport Preferences
   defaultTransportMode?: 'TRANSPORT_COMMUN' | 'VEHICULE_PERSO' | 'COVOITURAGE';
-  defaultVehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER';
+  defaultVehicleType?: 'VOITURE' | 'MOTO' | 'SCOOTER' | 'CAMION' | 'UTILITAIRE';
   defaultFiscalPower?: number;
   defaultCommuteDistanceKm?: number;
+  greyCardUrl?: string; // Added: URL of uploaded Grey Card
 
   // Admin Info
   ssn: string; // Numéro de sécurité sociale
