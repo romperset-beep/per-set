@@ -17,7 +17,8 @@ import {
   Truck, // Added
   Globe, // Added
   Zap, // Added
-  ClipboardList // Added
+  ClipboardList, // Added
+  BarChart2 // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 
@@ -74,6 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'profile', label: 'Mon Profil', icon: Settings },
         { id: 'social', label: 'Mur Social', icon: MessageSquare },
         { id: 'admin', label: 'Administration', icon: ShieldCheck },
+        { id: 'global-stats', label: 'Statistiques Globales', icon: BarChart2 },
       ]
     }
   ];

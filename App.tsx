@@ -27,6 +27,7 @@ import { PendingApprovalScreen } from './components/PendingApprovalScreen';
 import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
 import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
 import { DepartmentOrders } from './components/DepartmentOrders'; // Added
+import { SuperAdminStats } from './components/SuperAdminStats'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
@@ -320,11 +321,11 @@ const AppContent: React.FC = () => {
         return <LogisticsWidget />;
       case 'energy':
         return <EnergyTracker />;
-
-      case 'callsheets':
         return <CallSheetView />;
       case 'admin':
         return <AdminDashboard />;
+      case 'global-stats': // Added route
+        return <SuperAdminStats />;
 
       default:
         return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
