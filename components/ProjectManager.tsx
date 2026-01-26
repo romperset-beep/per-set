@@ -9,6 +9,14 @@ import { CSS } from '@dnd-kit/utilities';
 
 // --- Widget Components ---
 
+// Theme Enums
+// Theme Enums
+const THEME_CLASSES = {
+    QUOTIDIEN: "w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group",
+    PRODUCTION: "w-full h-full bg-gradient-to-br from-[#4c1d95] to-cinema-900 p-6 rounded-xl text-white shadow-lg border border-purple-500/50 text-left hover:from-[#5b21b6] transition-colors group",
+    COMPTE: "w-full h-full bg-gradient-to-br from-[#831843] to-cinema-900 p-6 rounded-xl text-white shadow-lg border border-pink-500/50 text-left hover:from-[#9d174d] transition-colors group"
+};
+
 const SortableWidget = ({ id, children }: { id: string, children: React.ReactNode }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
     const style = {
@@ -37,7 +45,7 @@ const SortableWidget = ({ id, children }: { id: string, children: React.ReactNod
 const OrdersWidget = ({ onClick }: { onClick: () => void }) => {
     const { unreadCount } = useProject();
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Gestion Commandes</h3>
                 <ClipboardList className="h-6 w-6 text-red-500 group-hover:scale-110 transition-transform" />
@@ -55,7 +63,7 @@ const InventoryWidget = ({ onClick }: { onClick: () => void }) => {
         : project.items.filter(i => i.department === currentDept);
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-gradient-to-br from-eco-600 to-eco-800 p-6 rounded-xl text-white shadow-lg text-left hover:scale-[1.02] transition-transform">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <h3 className="text-lg font-semibold opacity-90">Consommables {currentDept !== 'PRODUCTION' && `(${currentDept})`}</h3>
             <p className="text-4xl font-bold mt-2">
                 {filteredItems.filter(i => i.purchased && (!i.surplusAction || i.surplusAction === SurplusAction.NONE) && i.quantityCurrent > 0).length} <span className="text-lg opacity-50 font-normal">articles</span>
@@ -66,7 +74,7 @@ const InventoryWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const CallSheetWidget = ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+    <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
         <div className="flex justify-between items-start">
             <h3 className="text-lg font-semibold opacity-70">Feuilles de Service</h3>
             <FileText className="h-6 w-6 text-blue-300 group-hover:scale-110 transition-transform" />
@@ -103,7 +111,7 @@ const HoursWidget = ({ onClick }: { onClick: () => void }) => {
     }, [project.timeLogs, user]);
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Feuilles d'heures</h3>
                 <Clock className="h-6 w-6 text-blue-400 group-hover:scale-110 transition-transform" />
@@ -140,7 +148,7 @@ const RenfortsWidget = ({ onClick }: { onClick: () => void }) => {
     }, [project.reinforcements, currentDept]);
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Renforts</h3>
                 <Users className="h-6 w-6 text-indigo-400 group-hover:scale-110 transition-transform" />
@@ -167,7 +175,7 @@ const LogisticsWidget = ({ onClick }: { onClick: () => void }) => {
     }).length;
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Aller-Retour Matériel</h3>
                 <Truck className="h-6 w-6 text-amber-400 group-hover:scale-110 transition-transform" />
@@ -186,7 +194,7 @@ const EnergyWidget = ({ onClick }: { onClick: () => void }) => {
     const hours = todayLog?.generatorHours || 0;
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Énergie</h3>
                 <Zap className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
@@ -203,7 +211,7 @@ const CateringWidget = ({ onClick }: { onClick: () => void }) => {
     const { project } = useProject();
     const todayCount = project.cateringLogs?.filter(l => l.date === new Date().toISOString().split('T')[0] && l.hasEaten).length || 0;
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Feuille Cantine</h3>
                 <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
@@ -221,7 +229,7 @@ const ExpensesWidget = ({ onClick }: { onClick: () => void }) => {
         : (expenseReports?.filter(r => r.submittedBy === user?.name).length || 0);
 
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.PRODUCTION}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Note de Frais</h3>
                 <Receipt className="h-6 w-6 text-purple-400 group-hover:scale-110 transition-transform" />
@@ -235,7 +243,7 @@ const ExpensesWidget = ({ onClick }: { onClick: () => void }) => {
 const TeamWidget = ({ onClick }: { onClick: () => void }) => {
     const { userProfiles } = useProject();
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Bible Équipe Technique</h3>
                 <Users className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform" />
@@ -249,7 +257,7 @@ const TeamWidget = ({ onClick }: { onClick: () => void }) => {
 const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
     const { buyBackItems } = useProject();
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.PRODUCTION}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Ventes à l'équipe</h3>
                 <ShoppingBag className="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
@@ -263,7 +271,7 @@ const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
 const SocialWidget = ({ onClick }: { onClick: () => void }) => {
     const { unreadSocialCount } = useProject();
     return (
-        <button onClick={onClick} className="w-full h-full bg-cinema-800 p-6 rounded-xl text-white shadow-lg border border-cinema-700 text-left hover:bg-cinema-700 transition-colors group">
+        <button onClick={onClick} className={THEME_CLASSES.COMPTE}>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-semibold opacity-70">Mur Social</h3>
                 <MessageSquare className="h-6 w-6 text-pink-500 group-hover:scale-110 transition-transform" />
