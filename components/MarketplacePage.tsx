@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext'; // Added
 import { ShoppingBag, Tag, Search, Filter, Globe, ExternalLink, Plus, Leaf } from 'lucide-react';
 import { ConsumableItem, SurplusAction, Department, ItemStatus, Transaction } from '../types';
 import { SellItemModal } from './SellItemModal'; // Added
@@ -13,7 +14,8 @@ interface MarketplaceItem extends ConsumableItem {
 }
 
 export const MarketplacePage: React.FC = () => {
-    const { getGlobalMarketplaceItems, user } = useProject();
+    const { user } = useProject();
+    const { getGlobalMarketplaceItems } = useMarketplace(); // Updated
     const [items, setItems] = useState<MarketplaceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

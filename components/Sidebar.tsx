@@ -20,7 +20,9 @@ import {
   ClipboardList, // Added
   BarChart2 // Added
 } from 'lucide-react';
-import { useProject } from '../context/ProjectContext';
+import { useProject } from '../context/ProjectContext'; // Restored
+import { useSocial } from '../context/SocialContext'; // Added
+import { useMarketplace } from '../context/MarketplaceContext'; // Added
 
 interface SidebarProps {
   activeTab: string;
@@ -30,7 +32,9 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { currentDept, logout, leaveProject, unreadCount, user, t, unreadMarketplaceCount, unreadSocialCount, markMarketplaceAsRead, markSocialAsRead } = useProject();
+  const { currentDept, logout, leaveProject, unreadCount, user, t } = useProject();
+  const { unreadSocialCount, markSocialAsRead } = useSocial(); // Added
+  const { unreadMarketplaceCount, markMarketplaceAsRead } = useMarketplace(); // Added
 
   // Define Category Type
   type Category = {

@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useProject } from '../context/ProjectContext';
-import { MessageSquare, Image as ImageIcon, Send, Heart, User, Clock, Trash2, Users, Lock, ChevronDown } from 'lucide-react';
-import { SocialPost, Department } from '../types';
+import { useProject } from '../context/ProjectContext'; // Restored
+import { useSocial } from '../context/SocialContext'; // Added
+import { MessageSquare, Image as ImageIcon, Send, Heart, User, Clock, Trash2, Users, Lock, ChevronDown } from 'lucide-react'; // Restored
+import { SocialPost, Department } from '../types'; // Restored
 
 export const SocialFeed: React.FC = () => {
-    // State now comes from Context
+    // State now comes from SocialContext
+    const { user, userProfiles, language } = useProject(); // Keep Core
     const {
-        socialPosts, addSocialPost, deleteSocialPost, user, userProfiles, markSocialAsRead, language,
+        socialPosts, addSocialPost, deleteSocialPost, markSocialAsRead,
         socialAudience: targetAudience, setSocialAudience: setTargetAudience,
         socialTargetDept: targetDept, setSocialTargetDept: setTargetDept,
         socialTargetUserId: targetUserId, setSocialTargetUserId: setTargetUserId
-    } = useProject();
+    } = useSocial(); // Use New Context
 
     // Mark as read when entering the feed
     useEffect(() => {

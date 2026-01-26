@@ -1,11 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext'; // Added
 import { Department, Reinforcement, ReinforcementDetail } from '../types';
 import { Users, ChevronLeft, ChevronRight, UserPlus, X, Calendar, Phone, Mail, User, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
 
 export const RenfortsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, addNotification, notifications, markAsRead } = useProject();
+    const { project, updateProjectDetails, user, currentDept, addNotification } = useProject();
+    const { notifications, markAsRead } = useNotification(); // Added
 
     React.useEffect(() => {
         // Clear notifications when viewing this tab.

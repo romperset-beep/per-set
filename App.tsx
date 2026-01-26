@@ -18,6 +18,10 @@ import { UserProfilePage } from './components/UserProfilePage';
 import { TeamDirectory } from './components/TeamDirectory';
 import { CallSheetView } from './components/CallSheetView';
 import { ProjectProvider, useProject } from './context/ProjectContext';
+import { AuthProvider, useAuth } from './context/AuthContext'; // Added
+import { NotificationProvider, useNotification } from './context/NotificationContext'; // Added
+import { useSocial } from './context/SocialContext'; // Added
+import { MarketplaceProvider } from './context/MarketplaceContext'; // Added
 import { LoginPage } from './components/LoginPage';
 import { ProjectSelection } from './components/ProjectSelection';
 import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
@@ -28,6 +32,7 @@ import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
 import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
 import { DepartmentOrders } from './components/DepartmentOrders'; // Added
 import { SuperAdminStats } from './components/SuperAdminStats'; // Added
+import { SocialProvider } from './context/SocialContext'; // Added
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
@@ -76,19 +81,30 @@ const AppContent: React.FC = () => {
 
 
   const {
-    user,
     currentDept,
     unreadCount,
-    unreadSocialCount,
-    unreadNotificationCount,
-    notifications, // Added
-    markAsRead, // Added
-    deleteNotification, // Added
-    clearAllNotifications, // Added
-    markAllAsRead, // Added
-    logout,
     t,
-    project, setCurrentDept, updateProjectDetails, setSocialAudience, setSocialTargetDept, setSocialTargetUserId, socialPosts, userProfiles } = useProject();
+    project, setCurrentDept, updateProjectDetails } = useProject();
+
+  const { user, userProfiles, logout } = useAuth(); // Added
+
+  const {
+    notifications,
+    unreadNotificationCount,
+    markAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    markAllAsRead
+  } = useNotification();
+
+  const {
+    unreadSocialCount,
+    setSocialAudience,
+    setSocialTargetDept,
+    setSocialTargetUserId,
+    socialPosts
+  } = useSocial();
+
 
   // Auto-init Push Notifications & Save Token if logged in
   const { permission, requestPermission, disableNotifications, fcmToken, loading } = usePushNotifications(user?.id);
@@ -747,14 +763,24 @@ const AppContent: React.FC = () => {
   );
 };
 
+// ...
+
 const App: React.FC = () => {
   // Determine debug state if possible (hacky for root)
   const [debugInfo, setDebugInfo] = useState<any>({});
 
   return (
-    <ProjectProvider>
-      <AppContent />
-    </ProjectProvider>
+    <AuthProvider>
+      <ProjectProvider>
+        <NotificationProvider>
+          <SocialProvider>
+            <MarketplaceProvider>
+              <AppContent />
+            </MarketplaceProvider>
+          </SocialProvider>
+        </NotificationProvider>
+      </ProjectProvider>
+    </AuthProvider>
   );
 };
 

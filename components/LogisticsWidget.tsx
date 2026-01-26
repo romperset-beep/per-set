@@ -1,11 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext'; // Added
 import { Department, LogisticsRequest, LogisticsType } from '../types';
 import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package } from 'lucide-react';
 
 export const LogisticsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, addNotification, notifications, markAsRead, addLogisticsRequest, deleteLogisticsRequest } = useProject();
+    const { project, updateProjectDetails, user, currentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
+    const { notifications, markAsRead } = useNotification(); // Added
 
     // Auto-clear notifications for Production
     React.useEffect(() => {
