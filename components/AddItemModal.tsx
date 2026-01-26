@@ -93,7 +93,7 @@ interface AddItemModalProps {
 }
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) => {
-    const { setProject, currentDept, project, addNotification, user, addItem, catalogItems, addToCatalog } = useProject();
+    const { setProject, currentDept, project, addNotification, user, addItem, catalogItems, addToCatalog, getGlobalMarketplaceItems } = useProject();
 
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState(1);
@@ -111,8 +111,21 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
     // New States for "Already Bought"
     const [isAlreadyBought, setIsAlreadyBought] = useState(false);
     const [customPrice, setCustomPrice] = useState<string>(''); // string to handle empty state better input
+    const [catalogMode, setCatalogMode] = useState<'NEW' | 'ECO'>('NEW');
 
     const suggestionsListRef = useRef<HTMLDivElement>(null);
+
+    const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchMarketplace = async () => {
+            if (getGlobalMarketplaceItems && isOpen) {
+                const items = await getGlobalMarketplaceItems();
+                setMarketplaceItems(items);
+            }
+        };
+        fetchMarketplace();
+    }, [getGlobalMarketplaceItems, isOpen]);
 
     // Flatten all items for global autocomplete with case-insensitive deduplication
     const allCatalogItems = useMemo(() => {
@@ -135,8 +148,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         // 3. Project History (User typed, might be less clean)
         project.items.forEach(i => addToMap(i.name));
 
+        // 4. Marketplace Items (ensure they are findable even if not in catalog)
+        marketplaceItems.forEach(i => {
+            if (i.quantityCurrent > 0 && i.projectId !== project.id) {
+                addToMap(i.name);
+            }
+        });
+
         return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
-    }, [project.items, catalogItems]);
+    }, [project.items, catalogItems, marketplaceItems, project.id]);
 
     // Get ALL suggestions for Global Catalog (Flattend & Sorted)
     const catalogItemsList = useMemo(() => {
@@ -389,6 +409,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
                 {/* Body */}
                 <div className="p-6 space-y-6">
+
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Department Selector Removed - Items are ordered for the current user's department */}
                         <div>
@@ -463,19 +485,27 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
                                         ref={suggestionsListRef}
                                         className="absolute z-10 w-full mt-1 bg-cinema-800 border border-cinema-600 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 custom-scrollbar"
                                     >
-                                        {suggestions.map((suggestion, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => selectSuggestion(suggestion)}
-                                                className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 ${idx === selectedIndex
-                                                    ? 'bg-eco-600 text-white font-medium'
-                                                    : 'text-slate-200 hover:bg-cinema-700 hover:text-white'
-                                                    }`}
-                                            >
-                                                <Search className={`h-3 w-3 ${idx === selectedIndex ? 'text-white' : 'text-slate-500'}`} />
-                                                {suggestion}
-                                            </button>
-                                        ))}
+                                        {suggestions.map((suggestion, idx) => {
+                                            const isEco = marketplaceItems.some(i => i.name.toLowerCase().trim() === suggestion.toLowerCase().trim() && i.projectId !== project.id && i.quantityCurrent > 0);
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => selectSuggestion(suggestion)}
+                                                    className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center gap-2 ${idx === selectedIndex
+                                                        ? 'bg-eco-600 text-white font-medium'
+                                                        : 'text-slate-200 hover:bg-cinema-700 hover:text-white'
+                                                        }`}
+                                                >
+                                                    <Search className={`h-3 w-3 ${idx === selectedIndex ? 'text-white' : 'text-slate-500'}`} />
+                                                    <span className="flex-1 truncate">{suggestion}</span>
+                                                    {isEco && (
+                                                        <span className="text-[10px] bg-emerald-500 text-black px-1.5 py-0.5 rounded-full font-bold ml-2">
+                                                            ECO
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
                                 {loadingSuggestion && <Leaf className="absolute right-3 top-3 h-4 w-4 text-eco-400 animate-spin" />}

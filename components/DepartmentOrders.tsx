@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Department, SurplusAction } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Department, SurplusAction, Transaction } from '../types';
 import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, ArrowRight } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { db } from '../services/firebase';
@@ -107,6 +107,19 @@ export const DepartmentOrders: React.FC = () => {
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
+    // Marketplace State
+    const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchMarketplace = async () => {
+            if (getGlobalMarketplaceItems) {
+                const globalItems = await getGlobalMarketplaceItems();
+                setMarketplaceItems(globalItems);
+            }
+        };
+        fetchMarketplace();
+    }, [getGlobalMarketplaceItems]);
+
     // --- Filtering ---
     const requestedItems = project.items.filter(item => !item.purchased);
 
@@ -122,6 +135,170 @@ export const DepartmentOrders: React.FC = () => {
         return acc;
     }, {} as Record<string, typeof project.items>);
 
+    // --- Marketplace Matching Logic ---
+    const opportunities = React.useMemo(() => {
+        if (!marketplaceItems.length || !visibleRequests.length) return [];
+
+        const matches: any[] = [];
+
+        visibleRequests.forEach(neededItem => {
+            // Find in marketplace by Name (Case Insensitive) AND ensure it's not our own item
+            const marketMatches = marketplaceItems.filter(m =>
+                m.name.toLowerCase().trim() === neededItem.name.toLowerCase().trim() &&
+                m.projectId !== project.id
+            );
+
+            if (marketMatches.length > 0) {
+                marketMatches.sort((a: any, b: any) => (a.price || 0) - (b.price || 0));
+                const bestMatch = marketMatches[0];
+
+                matches.push({
+                    neededItem,
+                    marketItem: bestMatch,
+                    saving: (neededItem.price || 0) - (bestMatch.price || 0),
+                    cost: bestMatch.price || 0
+                });
+            }
+        });
+
+        return matches;
+    }, [marketplaceItems, visibleRequests, project.id]);
+
+    const handleDirectOrder = async (op: { neededItem: any, marketItem: any }) => {
+        if (!user) return;
+        const confirmMsg = `Voulez-vous commander "${op.marketItem.name}" à ${op.marketItem.productionName} pour ${op.marketItem.price} € ?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            // 1. Create Transaction
+            const qtyToBuy = Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent);
+
+            const transactionData: Omit<Transaction, 'id'> = {
+                sellerId: op.marketItem.projectId,
+                sellerName: op.marketItem.productionName || 'Unknown Production',
+                buyerId: project.id,
+                buyerName: project.productionCompany || project.name || 'Unknown Buyer',
+                items: [{
+                    id: op.marketItem.id,
+                    name: op.marketItem.name,
+                    quantity: qtyToBuy,
+                    price: op.marketItem.price || 0
+                }],
+                totalAmount: (op.marketItem.price || 0) * qtyToBuy,
+                status: 'PENDING',
+                createdAt: new Date().toISOString()
+            };
+
+            await addDoc(collection(db, 'transactions'), transactionData);
+
+            // 2. Decrement Seller Stock (Direct Firestore)
+            await updateDoc(doc(db, 'projects', op.marketItem.projectId, 'items', op.marketItem.id), {
+                quantityCurrent: increment(-qtyToBuy)
+            });
+
+            // 3. Update Local Request to "Ordered"
+            if (updateItem) {
+                await updateItem({
+                    id: op.neededItem.id,
+                    isBought: true,
+                    price: op.marketItem.price,
+                    originalPrice: op.marketItem.price,
+                    quantityCurrent: qtyToBuy // Update stock with bought quantity
+                });
+            }
+
+            addNotification(
+                `Commande envoyée à ${op.marketItem.productionName}`,
+                'SUCCESS',
+                Department.REGIE
+            );
+
+            // Quick fix to update UI
+            setMarketplaceItems(prev => prev.map(p => {
+                if (p.id === op.marketItem.id) {
+                    return { ...p, quantityCurrent: p.quantityCurrent - qtyToBuy };
+                }
+                return p;
+            }).filter(p => p.quantityCurrent > 0));
+
+        } catch (error: any) {
+            console.error("Order failed:", error);
+            alert("Erreur lors de la commande: " + error.message);
+        }
+    };
+
+    const handleOrderAll = async () => {
+        if (!user || opportunities.length === 0) return;
+
+        const totalCost = opportunities.reduce((sum, op) => sum + (op.marketItem.price || 0) * Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent), 0);
+        const confirmMsg = `Commander les ${opportunities.length} articles disponibles pour un total de ${totalCost} € ?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            let successCount = 0;
+            const newMarketItems = [...marketplaceItems];
+
+            for (const op of opportunities) {
+                const qtyToBuy = Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent);
+
+                // 1. Transaction
+                const transactionData: Omit<Transaction, 'id'> = {
+                    sellerId: op.marketItem.projectId,
+                    sellerName: op.marketItem.productionName || 'Unknown Production',
+                    buyerId: project.id,
+                    buyerName: project.productionCompany || project.name || 'Unknown Buyer',
+                    items: [{
+                        id: op.marketItem.id,
+                        name: op.marketItem.name,
+                        quantity: qtyToBuy,
+                        price: op.marketItem.price || 0
+                    }],
+                    totalAmount: (op.marketItem.price || 0) * qtyToBuy,
+                    status: 'PENDING',
+                    createdAt: new Date().toISOString()
+                };
+                await addDoc(collection(db, 'transactions'), transactionData);
+
+                // 2. Seller Stock
+                await updateDoc(doc(db, 'projects', op.marketItem.projectId, 'items', op.marketItem.id), {
+                    quantityCurrent: increment(-qtyToBuy)
+                });
+
+                // 3. Local Item
+                if (updateItem) {
+                    await updateItem({
+                        id: op.neededItem.id,
+                        isBought: true,
+                        price: op.marketItem.price,
+                        originalPrice: op.marketItem.price,
+                        quantityCurrent: qtyToBuy
+                    });
+                }
+
+                // Update local market array reference for next iterations/final set (optional but good for consistency)
+                const mIndex = newMarketItems.findIndex(m => m.id === op.marketItem.id);
+                if (mIndex >= 0) {
+                    newMarketItems[mIndex] = { ...newMarketItems[mIndex], quantityCurrent: newMarketItems[mIndex].quantityCurrent - qtyToBuy };
+                }
+
+                successCount++;
+            }
+
+            addNotification(
+                `${successCount} commandes envoyées avec succès !`,
+                'SUCCESS',
+                Department.REGIE
+            );
+
+            // Refresh UI
+            setMarketplaceItems(newMarketItems.filter(p => p.quantityCurrent > 0));
+
+        } catch (error: any) {
+            console.error("Bulk order error", error);
+            alert("Erreur lors de la commande groupée.");
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in max-w-7xl mx-auto">
@@ -136,6 +313,67 @@ export const DepartmentOrders: React.FC = () => {
                     </p>
                 </div>
             </header>
+
+            {/* SECTION: MARKETPLACE OPPORTUNITIES */}
+            {opportunities.length > 0 && (
+                <div className="bg-gradient-to-r from-emerald-900/50 to-teal-900/50 rounded-xl border border-emerald-500/30 overflow-hidden mb-8 animate-in slide-in-from-top-4 shadow-2xl shadow-emerald-900/20">
+                    <div className="px-6 py-4 border-b border-emerald-500/30 flex flex-col md:flex-row justify-between items-center bg-emerald-900/20 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 animate-pulse">
+                                <RefreshCw className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    Disponible sur A Better Set
+                                    <span className="text-xs bg-emerald-500 text-black px-2 py-0.5 rounded-full font-bold">ECO</span>
+                                </h3>
+                                <p className="text-xs text-emerald-200/70">
+                                    {opportunities.length} articles de votre liste sont disponibles en seconde main !
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleOrderAll}
+                            className="px-6 py-2 bg-white text-emerald-900 hover:bg-emerald-100 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all animate-bounce-subtle"
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            Tout Commander ({opportunities.reduce((sum, op) => sum + (op.marketItem.price || 0) * Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent), 0)} €)
+                        </button>
+                    </div>
+
+                    <div className="divide-y divide-emerald-500/10">
+                        {opportunities.map((op, idx) => (
+                            <div key={idx} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-900/10 hover:bg-emerald-900/20 transition-colors">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white">{op.neededItem.name}</span>
+                                        <span className="text-xs bg-cinema-900 text-slate-400 px-2 py-0.5 rounded">
+                                            {op.neededItem.department}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-emerald-200/60 flex items-center gap-2">
+                                        <span className="line-through text-slate-600">Neuf ?</span>
+                                        <span>👉 Dispo chez <strong className="text-white">{op.marketItem.productionName || "Une autre prod"}</strong> ({op.marketItem.quantityCurrent} dispo)</span>
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <div className="font-bold text-emerald-400 text-lg">{op.marketItem.price} €</div>
+                                        <div className="text-xs text-emerald-600">l'unité</div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDirectOrder(op)}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"
+                                    >
+                                        <ShoppingCart className="h-4 w-4" />
+                                        Commander sur A Better Set
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* WIDGET: DEPARTMENT GRID */}
             {visibleRequests.length > 0 && (
@@ -161,8 +399,8 @@ export const DepartmentOrders: React.FC = () => {
                         <button
                             onClick={() => setSelectedRequestDept('ALL')}
                             className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${selectedRequestDept === 'ALL'
-                                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40 transform scale-105'
-                                    : 'bg-cinema-800 border-cinema-700 text-slate-400 hover:bg-cinema-700'
+                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40 transform scale-105'
+                                : 'bg-cinema-800 border-cinema-700 text-slate-400 hover:bg-cinema-700'
                                 }`}
                         >
                             <span className="text-2xl font-bold">{visibleRequests.length}</span>
@@ -175,8 +413,8 @@ export const DepartmentOrders: React.FC = () => {
                                 key={dept}
                                 onClick={() => setSelectedRequestDept(dept)}
                                 className={`relative p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${selectedRequestDept === dept
-                                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40 transform scale-105'
-                                        : 'bg-cinema-800 border-cinema-700 text-slate-400 hover:bg-cinema-700'
+                                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40 transform scale-105'
+                                    : 'bg-cinema-800 border-cinema-700 text-slate-400 hover:bg-cinema-700'
                                     }`}
                             >
                                 {items.length > 0 && (
