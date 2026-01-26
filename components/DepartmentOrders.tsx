@@ -75,7 +75,7 @@ export const DepartmentOrders: React.FC = () => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
+        const performUpdate = async (price: number) => {
             const changes = { purchased: true, isBought: false };
             const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
             const updatedItem = { ...item, ...changes, ...priceUpdate };
@@ -91,7 +91,14 @@ export const DepartmentOrders: React.FC = () => {
             if (item.department) {
                 addNotification(`Commande disponible/reçue : ${item.name}`, 'SUCCESS', item.department);
             }
-        });
+        };
+
+        // Skip prompt if price exists (Marketplace or previously set)
+        if (item.price && item.price > 0) {
+            await performUpdate(item.price);
+        } else {
+            promptForMarketplacePrice(item, SurplusAction.NONE, performUpdate);
+        }
     };
 
     const handleSendEmail = () => {
@@ -185,6 +192,7 @@ export const DepartmentOrders: React.FC = () => {
                     price: op.marketItem.price || 0
                 }],
                 totalAmount: (op.marketItem.price || 0) * qtyToBuy,
+                platformFee: ((op.marketItem.price || 0) * qtyToBuy) * 0.10, // 10% Fee
                 status: 'PENDING',
                 createdAt: new Date().toISOString()
             };
@@ -255,6 +263,7 @@ export const DepartmentOrders: React.FC = () => {
                         price: op.marketItem.price || 0
                     }],
                     totalAmount: (op.marketItem.price || 0) * qtyToBuy,
+                    platformFee: ((op.marketItem.price || 0) * qtyToBuy) * 0.10, // 10% Fee
                     status: 'PENDING',
                     createdAt: new Date().toISOString()
                 };

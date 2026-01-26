@@ -695,7 +695,7 @@ export const CircularEconomy: React.FC = () => {
                             </div>
                         ) : (
                             marketItems.map(item => (
-                                <div key={item.id} className="p-4 flex justify-between items-center hover:bg-cinema-700/20 transition-colors">
+                                <div key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-cinema-700/20 transition-colors">
                                     <div>
                                         <h4 className="text-white font-medium text-lg">{item.name}</h4>
                                         <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
@@ -706,7 +706,7 @@ export const CircularEconomy: React.FC = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-6">
+                                    <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-end">
                                         {/* PRICE EDIT */}
                                         <div
                                             onClick={() => handleEditClick(item)}
@@ -797,7 +797,7 @@ export const CircularEconomy: React.FC = () => {
                             </div>
                         ) : (
                             donationItems.map(item => (
-                                <div key={item.id} className="p-4 flex justify-between items-center hover:bg-cinema-700/20 transition-colors">
+                                <div key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-cinema-700/20 transition-colors">
                                     <div>
                                         <h4 className="text-white font-medium text-lg">{item.name}</h4>
                                         <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">

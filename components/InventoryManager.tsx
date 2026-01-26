@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ItemStatus, SurplusAction, Department, Transaction } from '../types';
-import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft, ShoppingBag } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { AddItemModal } from './AddItemModal';
 import { ExpenseReportModal } from './ExpenseReportModal';
@@ -241,7 +241,8 @@ export const InventoryManager: React.FC = () => {
             if (action === SurplusAction.MARKETPLACE) actionName = 'Stock Virtuel';
             else if (action === SurplusAction.DONATION) actionName = 'Dons';
             else if (action === SurplusAction.SHORT_FILM) actionName = 'Court-Métrage';
-            else if (action === SurplusAction.RELEASED_TO_PROD) actionName = 'Libération Production';
+            else if (action === SurplusAction.RELEASED_TO_PROD) actionName = 'Envoi Stock Virtuel';
+            else if (action === SurplusAction.BUYBACK) actionName = 'Rachat ABS';
 
             /*
             addNotification(
@@ -254,8 +255,8 @@ export const InventoryManager: React.FC = () => {
 
         const changes: any = { surplusAction: action };
 
-        // Handle Price logic for Marketplace, Donations, Short Films
-        if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) && resalePrice !== undefined) {
+        // Handle Price logic for Marketplace, Donations, Short Films, BUYBACK
+        if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM || action === SurplusAction.BUYBACK) && resalePrice !== undefined) {
             changes.price = resalePrice; // Set new resale price
             // Preserve original if not already set (default to 0 if missing)
             if (!item.originalPrice) {
@@ -279,27 +280,50 @@ export const InventoryManager: React.FC = () => {
     };
 
     const handleSurplusClick = (item: any, action: SurplusAction) => {
-        // 1. Marketplace/Donation/ShortFilm Logic: Check/Set Price
-        if (action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) {
-            // If item is being split, we handle price in confirmSurplus ('ALL' mode especially)
-            // But if simply moving 'ALL' without split or moving simple item, we need price.
-            // Let's first check if we need to confirm split (mixed stock)
-            const needsSplit = (item.quantityStarted || 0) > 0 && (item.quantityStarted || 0) < item.quantityCurrent;
+        // 0. Check for Split Necessity
+        const needsSplit = (item.quantityStarted || 0) > 0 && (item.quantityStarted || 0) < item.quantityCurrent;
 
+        // 1. BUYBACK: Direct Action (Fixed Price) with Confirmation
+        if (action === SurplusAction.BUYBACK) {
             if (needsSplit) {
-                // Open Split Confirmation - We will ask for price INSIDE confirmSurplus logic or add a step?
-                // Current confirmSurplus logic does everything.
-                // We should probably inject the price query there.
                 setSurplusConfirmation({ item, action });
             } else {
-                // Simple Move
+                const originalPrice = item.originalPrice || item.price || 0;
+                const buybackPrice = originalPrice * 0.5;
+                if (window.confirm(`Vendre cet article à A Better Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
+                    setSurplusAction(item.id, action, buybackPrice);
+                }
+            }
+            return;
+        }
+
+        // 2. MARKETPLACE: Direct Action (Current Price) with Confirmation
+        if (action === SurplusAction.MARKETPLACE) {
+            if (needsSplit) {
+                setSurplusConfirmation({ item, action });
+            } else {
+                if (window.confirm("Envoyer cet article au Stock Virtuel ?")) {
+                    // Default to current price (Value held in virtual stock)
+                    setSurplusAction(item.id, action, item.price || 0);
+                }
+            }
+            return;
+        }
+
+        // 3. Donation/ShortFilm Logic: Check/Set Price (Valuation)
+        if (action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) {
+            // If item is being split, we handle price in confirmSurplus ('ALL' mode especially)
+            if (needsSplit) {
+                setSurplusConfirmation({ item, action });
+            } else {
+                // Simple Move -> Prompt Price (Value of donation)
                 promptForMarketplacePrice(item, action);
             }
             return;
         }
 
-        // 2. Standard Logic (Donations, etc.)
-        if ((item.quantityStarted || 0) > 0 && (item.quantityStarted || 0) < item.quantityCurrent) {
+        // 3. Standard Logic (Other transfers)
+        if (needsSplit) {
             setSurplusConfirmation({ item, action });
         } else {
             setSurplusAction(item.id, action);
@@ -310,8 +334,18 @@ export const InventoryManager: React.FC = () => {
     const promptForMarketplacePrice = (item: any, action: SurplusAction, onConfirm?: (price: number) => void) => {
         const currentPrice = item.price || 0;
         // Default to 0 for Donations/Short Film unless user wants to set it
-        const defaultFactor = action === SurplusAction.MARKETPLACE ? 0.9 : 1.0;
-        const suggestedPrice = currentPrice > 0 ? Math.round(currentPrice * defaultFactor * 100) / 100 : 0;
+        // BUYBACK: 50% of Original Price (Strict)
+        let suggestedPrice = 0;
+        if (action === SurplusAction.BUYBACK) {
+            const originalPrice = item.originalPrice || item.price || 0;
+            suggestedPrice = originalPrice * 0.5;
+        } else if (action === SurplusAction.MARKETPLACE) {
+            // Default to 100% of price (User sets their price, 10% commission is taken later)
+            suggestedPrice = currentPrice;
+        } else {
+            // Donations etc
+            suggestedPrice = 0;
+        }
 
         // We need a custom modal for this. Using window.prompt is ugly but functional for MVP. 
         // User requested: "ce prix sera rempli par les factures... ou s'il n'y a pas de facture il faudra definir"
@@ -339,7 +373,20 @@ export const InventoryManager: React.FC = () => {
         if (!surplusConfirmation) return;
         const { item, action } = surplusConfirmation;
 
-        if (action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) {
+        if (action === SurplusAction.BUYBACK) {
+            setSurplusConfirmation(null);
+            const originalPrice = item.originalPrice || item.price || 0;
+            const buybackPrice = originalPrice * 0.5;
+
+            if (window.confirm(`Vendre cet article à A Better Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
+                executeSplit(mode, buybackPrice, item, action);
+            }
+        } else if (action === SurplusAction.MARKETPLACE) {
+            setSurplusConfirmation(null);
+            if (window.confirm("Envoyer cet article au Stock Virtuel ?")) {
+                executeSplit(mode, item.price || 0, item, action);
+            }
+        } else if (action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) {
             // Close Split Modal
             setSurplusConfirmation(null);
             // Open Price Modal
@@ -359,7 +406,7 @@ export const InventoryManager: React.FC = () => {
             // If sending to Surplus (Marketplace/Donation/etc) and item has started units, split them!
             // This allows keeping the "Started" portion distinct from the "New" portion even if both go to the same destination action (or started stays behind?)
             // Actually logic below sets surplusAction: action for Started portion too.
-            if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) && startedQty > 0) {
+            if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM || action === SurplusAction.BUYBACK) && startedQty > 0) {
                 // 1. Prepare Objects
                 // Original becomes the Started portion
                 const updatedOriginalItem = {
@@ -443,7 +490,7 @@ export const InventoryManager: React.FC = () => {
                 isBought: false
             };
 
-            if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM) && resalePrice !== undefined) {
+            if ((action === SurplusAction.MARKETPLACE || action === SurplusAction.DONATION || action === SurplusAction.SHORT_FILM || action === SurplusAction.BUYBACK) && resalePrice !== undefined) {
                 newItem.price = resalePrice;
                 newItem.originalPrice = item.price;
             }
@@ -621,6 +668,7 @@ export const InventoryManager: React.FC = () => {
                     price: op.marketItem.price || 0
                 }],
                 totalAmount: (op.marketItem.price || 0) * qtyToBuy,
+                platformFee: ((op.marketItem.price || 0) * qtyToBuy) * 0.10, // 10% Commission
                 status: 'PENDING',
                 createdAt: new Date().toISOString()
             };
@@ -727,7 +775,7 @@ export const InventoryManager: React.FC = () => {
                                 <PackageCheck className="h-6 w-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-white">Validations En Attente</h3>
+                                <h3 className="text-xl font-bold text-white">Arrivages Stock Virtuel</h3>
                                 <p className="text-xs text-orange-200/70">
                                     {itemsPendingValidation.length} articles libérés par les départements
                                 </p>
@@ -761,6 +809,12 @@ export const InventoryManager: React.FC = () => {
                                         className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
                                     >
                                         Valider vers Dons
+                                    </button>
+                                    <button
+                                        onClick={() => handleSurplusClick(item, SurplusAction.BUYBACK)}
+                                        className="px-3 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-sm font-medium transition-colors border border-yellow-500/50 shadow-lg shadow-yellow-900/20"
+                                    >
+                                        Vendre à ABS (50%)
                                     </button>
                                 </div>
                             </div>
@@ -819,12 +873,14 @@ export const InventoryManager: React.FC = () => {
                         <h3 className="text-xl font-bold text-white mb-4">
                             {priceModal.action === SurplusAction.DONATION ? 'Valeur du Don' :
                                 priceModal.action === SurplusAction.NONE ? "Prix d'Achat (Optionnel)" :
-                                    'Prix de Revente'}
+                                    priceModal.action === SurplusAction.BUYBACK ? "Rachat A Better Set" :
+                                        'Prix de Revente'}
                         </h3>
                         <p className="text-slate-300 mb-6">
                             {priceModal.action === SurplusAction.DONATION ? 'Souhaitez-vous définir une valeur pour ce don ? (Facultatif)' :
                                 priceModal.action === SurplusAction.NONE ? "Veuillez indiquer le prix d'achat si vous l'avez (sinon laissez 0)." :
-                                    'À quel prix souhaitez-vous proposer cet article sur le Stock Virtuel Global ?'}
+                                    priceModal.action === SurplusAction.BUYBACK ? "A Better Set rachète cet article à 50% de sa valeur d'origine." :
+                                        'Quel est votre prix de revente ?'}
                         </p>
 
                         <div className="mb-6">
@@ -836,11 +892,12 @@ export const InventoryManager: React.FC = () => {
                                 autoFocus
                                 defaultValue={priceModal.suggestedPrice}
                                 id="resalePriceInput"
-                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                                readOnly={priceModal.action === SurplusAction.BUYBACK}
+                                className={`w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none ${priceModal.action === SurplusAction.BUYBACK ? 'opacity-70 cursor-not-allowed' : ''}`}
                             />
                             {priceModal.suggestedPrice > 0 && priceModal.action === SurplusAction.MARKETPLACE && (
                                 <p className="text-xs text-emerald-400 mt-2">
-                                    💡 Suggéré : {priceModal.suggestedPrice}€ (Prix d'achat - 10%)
+                                    💡 Suggéré : {priceModal.suggestedPrice}€ (Prix d'achat)
                                 </p>
                             )}
                         </div>
@@ -864,7 +921,8 @@ export const InventoryManager: React.FC = () => {
                                     'bg-emerald-600 hover:bg-emerald-500'
                                     }`}
                             >
-                                {priceModal.action === SurplusAction.MARKETPLACE ? 'Valider la mise en vente' : 'Valider'}
+                                {priceModal.action === SurplusAction.MARKETPLACE ? 'Valider la mise en vente' :
+                                    priceModal.action === SurplusAction.BUYBACK ? 'Confirmer la Vente' : 'Valider'}
                             </button>
                         </div>
                     </div>
@@ -1172,44 +1230,45 @@ export const InventoryManager: React.FC = () => {
                                                                 {!isStarted && (
                                                                     <button
                                                                         onClick={() => {
-                                                                            const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                            const target = item.items.find((i: any) => i.quantityCurrent > 0);
                                                                             if (target) {
                                                                                 if (user?.department === 'PRODUCTION') {
                                                                                     handleSurplusClick(target, SurplusAction.MARKETPLACE);
                                                                                 } else {
-                                                                                    // Department View: Check Date
-                                                                                    if (isShootingFinished) {
-                                                                                        handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
-                                                                                    } else {
-                                                                                        alert(`Vous ne pourrez libérer le matériel que le ${shootingEndDate?.toLocaleDateString()}`);
-                                                                                    }
+                                                                                    // Department View: Always allow release
+                                                                                    handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
                                                                                 }
                                                                             }
                                                                         }}
-                                                                        disabled={user?.department !== 'PRODUCTION' && !isShootingFinished}
-                                                                        className={`p-2 rounded-lg border transition-all ${user?.department !== 'PRODUCTION' && !isShootingFinished
-                                                                            ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                                                            : 'border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10'
-                                                                            }`}
-                                                                        title={user?.department !== 'PRODUCTION'
-                                                                            ? (isShootingFinished ? "Libérer pour la Production" : `Disponible le ${shootingEndDate?.toLocaleDateString()}`)
-                                                                            : "Envoyer au Stock Virtuel"
-                                                                        }
+                                                                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                                                                        title="Envoyer au Stock Virtuel"
                                                                     >
                                                                         <RefreshCw className="h-4 w-4" />
                                                                     </button>
                                                                 )}
                                                                 {user?.department === 'PRODUCTION' && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const target = item.items.find(i => i.quantityCurrent > 0);
-                                                                            if (target) handleSurplusClick(target, SurplusAction.DONATION);
-                                                                        }}
-                                                                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
-                                                                        title="Envoyer aux Dons"
-                                                                    >
-                                                                        <GraduationCap className="h-4 w-4" />
-                                                                    </button>
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                                if (target) handleSurplusClick(target, SurplusAction.DONATION);
+                                                                            }}
+                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                                                                            title="Envoyer aux Dons"
+                                                                        >
+                                                                            <GraduationCap className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const target = item.items.find(i => i.quantityCurrent > 0);
+                                                                                if (target) handleSurplusClick(target, SurplusAction.BUYBACK);
+                                                                            }}
+                                                                            className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                                                                            title="Vendre à ABS (50%)"
+                                                                        >
+                                                                            <ShoppingBag className="h-4 w-4" />
+                                                                        </button>
+                                                                    </>
                                                                 )}
                                                             </div>
                                                         )}

@@ -258,11 +258,13 @@ export const MarketplacePage: React.FC = () => {
                 <div className="text-center py-20 bg-cinema-800/30 rounded-2xl border border-cinema-700/50 border-dashed">
                     <ShoppingBag className="h-16 w-16 text-cinema-600 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-cinema-300 mb-2">Aucun article disponible</h3>
-                    <p className="text-cinema-400 max-w-md mx-auto">
-                        Le Stock Virtuel Global est vide pour le moment.
+                    <div className="p-12 text-center text-slate-500 italic">
+                        Le Stock Virtuel est vide pour le moment.
                         <br />
-                        Les articles de votre inventaire marqués "Stock Virtuel" apparaîtront ici.
-                    </p>
+                        <span className="text-sm not-italic mt-2 block text-cinema-400">
+                            Les articles de votre inventaire marqués "Stock Virtuel" apparaîtront ici.
+                        </span>
+                    </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -355,147 +357,152 @@ export const MarketplacePage: React.FC = () => {
                         </div>
                     ))}
                 </div>
-            )}
+            )
+            }
 
             {/* Quantity Prompt Modal (Small) */}
-            {quantityPromptItem && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setQuantityPromptItem(null)}>
-                    <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-6 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-white mb-4 text-center">Quantité souhaitée</h3>
-                        <p className="text-slate-300 text-center mb-6">
-                            Combien d'unités pour : <br /><span className="text-white font-bold">{quantityPromptItem.name}</span> ?
-                        </p>
+            {
+                quantityPromptItem && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setQuantityPromptItem(null)}>
+                        <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-6 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-bold text-white mb-4 text-center">Quantité souhaitée</h3>
+                            <p className="text-slate-300 text-center mb-6">
+                                Combien d'unités pour : <br /><span className="text-white font-bold">{quantityPromptItem.name}</span> ?
+                            </p>
 
-                        <div className="flex justify-center items-center mb-8">
-                            <button
-                                onClick={() => setQuantityInput(prev => Math.max(1, prev - 1))}
-                                className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-l-lg text-white font-bold text-xl"
-                            >
-                                -
-                            </button>
-                            <input
-                                type="number"
-                                value={quantityInput}
-                                onChange={(e) => setQuantityInput(Math.min(quantityPromptItem.quantityCurrent, Math.max(1, parseInt(e.target.value) || 1)))}
-                                className="h-10 w-20 bg-cinema-900 text-center text-white font-mono border-y border-cinema-700 focus:outline-none"
-                            />
-                            <button
-                                onClick={() => setQuantityInput(prev => Math.min(quantityPromptItem.quantityCurrent, prev + 1))}
-                                className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-r-lg text-white font-bold text-xl"
-                            >
-                                +
-                            </button>
-                        </div>
+                            <div className="flex justify-center items-center mb-8">
+                                <button
+                                    onClick={() => setQuantityInput(prev => Math.max(1, prev - 1))}
+                                    className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-l-lg text-white font-bold text-xl"
+                                >
+                                    -
+                                </button>
+                                <input
+                                    type="number"
+                                    value={quantityInput}
+                                    onChange={(e) => setQuantityInput(Math.min(quantityPromptItem.quantityCurrent, Math.max(1, parseInt(e.target.value) || 1)))}
+                                    className="h-10 w-20 bg-cinema-900 text-center text-white font-mono border-y border-cinema-700 focus:outline-none"
+                                />
+                                <button
+                                    onClick={() => setQuantityInput(prev => Math.min(quantityPromptItem.quantityCurrent, prev + 1))}
+                                    className="h-10 w-10 bg-cinema-700 hover:bg-cinema-600 rounded-r-lg text-white font-bold text-xl"
+                                >
+                                    +
+                                </button>
+                            </div>
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setQuantityPromptItem(null)}
-                                className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white py-2 rounded-lg font-bold transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={confirmQuantitySelection}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg font-bold transition-colors"
-                            >
-                                Valider
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Contact Method Modal */}
-            {contactModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <button
-                            onClick={() => setContactModalOpen(false)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
-                        >
-                            ✕
-                        </button>
-
-                        <h2 className="text-2xl font-bold text-white mb-2 text-center">Contacter le vendeur</h2>
-                        <p className="text-slate-300 text-center mb-6">
-                            Vérifiez votre sélection avant de choisir le moyen de contact.
-                        </p>
-
-                        {/* Order Summary with Quantity Input */}
-                        <div className="bg-cinema-900/50 rounded-xl p-4 mb-6 space-y-3 max-h-60 overflow-y-auto border border-cinema-700/50">
-                            {activeContactItems.map(item => (
-                                <div key={item.id} className="flex justify-between items-center gap-4 bg-cinema-800 p-3 rounded-lg border border-cinema-700">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-white truncate">{item.name}</p>
-                                        <p className="text-xs text-slate-400">Stock : {item.quantityCurrent} {item.unit}</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        {item.quantityCurrent > 1 ? (
-                                            <div className="flex items-center bg-cinema-900 rounded-lg border border-cinema-600">
-                                                <button
-                                                    onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) - 1, item.quantityCurrent)}
-                                                    className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-l-lg"
-                                                >
-                                                    -
-                                                </button>
-                                                <input
-                                                    type="number"
-                                                    value={contactQuantities[item.id] || item.quantityCurrent}
-                                                    onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1, item.quantityCurrent)}
-                                                    className="w-12 text-center bg-transparent text-white font-mono text-sm focus:outline-none py-1"
-                                                    min="1"
-                                                    max={item.quantityCurrent}
-                                                />
-                                                <button
-                                                    onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) + 1, item.quantityCurrent)}
-                                                    className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-r-lg"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm font-mono text-slate-400 px-3">x1</span>
-                                        )}
-                                        <span className="text-yellow-400 font-bold w-16 text-right">
-                                            {item.price ? `${(item.price * (contactQuantities[item.id] || item.quantityCurrent))}€` : '-'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                            {/* Total Estimate */}
-                            <div className="pt-2 border-t border-cinema-700 flex justify-end text-sm">
-                                <span className="text-slate-400 mr-2">Total estimé :</span>
-                                <span className="text-yellow-400 font-bold">
-                                    {activeContactItems.reduce((acc, i) => acc + ((i.price || 0) * (contactQuantities[i.id] || i.quantityCurrent)), 0)} €
-                                </span>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setQuantityPromptItem(null)}
+                                    className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white py-2 rounded-lg font-bold transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={confirmQuantitySelection}
+                                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg font-bold transition-colors"
+                                >
+                                    Valider
+                                </button>
                             </div>
                         </div>
+                    </div>
+                )
+            }
 
-                        <div className="grid grid-cols-2 gap-4">
+            {/* Contact Method Modal */}
+            {
+                contactModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-cinema-800 rounded-2xl border border-cinema-700 p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
                             <button
-                                onClick={handleContactSubmit}
-                                className="flex flex-col items-center justify-center gap-3 p-6 bg-cinema-700/50 border border-cinema-600 rounded-xl hover:bg-indigo-600 hover:border-indigo-500 hover:scale-105 transition-all group"
+                                onClick={() => setContactModalOpen(false)}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white"
                             >
-                                <div className="p-3 bg-cinema-800 rounded-full group-hover:bg-indigo-500 transition-colors">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                </div>
-                                <span className="font-bold text-white">Confirmer Demande d'Achat</span>
+                                ✕
                             </button>
 
-                            <button
-                                onClick={handlePhoneContact}
-                                className="flex flex-col items-center justify-center gap-3 p-6 bg-cinema-700/50 border border-cinema-600 rounded-xl hover:bg-green-600 hover:border-green-500 hover:scale-105 transition-all group"
-                            >
-                                <div className="p-3 bg-cinema-800 rounded-full group-hover:bg-green-500 transition-colors">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            <h2 className="text-2xl font-bold text-white mb-2 text-center">Contacter le vendeur</h2>
+                            <p className="text-slate-300 text-center mb-6">
+                                Vérifiez votre sélection avant de choisir le moyen de contact.
+                            </p>
+
+                            {/* Order Summary with Quantity Input */}
+                            <div className="bg-cinema-900/50 rounded-xl p-4 mb-6 space-y-3 max-h-60 overflow-y-auto border border-cinema-700/50">
+                                {activeContactItems.map(item => (
+                                    <div key={item.id} className="flex justify-between items-center gap-4 bg-cinema-800 p-3 rounded-lg border border-cinema-700">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-white truncate">{item.name}</p>
+                                            <p className="text-xs text-slate-400">Stock : {item.quantityCurrent} {item.unit}</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {item.quantityCurrent > 1 ? (
+                                                <div className="flex items-center bg-cinema-900 rounded-lg border border-cinema-600">
+                                                    <button
+                                                        onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) - 1, item.quantityCurrent)}
+                                                        className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-l-lg"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        value={contactQuantities[item.id] || item.quantityCurrent}
+                                                        onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1, item.quantityCurrent)}
+                                                        className="w-12 text-center bg-transparent text-white font-mono text-sm focus:outline-none py-1"
+                                                        min="1"
+                                                        max={item.quantityCurrent}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleQuantityChange(item.id, (contactQuantities[item.id] || item.quantityCurrent) + 1, item.quantityCurrent)}
+                                                        className="px-2 py-1 text-slate-300 hover:text-white hover:bg-cinema-700 rounded-r-lg"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm font-mono text-slate-400 px-3">x1</span>
+                                            )}
+                                            <span className="text-yellow-400 font-bold w-16 text-right">
+                                                {item.price ? `${(item.price * (contactQuantities[item.id] || item.quantityCurrent))}€` : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* Total Estimate */}
+                                <div className="pt-2 border-t border-cinema-700 flex justify-end text-sm">
+                                    <span className="text-slate-400 mr-2">Total estimé :</span>
+                                    <span className="text-yellow-400 font-bold">
+                                        {activeContactItems.reduce((acc, i) => acc + ((i.price || 0) * (contactQuantities[i.id] || i.quantityCurrent)), 0)} €
+                                    </span>
                                 </div>
-                                <span className="font-bold text-white">Par Téléphone</span>
-                            </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={handleContactSubmit}
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-cinema-700/50 border border-cinema-600 rounded-xl hover:bg-indigo-600 hover:border-indigo-500 hover:scale-105 transition-all group"
+                                >
+                                    <div className="p-3 bg-cinema-800 rounded-full group-hover:bg-indigo-500 transition-colors">
+                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    <span className="font-bold text-white">Confirmer Demande d'Achat</span>
+                                </button>
+
+                                <button
+                                    onClick={handlePhoneContact}
+                                    className="flex flex-col items-center justify-center gap-3 p-6 bg-cinema-700/50 border border-cinema-600 rounded-xl hover:bg-green-600 hover:border-green-500 hover:scale-105 transition-all group"
+                                >
+                                    <div className="p-3 bg-cinema-800 rounded-full group-hover:bg-green-500 transition-colors">
+                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                    </div>
+                                    <span className="font-bold text-white">Par Téléphone</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
 
             <SellItemModal isOpen={isSellModalOpen} onClose={() => setIsSellModalOpen(false)} />

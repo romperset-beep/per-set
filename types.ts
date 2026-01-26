@@ -471,6 +471,7 @@ export interface Transaction {
     price: number;
   }[];
   totalAmount: number;
+  platformFee?: number; // 10% commission for A Better Set
   status: 'PENDING' | 'VALIDATED' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
   invoicedAt?: string;
