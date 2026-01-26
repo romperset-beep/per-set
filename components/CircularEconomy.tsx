@@ -18,8 +18,15 @@ export const CircularEconomy: React.FC = () => {
     });
 
     // Filtered lists
-    const pendingItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.NONE || !item.surplusAction);
-    const marketItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.MARKETPLACE);
+    // MERGED LIST: Pending (Released) + Marketplace (In Stock)
+    const surplusItems = totalSurplusItems.filter(item =>
+        item.surplusAction === SurplusAction.RELEASED_TO_PROD ||
+        item.surplusAction === SurplusAction.MARKETPLACE
+    );
+
+    // Legacy references if needed, mapped to surplusItems or kept for specific logic if any (but avoiding split)
+    const pendingItems = []; // Unused in new logic
+    const marketItems = []; // Unused in new logic
     // Merge Short Film into Donations for display
     const donationItems = totalSurplusItems.filter(item => item.surplusAction === SurplusAction.DONATION || item.surplusAction === SurplusAction.SHORT_FILM);
     // const shortFilmItems = ... Removed
@@ -353,16 +360,11 @@ export const CircularEconomy: React.FC = () => {
 
                 <div className="flex p-1 bg-cinema-800 w-fit rounded-lg border border-cinema-700">
                     <button
+
                         onClick={() => setView('overview')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'overview' ? 'bg-cinema-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        <LayoutDashboard className="h-4 w-4" /> À Trier ({pendingItems.length})
-                    </button>
-                    <button
-                        onClick={() => setView('marketplace')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'marketplace' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                        <RefreshCw className="h-4 w-4" /> Stock Virtuel ({marketItems.length})
+                        <RefreshCw className="h-4 w-4" /> Surplus Tournage ({surplusItems.length})
                     </button>
                     <button
                         onClick={() => setView('donations')}
@@ -376,6 +378,12 @@ export const CircularEconomy: React.FC = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'storage' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:text-slate-200'}`}
                     >
                         <Archive className="h-4 w-4" /> Stock Futur ({storageItems.length})
+                    </button>
+                    <button
+                        onClick={() => setView('sales_abs')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'sales_abs' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                        <DollarSign className="h-4 w-4" /> Rachats ABS
                     </button>
                 </div>
 
@@ -552,219 +560,103 @@ export const CircularEconomy: React.FC = () => {
                 </div>
             )}
 
-            {/* OVERVIEW / MANAGEMENT VIEW */}
+            {/* SURPLUS TOURNAGE VIEW (Replaces A Trier & Stock Virtuel) */}
             {view === 'overview' && (
-                <>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        <button onClick={() => setView('marketplace')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-blue-500/20 text-blue-400 p-3 rounded-lg">
-                                    <RefreshCw className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{marketItems.length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Stock Virtuel</h3>
-                            <p className="text-sm text-slate-400 mt-2">Articles réintégrés dans l'inventaire mutualisé.</p>
-                        </button>
-
-                        <button onClick={() => setView('donations')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-purple-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-purple-500/20 text-purple-400 p-3 rounded-lg">
-                                    <GraduationCap className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{donationItems.length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Don Pédagogique</h3>
-                            <p className="text-sm text-slate-400 mt-2">Articles donnés aux écoles partenaires.</p>
-                        </button>
-
-
-
-                        <button onClick={() => setView('storage')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-indigo-500/20 text-indigo-400 p-3 rounded-lg">
-                                    <Archive className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{storageItems.length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Stock Futur</h3>
-                            <p className="text-sm text-slate-400 mt-2">Matériel conservé pour prochaine prod.</p>
-                        </button>
-
-                        <button onClick={() => setView('sales_abs')} className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden group hover:bg-cinema-750 transition-all text-left">
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-emerald-500 blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-emerald-500/20 text-emerald-400 p-3 rounded-lg">
-                                    <DollarSign className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{totalSurplusItems.filter(i => i.surplusAction === SurplusAction.BUYBACK).length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Rachats ABS</h3>
-                            <p className="text-sm text-slate-400 mt-2">Articles vendus à la plateforme.</p>
-                        </button>
-
-                        <div className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="bg-slate-700/50 text-slate-400 p-3 rounded-lg">
-                                    <Box className="h-6 w-6" />
-                                </div>
-                                <span className="text-4xl font-bold text-white">{totalSurplusItems.length}</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Total Surplus</h3>
-                            <p className="text-sm text-slate-400 mt-2">Nombre total d'articles restants.</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-cinema-900 text-slate-400 text-xs uppercase tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-4">Article à Trier</th>
-                                        <th className="px-6 py-4">Reste</th>
-                                        <th className="px-6 py-4">Département</th>
-                                        <th className="px-6 py-4">Action Circulaire</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-cinema-700">
-                                    {pendingItems.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-16 text-center text-slate-500">
-                                                {totalSurplusItems.length > 0
-                                                    ? "Tout le surplus a été trié ! Consultez les onglets Stock Virtuel et Dons."
-                                                    : "Aucun surplus détecté pour le moment."}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        pendingItems.map(item => (
-                                            <tr key={item.id} className="hover:bg-cinema-700/30 transition-colors">
-                                                <td className="px-6 py-4 font-medium text-white">{item.name}</td>
-                                                <td className="px-6 py-4 text-eco-400 font-bold">
-                                                    {item.quantityCurrent} <span className="text-xs font-normal text-slate-400">{item.unit}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-300 text-sm">{item.department}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
-                                                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
-                                                        >
-                                                            <RefreshCw className="h-3 w-3" />
-                                                            Vers Stock
-                                                        </button>
-                                                        {user?.department === 'PRODUCTION' && (
-                                                            <button
-                                                                onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
-                                                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border border-cinema-600 text-slate-400 hover:border-purple-500 hover:text-purple-400 hover:bg-purple-500/10"
-                                                            >
-                                                                <GraduationCap className="h-3 w-3" />
-                                                                Vers Don
-                                                            </button>
-                                                        )}
-
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* MARKETPLACE LIST VIEW */}
-            {view === 'marketplace' && (
                 <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
-                    <div className="bg-blue-900/20 border-b border-blue-500/20 p-4">
+                    <div className="bg-blue-900/20 border-b border-blue-500/20 p-4 flex justify-between items-center">
                         <div className="flex items-center gap-3 text-blue-400">
-                            <RefreshCw className="h-5 w-5" />
-                            <span className="font-bold">Inventaire Disponible sur le Marché</span>
+                            <LayoutDashboard className="h-5 w-5" />
+                            <span className="font-bold">Surplus en cours (À Trier & En Vente)</span>
                         </div>
                     </div>
                     <div className="divide-y divide-cinema-700">
-                        {marketItems.length === 0 ? (
-                            <div className="p-12 text-center text-slate-500 flex flex-col items-center">
-                                <RefreshCw className="h-12 w-12 mb-4 opacity-20" />
-                                <p>Aucun article n'a été ajouté au Stock Virtuel pour le moment.</p>
-                                <button onClick={() => setView('overview')} className="mt-4 text-blue-400 hover:text-blue-300 text-sm">Retourner à la gestion</button>
+                        {surplusItems.length === 0 ? (
+                            <div className="p-12 text-center text-slate-500">
+                                <RefreshCw className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                                <p>Aucun surplus à gérer.</p>
                             </div>
                         ) : (
-                            marketItems.map(item => (
+                            groupItemsForDisplay(surplusItems).map(item => (
                                 <div key={item.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-cinema-700/20 transition-colors">
                                     <div>
-                                        <h4 className="text-white font-medium text-lg">{item.name}</h4>
-                                        <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="text-white font-medium text-lg">{item.name}</h4>
+                                            {/* Badge differentiating status */}
+                                            {item.surplusAction === SurplusAction.RELEASED_TO_PROD ? (
+                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 font-bold flex items-center gap-1">
+                                                    🆕 À Trier
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30 font-bold flex items-center gap-1">
+                                                    ✅ En Vente
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-3 text-sm text-slate-400">
                                             <span className="bg-cinema-900 px-2 py-0.5 rounded border border-cinema-700 text-xs">{item.department}</span>
-                                            <span>{item.status}</span>
-                                            <span className="text-xs font-mono text-slate-500 border border-cinema-800 px-2 py-0.5 rounded ml-2">
-                                                {item.price !== undefined ? `${item.price} €` : '0 €'}
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${item.quantityStarted > 0 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                                {item.quantityStarted > 0 ? 'Entamé' : 'Neuf'}
                                             </span>
+                                            {(item.quantityStarted > 0) && <span className="text-xs text-orange-400">({item.quantityCurrent} restants)</span>}
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-end">
-                                        {/* PRICE EDIT */}
-                                        <div
-                                            onClick={() => handleEditClick(item)}
-                                            className="text-right cursor-pointer group/price hover:bg-cinema-700/50 p-2 rounded-lg transition-all"
-                                            title="Modifier le prix"
-                                        >
-                                            <div className="text-sm text-slate-400 flex items-center justify-end gap-1">
-                                                Prix
-                                                <Edit2 className="h-3 w-3 opacity-0 group-hover/price:opacity-100 transition-opacity" />
-                                            </div>
-                                            <div className={`text-xl font-bold ${item.price ? 'text-green-400' : 'text-slate-600'}`}>
-                                                {item.price ? `${item.price} €` : '-- €'}
-                                            </div>
-                                        </div>
 
-                                        <div className="text-right">
-                                            <span className="block text-2xl font-bold text-blue-400">{item.quantityCurrent}</span>
-                                            <span className="text-xs text-slate-500 uppercase">{item.unit}</span>
-                                        </div>
-                                        {user?.department === 'PRODUCTION' && (
-                                            <div className="flex flex-col gap-2 items-end">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
-                                                        className="p-2 text-purple-500 hover:text-purple-300 hover:bg-purple-500/20 rounded-full transition-colors"
-                                                        title="Transférer vers Dons"
-                                                    >
-                                                        <GraduationCap className="h-5 w-5" />
-                                                    </button>
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-wrap items-center gap-2 justify-end w-full md:w-auto">
 
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleBuyback(item)}
-                                                        className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-600/30 rounded text-xs transition-colors"
-                                                        title="Rachat à 50% du prix"
-                                                    >
-                                                        <DollarSign className="h-3 w-3" />
-                                                        Rachat ABS (50%)
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setAction(item.id, SurplusAction.STORAGE)}
-                                                        className="flex items-center gap-1.5 px-3 py-1 bg-slate-700/30 hover:bg-slate-700/50 text-slate-400 border border-slate-600/30 rounded text-xs transition-colors"
-                                                        title="Garder pour production future"
-                                                    >
-                                                        <Archive className="h-3 w-3" />
-                                                        Stocker
-                                                    </button>
-                                                </div>
-                                            </div>
+                                        {item.surplusAction === SurplusAction.RELEASED_TO_PROD && (
+                                            <>
+                                                <button
+                                                    onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
+                                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-green-900/20 flex items-center gap-2 transition-all flex-1 md:flex-none justify-center"
+                                                >
+                                                    <RefreshCw className="h-3.5 w-3.5" />
+                                                    Mettre en Vente
+                                                </button>
+                                                <button
+                                                    onClick={() => handleBuyback(item)}
+                                                    className="px-3 py-1.5 bg-emerald-700/50 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-600/30 rounded-lg text-sm transition-all flex items-center gap-1"
+                                                    title="Rachat à 50% par ABS"
+                                                >
+                                                    <DollarSign className="h-3.5 w-3.5" />
+                                                    <span className="md:hidden">Rachat</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
+                                                    className="p-2 text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors border border-purple-500/20"
+                                                    title="Donner"
+                                                >
+                                                    <GraduationCap className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setAction(item.id, SurplusAction.STORAGE)}
+                                                    className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-indigo-500/20"
+                                                    title="Stocker (Futur)"
+                                                >
+                                                    <Archive className="h-4 w-4" />
+                                                </button>
+                                            </>
                                         )}
-                                        <button
-                                            onClick={() => setAction(item.id, SurplusAction.NONE)}
-                                            className="p-2 text-slate-500 hover:text-slate-300 hover:bg-cinema-700 rounded-full transition-colors"
-                                            title="Retirer du stock virtuel"
-                                        >
-                                            <Undo2 className="h-5 w-5" />
-                                        </button>
+
+                                        {item.surplusAction === SurplusAction.MARKETPLACE && (
+                                            <>
+                                                <div className="flex items-center gap-2 mr-2 bg-cinema-900 px-2 py-1 rounded-lg border border-cinema-700">
+                                                    <span className="text-green-400 text-sm font-bold">{item.price} €</span>
+                                                    <button onClick={() => handleEditClick(item)} className="p-1 hover:bg-cinema-700 rounded text-slate-400">
+                                                        <Edit2 className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => setAction(item.id, SurplusAction.RELEASED_TO_PROD)}
+                                                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-all flex items-center gap-2"
+                                                    title="Retirer de la vente"
+                                                >
+                                                    <Undo2 className="h-3.5 w-3.5" />
+                                                    Retirer
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))
