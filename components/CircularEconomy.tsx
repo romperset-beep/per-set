@@ -900,102 +900,47 @@ export const CircularEconomy: React.FC = () => {
     );
 };
 
-const ViewSalesToABS: React.FC<{ items: any[], project: any }> = ({ items, project }) => {
-    const buybackItems = items.map(item => ({
-        ...item,
-        buybackPrice: (item.originalPrice || item.price || 0) * 0.5
-    }));
 
-    const totalAmount = buybackItems.reduce((sum, item) => sum + (item.buybackPrice * item.quantityCurrent), 0);
 
-    const handleExportCSV = () => {
-        const headers = ["Article", "Département", "Quantité", "Prix Unitaire (50%)", "Total"];
-        const rows = buybackItems.map(item => [
-            item.name,
-            item.department,
-            item.quantityCurrent.toString(),
-            item.buybackPrice.toFixed(2),
-            (item.buybackPrice * item.quantityCurrent).toFixed(2)
-        ]);
-
-        const csvContent = [
-            headers.join(";"),
-            ...rows.map(r => r.join(";"))
-        ].join("\n");
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `Ventes_ABS_${project.name}_${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-    };
-
-    const handleInvoice = () => {
-        if (buybackItems.length === 0) return;
-
-        const transaction: Transaction = {
-            id: `INV-${Date.now()}`,
-            sellerId: project.id,
-            sellerName: project.productionCompany || project.name,
-            buyerId: 'ABETTERSET_PLATFORM',
-            buyerName: 'A Better Set',
-            items: buybackItems.map(i => ({
-                id: i.id,
-                name: i.name,
-                price: i.buybackPrice,
-                quantity: i.quantityCurrent
-            })),
-            totalAmount: totalAmount,
-            status: 'VALIDATED', // Assumed validated for invoice generation context
-            createdAt: new Date().toISOString(),
-            invoicedAt: new Date().toISOString()
-        };
-
-        generateInvoice(transaction);
-    };
+export const ViewSalesToABS = ({ items, project }: { items: any[], project: any }) => {
+    const buybackItems = items;
+    const totalAmount = buybackItems.reduce((sum, item) => {
+        const price = (item.originalPrice || item.price || 0) * 0.5;
+        return sum + (price * item.quantityCurrent);
+    }, 0);
 
     return (
-        <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-emerald-900/20 border-b border-emerald-500/20 p-6 flex justify-between items-center">
+        <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden shadow-xl">
+            <div className="bg-emerald-900/20 border-b border-emerald-500/20 p-4">
                 <div className="flex items-center gap-3 text-emerald-400">
-                    <DollarSign className="h-6 w-6" />
-                    <div>
-                        <h3 className="font-bold text-lg">Ventes à A Better Set</h3>
-                        <p className="text-xs text-slate-400">Articles rachetés par la plateforme (50% du prix)</p>
-                    </div>
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 border border-cinema-600 rounded-lg hover:bg-cinema-700 text-slate-300 transition-colors text-sm">
-                        <Download className="h-4 w-4" />
-                        Export CSV
-                    </button>
-                    <button onClick={handleInvoice} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-lg shadow-emerald-900/20 transition-all text-sm">
-                        <FileText className="h-4 w-4" />
-                        Facture
-                    </button>
+                    <DollarSign className="h-5 w-5" />
+                    <span className="font-bold">Ventes à A Better Set</span>
                 </div>
             </div>
-
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-400">
-                    <thead className="bg-cinema-900/50 text-slate-200 uppercase text-xs">
-                        <tr>
-                            <th className="px-6 py-3">Article</th>
-                            <th className="px-6 py-3 text-center">Quantité</th>
-                            <th className="px-6 py-3 text-right">Prix Unitaire (Rachat)</th>
-                            <th className="px-6 py-3 text-right">Total</th>
+                <table className="w-full text-left border-collapse text-slate-400 text-sm">
+                    <thead>
+                        <tr className="border-b border-cinema-700 bg-cinema-900/50 uppercase text-xs">
+                            <th className="px-6 py-4 font-bold">Article</th>
+                            <th className="px-6 py-4 font-bold text-center">Qté</th>
+                            <th className="px-6 py-4 font-bold text-right">Prix Unitaire (50%)</th>
+                            <th className="px-6 py-4 font-bold text-right">Total</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-cinema-700">
-                        {buybackItems.map(item => (
+                        {buybackItems.map((item: any) => (
                             <tr key={item.id} className="hover:bg-cinema-700/30 transition-colors">
                                 <td className="px-6 py-4 font-medium text-white">
                                     {item.name}
                                     <span className="ml-2 px-2 py-0.5 rounded bg-cinema-900 border border-cinema-700 text-xs text-slate-500">{item.department}</span>
                                 </td>
-                                <td className="px-6 py-4 text-center font-mono">{item.quantityCurrent.toString()} {item.unit}</td>
-                                <td className="px-6 py-4 text-right font-mono text-emerald-400 font-bold">{item.buybackPrice.toFixed(2)} €</td>
-                                <td className="px-6 py-4 text-right font-mono text-white font-bold">{(item.buybackPrice * item.quantityCurrent).toFixed(2)} €</td>
+                                <td className="px-6 py-4 text-center font-mono">{item.quantityCurrent} {item.unit}</td>
+                                <td className="px-6 py-4 text-right font-mono text-emerald-400 font-bold">
+                                    {((item.originalPrice || item.price || 0) * 0.5).toFixed(2)} €
+                                </td>
+                                <td className="px-6 py-4 text-right font-mono text-white font-bold">
+                                    {((item.originalPrice || item.price || 0) * 0.5 * item.quantityCurrent).toFixed(2)} €
+                                </td>
                             </tr>
                         ))}
                         {buybackItems.length === 0 && (
@@ -1017,3 +962,4 @@ const ViewSalesToABS: React.FC<{ items: any[], project: any }> = ({ items, proje
         </div>
     );
 };
+
