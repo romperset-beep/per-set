@@ -337,6 +337,7 @@ const AppContent: React.FC = () => {
         return <LogisticsWidget />;
       case 'energy':
         return <EnergyTracker />;
+      case 'callsheets':
         return <CallSheetView />;
       case 'admin':
         return <AdminDashboard />;
