@@ -71,7 +71,9 @@ export const CircularEconomy: React.FC = () => {
         }
     };
 
-    const handleBuyback = async (item: any) => {
+    const handleBuyback = async (e: React.MouseEvent, item: any) => {
+        e.preventDefault();
+        e.stopPropagation();
         const buybackPrice = (item.originalPrice || item.price || 0) * 0.5;
         const potentialGain = buybackPrice * item.quantityCurrent;
 
@@ -615,7 +617,8 @@ export const CircularEconomy: React.FC = () => {
                                                     Mettre en Vente
                                                 </button>
                                                 <button
-                                                    onClick={() => handleBuyback(item)}
+                                                    type="button"
+                                                    onClick={(e) => handleBuyback(e, item)}
                                                     className="px-3 py-1.5 bg-emerald-700/50 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-600/30 rounded-lg text-sm transition-all flex items-center gap-1"
                                                     title="Rachat à 50% par ABS"
                                                 >
@@ -658,7 +661,8 @@ export const CircularEconomy: React.FC = () => {
 
                                                 {/* Allow Moving from Marketplace to Donation/Buyback/Storage */}
                                                 <button
-                                                    onClick={() => handleBuyback(item)}
+                                                    type="button"
+                                                    onClick={(e) => handleBuyback(e, item)}
                                                     className="p-1 px-2 text-xs bg-emerald-700/50 text-emerald-300 rounded border border-emerald-600/30 hover:bg-emerald-600/50 transition-colors"
                                                     title="Revendre à ABS"
                                                 >
