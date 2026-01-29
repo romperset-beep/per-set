@@ -110,6 +110,10 @@ interface ProjectContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  deleteUser: (userId: string) => Promise<void>;
+  deleteAllData: () => Promise<void>;
+  addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
+  deleteLogisticsRequest: (requestId: string) => Promise<void>;
 }
 
 const DEFAULT_PROJECT: Project = {

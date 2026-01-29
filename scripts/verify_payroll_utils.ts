@@ -10,7 +10,8 @@ console.log("--- VERIFYING PAYROLL UTILS INTEGRATION ---");
 const testShift = {
     start: '16:00',
     end: '02:40',
-    mealDuration: 1
+    mealDuration: 1,
+    date: '2024-01-15' // Required for seasonal logic
 };
 
 const result = calculateShiftDetails(testShift);

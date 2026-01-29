@@ -357,6 +357,7 @@ export interface User {
   originalEmail?: string; // Added: Original email before anonymization
   firstName?: string; // Added for Profile Sync
   lastName?: string; // Added for Profile Sync
+  role?: string; // Explicitly added for AuthContext usage
 }
 
 export interface MealCount {

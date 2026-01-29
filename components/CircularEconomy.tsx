@@ -584,15 +584,6 @@ export const CircularEconomy: React.FC = () => {
 
                         <button
                             type="button"
-                            onClick={() => handleBulkAction(SurplusAction.MARKETPLACE)}
-                            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-500/30 flex items-center gap-2 transition-colors"
-                        >
-                            <ShoppingBag className="h-3 w-3" />
-                            Tout Mettre en Vente
-                        </button>
-
-                        <button
-                            type="button"
                             onClick={() => handleBulkBuyback()}
                             className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-colors"
                         >
@@ -607,6 +598,15 @@ export const CircularEconomy: React.FC = () => {
                         >
                             <Gift className="h-3 w-3" />
                             Tout Donner
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleBulkAction(SurplusAction.MARKETPLACE)}
+                            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-500/30 flex items-center gap-2 transition-colors"
+                        >
+                            <ShoppingBag className="h-3 w-3" />
+                            Tout Mettre en Vente
                         </button>
 
                         <button
@@ -898,21 +898,15 @@ export const CircularEconomy: React.FC = () => {
 
                                         {item.surplusAction === SurplusAction.RELEASED_TO_PROD && (
                                             <>
-                                                <button
-                                                    onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
-                                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-green-900/20 flex items-center gap-2 transition-all flex-1 md:flex-none justify-center"
-                                                >
-                                                    <RefreshCw className="h-3.5 w-3.5" />
-                                                    Mettre en Vente
-                                                </button>
+
                                                 <button
                                                     type="button"
                                                     onClick={(e) => handleBuyback(e, item)}
-                                                    className="px-3 py-1.5 bg-emerald-700/50 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-600/30 rounded-lg text-sm transition-all flex items-center gap-1"
-                                                    title="Rachat à 50% par ABS"
+                                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 flex items-center gap-2 transition-all flex-1 md:flex-none justify-center"
+                                                    title="Revendre à ABS"
                                                 >
                                                     <DollarSign className="h-3.5 w-3.5" />
-                                                    <span className="md:hidden">Rachat</span>
+                                                    Revendre à ABS
                                                 </button>
                                                 <button
                                                     onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
@@ -920,6 +914,13 @@ export const CircularEconomy: React.FC = () => {
                                                     title="Donner"
                                                 >
                                                     <GraduationCap className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
+                                                    className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-blue-500/20"
+                                                    title="Mettre en vente au nom de votre production sur la marketplace"
+                                                >
+                                                    <ShoppingBag className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleTransferClick(item, SurplusAction.STORAGE)}

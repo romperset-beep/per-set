@@ -512,7 +512,7 @@ ${formData.firstName} ${formData.lastName}`;
 
                                                     // Mock upload logic inline for now or extract
                                                     try {
-                                                        const storageRef = ref(getStorage(), `users/${user.uid}/grey_card_${Date.now()}`);
+                                                        const storageRef = ref(getStorage(), `users/${user.id}/grey_card_${Date.now()}`);
                                                         // We need uploadBytes from firebase/storage, let's assume it's available or use what's there
                                                         // The file had 'uploadString' imported, let's check imports.
                                                         // I will use a simple placeholder if imports are missing, but ideally I should fix imports.
