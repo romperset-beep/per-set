@@ -143,13 +143,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         Object.values(POPULAR_ITEMS).forEach(items => items.forEach(addToMap));
 
         // 2. Global Catalog (Next preferred source)
-        catalogItems.forEach(i => addToMap(i.name));
+        (catalogItems || []).forEach(i => addToMap(i.name));
 
         // 3. Project History (User typed, might be less clean)
-        project.items.forEach(i => addToMap(i.name));
+        (project?.items || []).forEach(i => addToMap(i.name));
 
         // 4. Marketplace Items (ensure they are findable even if not in catalog)
-        marketplaceItems.forEach(i => {
+        (marketplaceItems || []).forEach(i => {
             if (i.quantityCurrent > 0 && i.projectId !== project.id) {
                 addToMap(i.name);
             }
@@ -173,10 +173,10 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
         Object.values(POPULAR_ITEMS).forEach(items => items.forEach(addToMap));
 
         // 2. Global Catalog Items (All)
-        catalogItems.forEach(item => addToMap(item.name));
+        (catalogItems || []).forEach(item => addToMap(item.name));
 
         // 3. History Items (All)
-        project.items.forEach(item => addToMap(item.name));
+        (project?.items || []).forEach(item => addToMap(item.name));
 
         return Array.from(itemMap.values()).sort((a, b) => a.localeCompare(b));
     }, [project.items, catalogItems]);
