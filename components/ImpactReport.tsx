@@ -6,7 +6,7 @@ import { Loader2, Leaf, Share2, Award, Building, DollarSign, PackageOpen, Shoppi
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ECOPROD_CRITERIA_RAW, ECOPROD_CRITERIA } from '../data/ecoprodCriteria';
 import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+// import { jsPDF } from 'jspdf'; // Removed for dynamic import
 import { FileText, Paperclip, CheckCircle } from 'lucide-react';
 
 export const ImpactReport: React.FC = () => {
@@ -298,7 +298,8 @@ export const ImpactReport: React.FC = () => {
         }
     };
 
-    const handleGenerateAuditPDF = () => {
+    const handleGenerateAuditPDF = async () => {
+        const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
         const primaryColor = [22, 163, 74]; // eco-600
 
@@ -523,6 +524,7 @@ export const ImpactReport: React.FC = () => {
             const imgData = canvas.toDataURL('image/png');
             const pdfWidth = 210;
             // Simplified pdf gen for brevity in this chunk
+            const { jsPDF } = await import('jspdf');
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             pdf.setFillColor(15, 23, 42);
             pdf.rect(0, 0, pdfWidth, 297, 'F');

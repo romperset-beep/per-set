@@ -1,8 +1,9 @@
 
-import jsPDF from 'jspdf';
+// import jsPDF from 'jspdf'; // Removed for dynamic import
 import { Transaction } from '../types';
 
-export const generateInvoice = (transaction: Transaction) => {
+export const generateInvoice = async (transaction: Transaction) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
 
     // Colors

@@ -1,7 +1,8 @@
-import jsPDF from 'jspdf';
+// import jsPDF from 'jspdf'; // Removed for dynamic import
 import { ExpenseReport, UserProfile } from '../types';
 
 export const generateExpenseReportPDF = async (report: ExpenseReport) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -114,6 +115,7 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
 };
 
 export const generateSummaryPDF = async (reports: ExpenseReport[], userName: string, department: string) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
