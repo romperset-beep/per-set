@@ -622,10 +622,7 @@ export const InventoryManager: React.FC = () => {
         : requestedItems.filter(i => i.department === currentDept);
 
     // Validation Queue for Production (Items released by Depts)
-    const itemsPendingValidation = project.items.filter(item =>
-        item.surplusAction === SurplusAction.RELEASED_TO_PROD &&
-        (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
-    );
+
 
     const visibleStock = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
         ? stockItems
@@ -812,58 +809,7 @@ export const InventoryManager: React.FC = () => {
             />
 
             {/* SECTION 0: VALIDATION QUEUE (PRODUCTION ONLY) */}
-            {itemsPendingValidation.length > 0 && (
-                <div className="bg-orange-900/20 rounded-xl border border-orange-500/30 overflow-hidden mb-8 animate-in slide-in-from-top-4">
-                    <div className="px-6 py-4 border-b border-orange-500/30 flex justify-between items-center bg-orange-900/20">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400">
-                                <PackageCheck className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-white">Arrivages Stock Virtuel</h3>
-                                <p className="text-xs text-orange-200/70">
-                                    {itemsPendingValidation.length} articles libérés par les départements
-                                </p>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="divide-y divide-orange-500/10">
-                        {itemsPendingValidation.map(item => (
-                            <div key={item.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-bold text-white">{item.name}</span>
-                                        <span className="text-xs bg-cinema-900 text-slate-400 px-2 py-0.5 rounded">
-                                            {item.department}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-slate-400">
-                                        Quantité libérée : <span className="text-white font-bold">{item.quantityCurrent} {item.unit}</span>
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={async () => {
-                                            // 1. Change owner to PRODUCTION (Acceptance)
-                                            // 2. Keep status as RELEASED_TO_PROD (Triage)
-                                            if (updateItem) await updateItem({ id: item.id, department: 'PRODUCTION' });
-                                            setProject(prev => ({
-                                                ...prev,
-                                                items: prev.items.map(i => i.id === item.id ? { ...i, department: 'PRODUCTION' } : i)
-                                            }));
-                                        }}
-                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
-                                    >
-                                        <RefreshCw className="h-4 w-4" />
-                                        Réceptionner & Trier
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Surplus Confirmation Modal */}
             {surplusConfirmation && (
