@@ -4,9 +4,11 @@ import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, Arrow
 import { useProject } from '../context/ProjectContext';
 import { db } from '../services/firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { useMarketplace } from '../context/MarketplaceContext';
 
 export const DepartmentOrders: React.FC = () => {
-    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem, getGlobalMarketplaceItems } = useProject();
+    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
+    const { getGlobalMarketplaceItems } = useMarketplace();
 
     // State
     const [selectedRequestDept, setSelectedRequestDept] = useState<string>('ALL');
