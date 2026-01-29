@@ -1232,15 +1232,24 @@ export const InventoryManager: React.FC = () => {
                                                                 {!isStarted && (
                                                                     <button
                                                                         onClick={() => {
-                                                                            // Get ALL items in the group, not just one
+                                                                            // Get ALL items in the group
                                                                             const targets = item.items.filter((i: any) => i.quantityCurrent > 0);
-                                                                            targets.forEach((target: any) => {
-                                                                                if (user?.department === 'PRODUCTION') {
-                                                                                    handleSurplusClick(target, SurplusAction.MARKETPLACE);
-                                                                                } else {
-                                                                                    handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
-                                                                                }
-                                                                            });
+                                                                            if (targets.length === 0) return;
+
+                                                                            // Bulk Confirmation
+                                                                            const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
+                                                                            const message = action === SurplusAction.MARKETPLACE
+                                                                                ? `Envoyer ces ${targets.length} articles au Stock Virtuel ?`
+                                                                                : `Libérer ces ${targets.length} articles vers la Production ?`;
+
+                                                                            if (window.confirm(message)) {
+                                                                                targets.forEach((target: any) => {
+                                                                                    // Bypass individual checks and force move
+                                                                                    // Default price logic is handled inside setSurplusAction if undefined passed
+                                                                                    const resalePrice = action === SurplusAction.MARKETPLACE ? (target.price || 0) : undefined;
+                                                                                    setSurplusAction(target.id, action, resalePrice);
+                                                                                });
+                                                                            }
                                                                         }}
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                                                         title="Envoyer au Stock Virtuel"
