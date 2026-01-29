@@ -13,9 +13,9 @@ export const TeamDirectory: React.FC = () => {
 
     const filteredProfiles = userProfiles.filter(profile => {
         const matchesSearch = (
-            profile.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            profile.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            profile.role.toLowerCase().includes(searchTerm.toLowerCase())
+            (profile.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (profile.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (profile.role || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
         const matchesDept = selectedDept === 'ALL' || profile.department === selectedDept;
         return matchesSearch && matchesDept;
