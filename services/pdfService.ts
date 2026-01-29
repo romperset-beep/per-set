@@ -137,7 +137,7 @@ export const generateSummaryPDF = async (reports: ExpenseReport[], userName: str
     let y = 55;
 
     // Header
-    doc.setFillColor(230);
+    doc.setFillColor(230, 230, 230);
     doc.rect(15, y - 5, pageWidth - 30, 8, 'F');
     doc.setFont("helvetica", "bold");
     doc.text('Date', 20, y);

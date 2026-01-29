@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { generateEcoImpactReport } from '../services/geminiService';
 import { ImpactMetrics, SurplusAction, EcoprodCriterion, CarbonContext } from '../types';
 import { Loader2, Leaf, Share2, Award, Building, DollarSign, PackageOpen, ShoppingBag, CheckSquare, Info, ShieldCheck, Settings, X } from 'lucide-react';
@@ -10,7 +11,8 @@ import html2canvas from 'html2canvas';
 import { FileText, Paperclip, CheckCircle } from 'lucide-react';
 
 export const ImpactReport: React.FC = () => {
-    const { project, buyBackItems, language, updateEcoprodChecklist, updateProjectDetails } = useProject();
+    const { project, language, updateEcoprodChecklist, updateProjectDetails } = useProject();
+    const { buyBackItems } = useMarketplace();
     const [metrics, setMetrics] = useState<ImpactMetrics | null>(null);
     const [loading, setLoading] = useState(false);
     const [chartView, setChartView] = useState<'quantity' | 'money' | 'co2'>('quantity');
