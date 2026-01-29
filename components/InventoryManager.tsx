@@ -1232,15 +1232,15 @@ export const InventoryManager: React.FC = () => {
                                                                 {!isStarted && (
                                                                     <button
                                                                         onClick={() => {
-                                                                            const target = item.items.find((i: any) => i.quantityCurrent > 0);
-                                                                            if (target) {
+                                                                            // Get ALL items in the group, not just one
+                                                                            const targets = item.items.filter((i: any) => i.quantityCurrent > 0);
+                                                                            targets.forEach((target: any) => {
                                                                                 if (user?.department === 'PRODUCTION') {
                                                                                     handleSurplusClick(target, SurplusAction.MARKETPLACE);
                                                                                 } else {
-                                                                                    // Department View: Always allow release
                                                                                     handleSurplusClick(target, SurplusAction.RELEASED_TO_PROD);
                                                                                 }
-                                                                            }
+                                                                            });
                                                                         }}
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                                                         title="Envoyer au Stock Virtuel"
