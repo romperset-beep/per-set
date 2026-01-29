@@ -19,7 +19,7 @@ export const BuyBackMarketplace: React.FC = () => {
         return <div className="p-8 text-center text-red-400">Erreur de chargement des données (buyBackItems manquant). Veuillez rafraîchir la page.</div>;
     }
 
-    const sortedItems = [...buyBackItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const sortedItems = Array.isArray(buyBackItems) ? [...buyBackItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
 
     const totalSold = buyBackItems.filter(i => i.status === 'SOLD').length;
     const totalRevenue = buyBackItems

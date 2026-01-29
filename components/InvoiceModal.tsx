@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BuyBackItem } from '../types';
 import { X, Download, FileText } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 interface InvoiceModalProps {
     isOpen: boolean;
