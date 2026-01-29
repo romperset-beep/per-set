@@ -190,10 +190,10 @@ export const InventoryManager: React.FC = () => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        // Prompt for Price (using the modal logic)
-        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
+        // Helper to execute update
+        const executeMarkAsPurchased = async (price?: number) => {
             const changes = { purchased: true, isBought: false };
-            const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
+            const priceUpdate = (price !== undefined && price > 0) ? { price: price, originalPrice: item.originalPrice || price } : {};
 
             const updatedItem = { ...item, ...changes, ...priceUpdate };
 
@@ -205,7 +205,6 @@ export const InventoryManager: React.FC = () => {
             if (updateItem) await updateItem({ id, ...changes, ...priceUpdate });
             markNotificationAsReadByItemId(id);
 
-            // Notify Requester
             if (item.department) {
                 addNotification(
                     `Commande disponible/reçue : ${item.name}`,
@@ -213,7 +212,16 @@ export const InventoryManager: React.FC = () => {
                     item.department
                 );
             }
-        });
+        };
+
+        // If price is already set (from markAsBought), skip prompt
+        if (item.price && item.price > 0) {
+            await executeMarkAsPurchased();
+        } else {
+            promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
+                await executeMarkAsPurchased(price);
+            });
+        }
     };
 
     const incrementStarted = async (id: string) => {
