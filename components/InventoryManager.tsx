@@ -844,22 +844,19 @@ export const InventoryManager: React.FC = () => {
                                 </div>
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => handleSurplusClick(item, SurplusAction.MARKETPLACE)}
-                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+                                        onClick={async () => {
+                                            // 1. Change owner to PRODUCTION (Acceptance)
+                                            // 2. Keep status as RELEASED_TO_PROD (Triage)
+                                            if (updateItem) await updateItem({ id: item.id, department: 'PRODUCTION' });
+                                            setProject(prev => ({
+                                                ...prev,
+                                                items: prev.items.map(i => i.id === item.id ? { ...i, department: 'PRODUCTION' } : i)
+                                            }));
+                                        }}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
                                     >
-                                        Valider vers Stock Virtuel
-                                    </button>
-                                    <button
-                                        onClick={() => handleSurplusClick(item, SurplusAction.DONATION)}
-                                        className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors"
-                                    >
-                                        Valider vers Dons
-                                    </button>
-                                    <button
-                                        onClick={() => handleSurplusClick(item, SurplusAction.BUYBACK)}
-                                        className="px-3 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-sm font-medium transition-colors border border-yellow-500/50 shadow-lg shadow-yellow-900/20"
-                                    >
-                                        Vendre à ABS (50%)
+                                        <RefreshCw className="h-4 w-4" />
+                                        Réceptionner & Trier
                                     </button>
                                 </div>
                             </div>
