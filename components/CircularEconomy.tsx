@@ -71,13 +71,19 @@ export const CircularEconomy: React.FC = () => {
         }
     };
 
-    const handleBuyback = async (e: React.MouseEvent, item: any) => {
+    const [buybackConfirmation, setBuybackConfirmation] = React.useState<{ item: any, quantity: number } | null>(null);
+
+    const handleBuyback = (e: React.MouseEvent, item: any) => {
         e.preventDefault();
         e.stopPropagation();
-        const buybackPrice = (item.originalPrice || item.price || 0) * 0.5;
-        const potentialGain = buybackPrice * item.quantityCurrent;
+        setBuybackConfirmation({ item, quantity: item.quantityCurrent });
+    };
 
-        if (!window.confirm(`Confirmer la vente à A BETTER SET pour 50% du prix ?\nGain estimé : ${potentialGain.toFixed(2)} €`)) return;
+    const executeBuyback = async () => {
+        if (!buybackConfirmation) return;
+        const { item, quantity } = buybackConfirmation;
+        const buybackPrice = (item.originalPrice || item.price || 0) * 0.5;
+        const potentialGain = buybackPrice * quantity;
 
         try {
             // Create Transaction for ABS Buyback
@@ -89,7 +95,7 @@ export const CircularEconomy: React.FC = () => {
                 items: [{
                     id: item.id,
                     name: item.name,
-                    quantity: item.quantityCurrent,
+                    quantity: quantity,
                     price: buybackPrice
                 }],
                 totalAmount: potentialGain,
@@ -98,8 +104,49 @@ export const CircularEconomy: React.FC = () => {
             };
 
             await addDoc(collection(db, 'transactions'), transactionData);
-            await setAction(item.id, SurplusAction.BUYBACK);
-            // addNotification("Demande de rachat A Better Set envoyée", "SUCCESS");
+
+            if (quantity >= item.quantityCurrent) {
+                // Full Buyback
+                await setAction(item.id, SurplusAction.BUYBACK);
+            } else {
+                // Partial Buyback (Split)
+                const newItemId = `${item.id}_buyback_${Date.now()}`;
+                const remainingQty = item.quantityCurrent - quantity;
+
+                // 1. Update Original Item (Remaining)
+                if (updateItem) await updateItem({ id: item.id, quantityCurrent: remainingQty });
+
+                // 2. Create New Item (Sold)
+                if (addItem) {
+                    await addItem({
+                        ...item,
+                        id: newItemId,
+                        quantityCurrent: quantity,
+                        quantityInitial: quantity,
+                        quantityStarted: 0, // Assume sold portion is generic or we'd need complex split logic for started
+                        surplusAction: SurplusAction.BUYBACK,
+                        purchased: true,
+                        isBought: false,
+                        originalPrice: item.originalPrice ?? item.price ?? 0,
+                        price: item.price ?? 0
+                    });
+                }
+
+                // Optimistic Local Update
+                setProject(prev => {
+                    const updatedItems = prev.items.map(i => i.id === item.id ? { ...i, quantityCurrent: remainingQty } : i);
+                    const newItem = {
+                        ...item,
+                        id: newItemId,
+                        quantityCurrent: quantity,
+                        quantityInitial: quantity,
+                        surplusAction: SurplusAction.BUYBACK
+                    };
+                    return { ...prev, items: [...updatedItems, newItem] };
+                });
+            }
+
+            setBuybackConfirmation(null);
 
         } catch (error: any) {
             console.error("Buyback error", error);
@@ -529,6 +576,64 @@ export const CircularEconomy: React.FC = () => {
                 </div>
             )}
 
+            {/* Buyback Confirmation Modal */}
+            {buybackConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-cinema-800 border border-cinema-700 rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="text-center mb-6">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900/30 mb-4 border border-emerald-500/30">
+                                <DollarSign className="h-6 w-6 text-emerald-400" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Vente à A Better Set</h3>
+                            <p className="text-slate-400 mt-2 text-sm">
+                                Combien d'unités de <strong>{buybackConfirmation.item.name}</strong> souhaitez-vous vendre ?
+                            </p>
+
+                            <div className="flex items-center gap-4 my-6 justify-center">
+                                <button
+                                    onClick={() => setBuybackConfirmation(prev => prev ? { ...prev, quantity: Math.max(1, prev.quantity - 1) } : null)}
+                                    className="p-2 rounded-lg bg-emerald-700/50 text-emerald-400 border border-emerald-600/30 hover:bg-emerald-600/50 transition-colors"
+                                >
+                                    -
+                                </button>
+                                <div className="text-center min-w-[3rem]">
+                                    <span className="text-3xl font-bold text-white">{buybackConfirmation.quantity}</span>
+                                    <span className="text-xs text-slate-500 block">sur {buybackConfirmation.item.quantityCurrent}</span>
+                                </div>
+                                <button
+                                    onClick={() => setBuybackConfirmation(prev => prev ? { ...prev, quantity: Math.min(prev.item.quantityCurrent, prev.quantity + 1) } : null)}
+                                    className="p-2 rounded-lg bg-emerald-700/50 text-emerald-400 border border-emerald-600/30 hover:bg-emerald-600/50 transition-colors"
+                                >
+                                    +
+                                </button>
+                            </div>
+
+                            <div className="p-4 bg-emerald-900/20 rounded-lg border border-emerald-500/20">
+                                <p className="text-sm text-slate-300">Gain estimé (50% du prix)</p>
+                                <p className="text-2xl font-bold text-emerald-400">
+                                    {((buybackConfirmation.item.originalPrice || buybackConfirmation.item.price || 0) * 0.5 * buybackConfirmation.quantity).toFixed(2)} €
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setBuybackConfirmation(null)}
+                                className="flex-1 py-3 rounded-lg border border-cinema-600 text-slate-400 hover:text-white hover:bg-cinema-700 transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={executeBuyback}
+                                className="flex-1 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/20 transition-all"
+                            >
+                                Confirmer la Vente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Price Edit Modal */}
             {editingItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -633,7 +738,7 @@ export const CircularEconomy: React.FC = () => {
                                                     <GraduationCap className="h-4 w-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => setAction(item.id, SurplusAction.STORAGE)}
+                                                    onClick={() => handleTransferClick(item, SurplusAction.STORAGE)}
                                                     className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-indigo-500/20"
                                                     title="Stocker (Futur)"
                                                 >
