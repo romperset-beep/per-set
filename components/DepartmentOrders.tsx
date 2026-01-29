@@ -108,7 +108,7 @@ export const DepartmentOrders: React.FC = () => {
         const date = new Date().toLocaleDateString('fr-FR');
         const subject = `Commande Achats - ${project.name} - ${date}`;
         let body = `Bonjour,\n\nVoici la liste des achats pour la production "${project.name}" (${project.productionCompany}).\n\nDate: ${date}\n\nArticles :\n`;
-        itemsToSend.forEach(item => { body += `- ${item.name} (${item.department}) : ${item.quantityInitial} ${item.unit}\n`; });
+        (itemsToSend || []).forEach(item => { body += `- ${item.name} (${item.department}) : ${item.quantityInitial} ${item.unit}\n`; });
         body += `\nCordialement A Better Set`;
 
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -148,7 +148,7 @@ export const DepartmentOrders: React.FC = () => {
 
         const matches: any[] = [];
 
-        visibleRequests.forEach(neededItem => {
+        (visibleRequests || []).forEach(neededItem => {
             // Find in marketplace by Name (Case Insensitive) AND ensure it's not our own item
             const marketMatches = marketplaceItems.filter(m =>
                 m.name.toLowerCase().trim() === neededItem.name.toLowerCase().trim() &&
