@@ -286,7 +286,7 @@ export const CallSheetView: React.FC = () => {
             {/* LIST (Only show if NOT in Builder mode) */}
             {mode !== 'BUILDER' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {callSheets.map((sheet) => (
+                    {(callSheets || []).map((sheet) => (
                         <div key={sheet.id} className="bg-cinema-800 rounded-xl p-4 border border-cinema-700 flex flex-col justify-between group hover:border-eco-500/50 transition-all">
                             <div>
                                 <div className="flex justify-between items-start mb-2">

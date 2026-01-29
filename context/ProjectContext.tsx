@@ -101,6 +101,11 @@ interface ProjectContextType {
   // Search
   searchProjects: (queryStr: string) => Promise<Project[]>;
 
+  // Call Sheets
+  callSheets: CallSheet[];
+  addCallSheet: (sheet: CallSheet) => Promise<void>;
+  deleteCallSheet: (sheetId: string, url?: string) => Promise<void>;
+
   // Language
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -1130,11 +1135,13 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     testConnection,
     debugStatus,
     lastLog,
+    callSheets, // Exposed
   }), [
     project,
     currentDept,
     circularView,
     user,
+    callSheets, // Include in dependency array
     unreadCount,
     unreadCount,
     unreadSocialCount,
