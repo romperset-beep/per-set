@@ -1283,7 +1283,7 @@ export const InventoryManager: React.FC = () => {
                                                                 {!isStarted && (
                                                                     <button
                                                                         onClick={() => {
-                                                                            const targets = item.items.filter((i: any) => i.quantityCurrent > 0);
+                                                                            const targets = item.items.filter((i: any) => (i.quantityCurrent - (i.quantityStarted || 0)) > 0);
                                                                             if (targets.length === 0) return;
 
                                                                             const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
