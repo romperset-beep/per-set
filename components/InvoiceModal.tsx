@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BuyBackItem } from '../types';
 import { X, Download, FileText } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+// import { jsPDF } from 'jspdf'; // Removed for dynamic import
 
 interface InvoiceModalProps {
     isOpen: boolean;
@@ -20,85 +20,89 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, ite
     const vatAmount = (price * vatRate) / 100;
     const total = price + vatAmount;
 
-    const generatePDF = () => {
-        const doc = new jsPDF();
+    const generatePDF = async () => {
+        try {
+            // Dynamic import to prevent production crash on load
+            const { jsPDF } = await import('jspdf');
+            const doc = new jsPDF();
 
-        // Colors
-        const primaryColor = '#1a1a1a';
-        const accentColor = '#eab308'; // Yellow-500
+            // Colors
+            const primaryColor = '#1a1a1a';
+            const accentColor = '#eab308'; // Yellow-500
 
-        // Header
-        doc.setFontSize(24);
-        doc.setTextColor(primaryColor);
-        doc.text("FACTURE", 105, 20, { align: 'center' });
+            // Header
+            doc.setFontSize(24);
+            doc.setTextColor(primaryColor);
+            doc.text("FACTURE", 105, 20, { align: 'center' });
 
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
 
-        // Production Info
-        doc.setFontSize(14);
-        doc.setTextColor(primaryColor);
-        doc.text("Production", 20, 50);
+            // Production Info
+            doc.setFontSize(14);
+            doc.setTextColor(primaryColor);
+            doc.text("Production", 20, 50);
 
-        doc.setFontSize(11);
-        doc.setTextColor(60);
-        doc.text(`Film: ${sellerName}`, 20, 60);
+            doc.setFontSize(11);
+            doc.setTextColor(60);
+            doc.text(`Film: ${sellerName}`, 20, 60);
 
-        // Transaction Info
-        doc.setFontSize(14);
-        doc.setTextColor(primaryColor);
-        doc.text("Détails de la transaction", 20, 80);
+            // Transaction Info
+            doc.setFontSize(14);
+            doc.setTextColor(primaryColor);
+            doc.text("Détails de la transaction", 20, 80);
 
-        doc.setFontSize(11);
-        doc.setTextColor(60);
-        // User Request: 'vendu par (le nom de la production )'
-        // User Request: 'vendu par (le nom de la production )'
-        doc.text(`Vendu par: ${sellerName}`, 20, 90);
-        // User Request: 'à : (le prenom et le nom de la personne qui à réservé l'article )'
-        doc.text(`À: ${buyerName}`, 20, 96);
+            doc.setFontSize(11);
+            doc.setTextColor(60);
+            doc.text(`Vendu par: ${sellerName}`, 20, 90);
+            doc.text(`À: ${buyerName}`, 20, 96);
 
-        // Table Header
-        let y = 110;
-        doc.setFillColor(240, 240, 240);
-        doc.rect(20, y, 170, 10, 'F');
-        doc.setFontSize(10);
-        doc.setTextColor(primaryColor);
-        doc.setFont("helvetica", "bold");
-        doc.text("Désignation", 25, y + 7);
-        doc.text("Prix HT", 160, y + 7, { align: 'right' });
+            // Table Header
+            let y = 110;
+            doc.setFillColor(240, 240, 240);
+            doc.rect(20, y, 170, 10, 'F');
+            doc.setFontSize(10);
+            doc.setTextColor(primaryColor);
+            doc.setFont("helvetica", "bold");
+            doc.text("Désignation", 25, y + 7);
+            doc.text("Prix HT", 160, y + 7, { align: 'right' });
 
-        // Item
-        y += 20;
-        doc.setFont("helvetica", "normal");
-        doc.text(item.name, 25, y);
-        doc.text(`${price.toFixed(2)} €`, 160, y, { align: 'right' });
+            // Item
+            y += 20;
+            doc.setFont("helvetica", "normal");
+            doc.text(item.name, 25, y);
+            doc.text(`${price.toFixed(2)} €`, 160, y, { align: 'right' });
 
-        // Calculations
-        y += 20;
-        doc.line(20, y, 190, y);
+            // Calculations
+            y += 20;
+            doc.line(20, y, 190, y);
 
-        y += 15;
-        doc.text("Total HT:", 130, y);
-        doc.text(`${price.toFixed(2)} €`, 180, y, { align: 'right' });
+            y += 15;
+            doc.text("Total HT:", 130, y);
+            doc.text(`${price.toFixed(2)} €`, 180, y, { align: 'right' });
 
-        y += 10;
-        doc.text(`TVA (${vatRate}%):`, 130, y);
-        doc.text(`${vatAmount.toFixed(2)} €`, 180, y, { align: 'right' });
+            y += 10;
+            doc.text(`TVA (${vatRate}%):`, 130, y);
+            doc.text(`${vatAmount.toFixed(2)} €`, 180, y, { align: 'right' });
 
-        y += 15;
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text("NET À PAYER:", 130, y);
-        doc.text(`${total.toFixed(2)} €`, 180, y, { align: 'right' });
+            y += 15;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("NET À PAYER:", 130, y);
+            doc.text(`${total.toFixed(2)} €`, 180, y, { align: 'right' });
 
-        // Footer
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(9);
-        doc.setTextColor(150);
-        doc.text("Document généré automatiquement via A Better Set", 105, 280, { align: 'center' });
+            // Footer
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text("Document généré automatiquement via A Better Set", 105, 280, { align: 'center' });
 
-        doc.save(`Facture_${item.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+            doc.save(`Facture_${item.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (error) {
+            console.error("PDF Generation Error:", error);
+            alert("Erreur lors de la génération du PDF. Veuillez réessayer.");
+        }
     };
 
     return (

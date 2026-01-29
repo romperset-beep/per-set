@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ItemStatus, SurplusAction, Department, Transaction } from '../types';
 import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft, ShoppingBag } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { AddItemModal } from './AddItemModal';
 import { ExpenseReportModal } from './ExpenseReportModal';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -10,7 +11,8 @@ import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestor
 
 
 export const InventoryManager: React.FC = () => {
-    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem, getGlobalMarketplaceItems } = useProject();
+    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
+    const { getGlobalMarketplaceItems } = useMarketplace();
 
     // Form State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -80,7 +82,7 @@ export const InventoryManager: React.FC = () => {
         const newItemsByName: Record<string, any> = {};
         const startedItemsByName: Record<string, any> = {};
 
-        items.forEach(item => {
+        (items || []).forEach(item => {
             const startedQty = item.quantityStarted || 0;
             const newQty = Math.max(0, item.quantityCurrent - startedQty);
             const key = item.name + (item.surplusAction || 'NONE');
