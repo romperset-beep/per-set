@@ -334,6 +334,11 @@ export const InventoryManager: React.FC = () => {
 
     // Robust Bulk Action Handler
     const handleBulkSurplusAction = async (targets: any[], action: SurplusAction) => {
+        if (!targets || targets.length === 0) {
+            alert("Aucun article disponible pour l'envoi (Stock épuisé ou entamé).");
+            return;
+        }
+
         const message = action === SurplusAction.MARKETPLACE
             ? `Envoyer ces ${targets.length} articles au Stock Virtuel ?`
             : `Libérer ces ${targets.length} articles vers la Production ?`;
