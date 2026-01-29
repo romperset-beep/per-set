@@ -23,6 +23,7 @@ export const InventoryManager: React.FC = () => {
     const [transferConfirmation, setTransferConfirmation] = useState<{ item: any } | null>(null);
     const [targetDept, setTargetDept] = useState<Department | 'PRODUCTION'>('PRODUCTION');
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+    const [bulkSurplusConfirmation, setBulkSurplusConfirmation] = useState<{ targets: any[], action: SurplusAction } | null>(null);
 
     const toggleDeptExpansion = (dept: string) => {
         setExpandedDepts(prev => {
@@ -332,18 +333,9 @@ export const InventoryManager: React.FC = () => {
         }
     };
 
-    // Robust Bulk Action Handler
-    const handleBulkSurplusAction = async (targets: any[], action: SurplusAction) => {
-        if (!targets || targets.length === 0) {
-            alert("Aucun article disponible pour l'envoi (Stock épuisé ou entamé).");
-            return;
-        }
-
-        const message = action === SurplusAction.MARKETPLACE
-            ? `Envoyer ces ${targets.length} articles au Stock Virtuel ?`
-            : `Libérer ces ${targets.length} articles vers la Production ?`;
-
-        if (!window.confirm(message)) return;
+    // Robust Bulk Action Handler - Executed AFTER confirmation
+    const executeBulkSurplusAction = async (targets: any[], action: SurplusAction) => {
+        // Confirmation is now handled by UI Modal
 
         const updates: any[] = [];
         const updatePromises: Promise<void>[] = [];
@@ -1286,10 +1278,14 @@ export const InventoryManager: React.FC = () => {
                                                                             e.preventDefault();
                                                                             e.stopPropagation();
                                                                             const targets = item.items.filter((i: any) => (i.quantityCurrent - (i.quantityStarted || 0)) > 0);
-                                                                            if (targets.length === 0) return;
+
+                                                                            if (targets.length === 0) {
+                                                                                alert("Aucun article disponible pour l'envoi (Stock épuisé ou entamé).");
+                                                                                return;
+                                                                            }
 
                                                                             const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
-                                                                            handleBulkSurplusAction(targets, action);
+                                                                            setBulkSurplusConfirmation({ targets, action });
                                                                         }}
                                                                         type="button"
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
@@ -1424,5 +1420,48 @@ export const InventoryManager: React.FC = () => {
                 )
             }
         </div >
+            
+            {/* Bulk Surplus Confirmation Modal */ }
+    {
+        bulkSurplusConfirmation && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
+                    <div className="text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
+                            <RefreshCw className="h-6 w-6 text-blue-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white">
+                            {bulkSurplusConfirmation.action === SurplusAction.MARKETPLACE
+                                ? "Envoyer au Stock Virtuel ?"
+                                : "Libérer vers la Production ?"}
+                        </h3>
+                        <p className="text-slate-400 mt-2 text-sm">
+                            Vous allez déplacer <strong>{bulkSurplusConfirmation.targets.length}</strong> articles.
+                            <br />Ils seront visibles dans l'onglet "Économie Circulaire".
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={() => setBulkSurplusConfirmation(null)}
+                            className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            onClick={() => {
+                                executeBulkSurplusAction(bulkSurplusConfirmation.targets, bulkSurplusConfirmation.action);
+                                setBulkSurplusConfirmation(null);
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                            Confirmer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+            
     );
 };
