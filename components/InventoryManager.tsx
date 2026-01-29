@@ -1282,13 +1282,16 @@ export const InventoryManager: React.FC = () => {
                                                             <div className="flex gap-2 mr-4">
                                                                 {!isStarted && (
                                                                     <button
-                                                                        onClick={() => {
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
                                                                             const targets = item.items.filter((i: any) => (i.quantityCurrent - (i.quantityStarted || 0)) > 0);
                                                                             if (targets.length === 0) return;
 
                                                                             const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
                                                                             handleBulkSurplusAction(targets, action);
                                                                         }}
+                                                                        type="button"
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                                                         title="Envoyer au Stock Virtuel"
                                                                     >
