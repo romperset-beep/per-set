@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { Department, BuyBackItem } from '../types';
 import { X, Upload, Camera, Euro, Tag, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
@@ -9,7 +10,8 @@ interface SellItemModalProps {
 }
 
 export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose }) => {
-    const { addBuyBackItem, user, currentDept } = useProject();
+    const { user, currentDept } = useProject();
+    const { addBuyBackItem } = useMarketplace();
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [originalPrice, setOriginalPrice] = useState('');
