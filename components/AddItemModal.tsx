@@ -3,6 +3,7 @@ import { Department, ConsumableItem, ItemStatus, SurplusAction } from '../types'
 import { X, Plus, Leaf, List, Search, Upload, Loader2, AlertCircle, ToggleLeft, ToggleRight, Euro } from 'lucide-react';
 import { analyzeOrderFile } from '../services/geminiService';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 
 // Popular items database for the scrolling banner
 const POPULAR_ITEMS: Record<string, string[]> = {
@@ -93,7 +94,8 @@ interface AddItemModalProps {
 }
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) => {
-    const { setProject, currentDept, project, addNotification, user, addItem, catalogItems, addToCatalog, getGlobalMarketplaceItems } = useProject();
+    const { setProject, currentDept, project, addNotification, user, addItem } = useProject();
+    const { catalogItems, addToCatalog, getGlobalMarketplaceItems } = useMarketplace();
 
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState(1);
