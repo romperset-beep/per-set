@@ -1284,12 +1284,13 @@ export const InventoryManager: React.FC = () => {
                                                                                 return;
                                                                             }
 
-                                                                            const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
+                                                                            // Always send to RELEASED_TO_PROD first so Production can decide (Sell, Donate, Store)
+                                                                            const action = SurplusAction.RELEASED_TO_PROD;
                                                                             setBulkSurplusConfirmation({ targets, action });
                                                                         }}
                                                                         type="button"
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                                                                        title="Envoyer au Stock Virtuel"
+                                                                        title="Envoyer vers Économie Circulaire"
                                                                     >
                                                                         <RefreshCw className="h-4 w-4" />
                                                                     </button>
@@ -1431,8 +1432,8 @@ export const InventoryManager: React.FC = () => {
                                     <RefreshCw className="h-6 w-6 text-blue-400" />
                                 </div>
                                 <h3 className="text-lg font-bold text-white">
-                                    {bulkSurplusConfirmation.action === SurplusAction.MARKETPLACE
-                                        ? "Envoyer au Stock Virtuel ?"
+                                    {user?.department === 'PRODUCTION'
+                                        ? "Envoyer vers Éco Circulaire (À Trier) ?"
                                         : "Libérer vers la Production ?"}
                                 </h3>
                                 <p className="text-slate-400 mt-2 text-sm">
