@@ -655,6 +655,29 @@ export const CircularEconomy: React.FC = () => {
                                                     <Undo2 className="h-3.5 w-3.5" />
                                                     Retirer
                                                 </button>
+
+                                                {/* Allow Moving from Marketplace to Donation/Buyback/Storage */}
+                                                <button
+                                                    onClick={() => handleBuyback(item)}
+                                                    className="p-1 px-2 text-xs bg-emerald-700/50 text-emerald-300 rounded border border-emerald-600/30 hover:bg-emerald-600/50 transition-colors"
+                                                    title="Revendre à ABS"
+                                                >
+                                                    <ShoppingBag className="h-3 w-3" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
+                                                    className="p-1 px-2 text-xs bg-purple-900/50 text-purple-300 rounded border border-purple-500/30 hover:bg-purple-800/50 transition-colors"
+                                                    title="Donner"
+                                                >
+                                                    <GraduationCap className="h-3 w-3" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setAction(item.id, SurplusAction.STORAGE)}
+                                                    className="p-1 px-2 text-xs bg-indigo-900/50 text-indigo-300 rounded border border-indigo-500/30 hover:bg-indigo-800/50 transition-colors"
+                                                    title="Stocker"
+                                                >
+                                                    <Archive className="h-3 w-3" />
+                                                </button>
                                             </>
                                         )}
                                     </div>
