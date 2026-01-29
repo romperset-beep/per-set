@@ -203,6 +203,32 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => unsubscribe();
   }, [project.id]);
 
+  // Sync Project Items (Subcollection)
+  useEffect(() => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    const itemsRef = collection(db, 'projects', projectId, 'items');
+    const unsubscribe = onSnapshot(itemsRef, (snapshot) => {
+      const newItems: ConsumableItem[] = [];
+      snapshot.forEach(doc => {
+        newItems.push({ id: doc.id, ...doc.data() } as ConsumableItem);
+      });
+
+      setProject(prev => {
+        // Simple equality check to avoid render loop
+        if (prev.items.length === newItems.length && JSON.stringify(prev.items) === JSON.stringify(newItems)) {
+          return prev;
+        }
+        return { ...prev, items: newItems };
+      });
+    }, (err) => {
+      console.error("[ProjectSync] Items Sync Error:", err);
+    });
+
+    return () => unsubscribe();
+  }, [project.id]);
+
   const updateProjectDetails = async (updates: Partial<Project>) => {
     try {
       const projectId = project.id;
