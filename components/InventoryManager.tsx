@@ -1419,49 +1419,50 @@ export const InventoryManager: React.FC = () => {
                     </div>
                 )
             }
-        </div >
-            
-            {/* Bulk Surplus Confirmation Modal */ }
-    {
-        bulkSurplusConfirmation && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
-                    <div className="text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
-                            <RefreshCw className="h-6 w-6 text-blue-400" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white">
-                            {bulkSurplusConfirmation.action === SurplusAction.MARKETPLACE
-                                ? "Envoyer au Stock Virtuel ?"
-                                : "Libérer vers la Production ?"}
-                        </h3>
-                        <p className="text-slate-400 mt-2 text-sm">
-                            Vous allez déplacer <strong>{bulkSurplusConfirmation.targets.length}</strong> articles.
-                            <br />Ils seront visibles dans l'onglet "Économie Circulaire".
-                        </p>
-                    </div>
 
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            onClick={() => setBulkSurplusConfirmation(null)}
-                            className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
-                        >
-                            Annuler
-                        </button>
-                        <button
-                            onClick={() => {
-                                executeBulkSurplusAction(bulkSurplusConfirmation.targets, bulkSurplusConfirmation.action);
-                                setBulkSurplusConfirmation(null);
-                            }}
-                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                        >
-                            Confirmer
-                        </button>
+
+            {/* Bulk Surplus Confirmation Modal */}
+            {
+                bulkSurplusConfirmation && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-cinema-800 rounded-xl shadow-2xl max-w-md w-full border border-cinema-600 p-6 space-y-6">
+                            <div className="text-center">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/30 mb-4 border border-blue-500/30">
+                                    <RefreshCw className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white">
+                                    {bulkSurplusConfirmation.action === SurplusAction.MARKETPLACE
+                                        ? "Envoyer au Stock Virtuel ?"
+                                        : "Libérer vers la Production ?"}
+                                </h3>
+                                <p className="text-slate-400 mt-2 text-sm">
+                                    Vous allez déplacer <strong>{bulkSurplusConfirmation.targets.length}</strong> articles.
+                                    <br />Ils seront visibles dans l'onglet "Économie Circulaire".
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setBulkSurplusConfirmation(null)}
+                                    className="flex-1 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-cinema-700 transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        executeBulkSurplusAction(bulkSurplusConfirmation.targets, bulkSurplusConfirmation.action);
+                                        setBulkSurplusConfirmation(null);
+                                    }}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        )
-    }
-            
+                )
+            }
+        </div >
+
     );
 };
