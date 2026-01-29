@@ -560,7 +560,7 @@ export const InventoryManager: React.FC = () => {
 
         let body = `Bonjour,\n\nVoici la liste des achats pour la production "${project.name}" (${project.productionCompany}).\n\nDate: ${date}\n\nArticles :\n`;
 
-        itemsToSend.forEach(item => {
+        (itemsToSend || []).forEach(item => {
             body += `- ${item.name} (${item.department}) : ${item.quantityInitial} ${item.unit}\n`;
         });
 
@@ -609,7 +609,7 @@ export const InventoryManager: React.FC = () => {
 
         const matches: any[] = [];
 
-        visibleRequests.forEach(neededItem => {
+        (visibleRequests || []).forEach(neededItem => {
             // Find in marketplace by Name (Case Insensitive)
             // AND ensure it's not our own item
             const marketMatches = marketplaceItems.filter(m =>
@@ -638,7 +638,7 @@ export const InventoryManager: React.FC = () => {
         let prod = 0;
         let regie = 0;
 
-        opportunities.forEach(op => {
+        (opportunities || []).forEach(op => {
             // Determine quantity needed (up to what's available)
             const quantityToBuy = Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent);
             const cost = (op.marketItem.price || 0) * quantityToBuy;
