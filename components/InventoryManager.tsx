@@ -332,6 +332,52 @@ export const InventoryManager: React.FC = () => {
         }
     };
 
+    // Robust Bulk Action Handler
+    const handleBulkSurplusAction = async (targets: any[], action: SurplusAction) => {
+        const message = action === SurplusAction.MARKETPLACE
+            ? `Envoyer ces ${targets.length} articles au Stock Virtuel ?`
+            : `Libérer ces ${targets.length} articles vers la Production ?`;
+
+        if (!window.confirm(message)) return;
+
+        const updates: any[] = [];
+        const updatePromises: Promise<void>[] = [];
+
+        targets.forEach(target => {
+            // Logic to determine changes (similar to setSurplusAction but prepared for batch)
+            const resalePrice = action === SurplusAction.MARKETPLACE ? (target.price || 0) : undefined;
+            const changes: any = { surplusAction: action };
+
+            if (resalePrice !== undefined) {
+                changes.price = resalePrice;
+                if (!target.originalPrice) changes.originalPrice = target.price ?? 0;
+            }
+
+            const updatedItem = { ...target, ...changes };
+            updates.push({ id: target.id, updatedItem, changes });
+        });
+
+        // 1. Single Atomic State Update
+        setProject(prev => {
+            // Create a map of updates for O(1) lookup or just iterate
+            const updateMap = new Map(updates.map(u => [u.id, u.updatedItem]));
+            return {
+                ...prev,
+                items: prev.items.map(i => updateMap.get(i.id) || i)
+            };
+        });
+
+        // 2. Parallel Firestore Updates
+        try {
+            await Promise.all(updates.map(u =>
+                updateItem ? updateItem({ id: u.id, ...u.changes }) : Promise.resolve()
+            ));
+        } catch (err: any) {
+            console.error("Bulk update error:", err);
+            alert("Erreur lors de la mise à jour globale. Certains articles n'ont peut-être pas été sauvegardés.");
+        }
+    };
+
     // New Helper: Prompt for Price
     const promptForMarketplacePrice = (item: any, action: SurplusAction, onConfirm?: (price: number) => void) => {
         const currentPrice = item.price || 0;
@@ -1232,24 +1278,11 @@ export const InventoryManager: React.FC = () => {
                                                                 {!isStarted && (
                                                                     <button
                                                                         onClick={() => {
-                                                                            // Get ALL items in the group
                                                                             const targets = item.items.filter((i: any) => i.quantityCurrent > 0);
                                                                             if (targets.length === 0) return;
 
-                                                                            // Bulk Confirmation
                                                                             const action = user?.department === 'PRODUCTION' ? SurplusAction.MARKETPLACE : SurplusAction.RELEASED_TO_PROD;
-                                                                            const message = action === SurplusAction.MARKETPLACE
-                                                                                ? `Envoyer ces ${targets.length} articles au Stock Virtuel ?`
-                                                                                : `Libérer ces ${targets.length} articles vers la Production ?`;
-
-                                                                            if (window.confirm(message)) {
-                                                                                targets.forEach((target: any) => {
-                                                                                    // Bypass individual checks and force move
-                                                                                    // Default price logic is handled inside setSurplusAction if undefined passed
-                                                                                    const resalePrice = action === SurplusAction.MARKETPLACE ? (target.price || 0) : undefined;
-                                                                                    setSurplusAction(target.id, action, resalePrice);
-                                                                                });
-                                                                            }
+                                                                            handleBulkSurplusAction(targets, action);
                                                                         }}
                                                                         className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                                                         title="Envoyer au Stock Virtuel"
