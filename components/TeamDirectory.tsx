@@ -4,7 +4,7 @@ import { Department } from '../types';
 import { Search, FileText, Download, Mail, Phone } from 'lucide-react';
 
 export const TeamDirectory: React.FC = () => {
-    const { userProfiles, currentDept } = useProject();
+    const { userProfiles, currentDept, project } = useProject();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
     const [selectedProfile, setSelectedProfile] = useState<any>(null); // Added state
@@ -12,6 +12,11 @@ export const TeamDirectory: React.FC = () => {
 
 
     const filteredProfiles = userProfiles.filter(profile => {
+        // 1. Project Filter
+        const p = profile as any;
+        const isMember = p.currentProjectId === project.id || p.projectHistory?.some((h: any) => h.id === project.id);
+        if (!isMember) return false;
+
         const matchesSearch = (
             (profile.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (profile.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

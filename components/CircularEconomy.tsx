@@ -1,9 +1,9 @@
 import React from 'react';
 import { SurplusAction, ItemStatus, Transaction } from '../types';
-import { Recycle, Heart, ShoppingBag, ArrowRight, Check, LayoutDashboard, RefreshCw, GraduationCap, Box, Undo2, Film, Edit2, Archive, DollarSign, Download, FileText, Mail, Printer } from 'lucide-react';
+import { Recycle, Heart, ShoppingBag, ArrowRight, Check, LayoutDashboard, RefreshCw, GraduationCap, Box, Undo2, Film, Edit2, Archive, DollarSign, Download, FileText, Mail, Printer, Gift } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { db } from '../services/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 export const CircularEconomy: React.FC = () => {
@@ -154,7 +154,110 @@ export const CircularEconomy: React.FC = () => {
         }
     };
 
-    // ... groupItemsForDisplay (unchanged) ...
+    // BULK ACTIONS LOGIC WITH REACT MODAL
+    const [bulkConfirmation, setBulkConfirmation] = React.useState<{
+        type: 'ACTION' | 'BUYBACK';
+        targetAction?: SurplusAction;
+        count: number;
+    } | null>(null);
+
+    const handleBulkAction = (targetAction: SurplusAction) => {
+        if (surplusItems.length === 0) return;
+        setBulkConfirmation({
+            type: 'ACTION',
+            targetAction,
+            count: surplusItems.length
+        });
+    };
+
+    const handleBulkBuyback = () => {
+        if (surplusItems.length === 0) return;
+        setBulkConfirmation({
+            type: 'BUYBACK',
+            count: surplusItems.length
+        });
+    };
+
+    const processBulkAction = async () => {
+        if (!bulkConfirmation) return;
+
+        try {
+            console.log("Processing Bulk Action:", bulkConfirmation.type);
+            const batch = writeBatch(db);
+            const projectId = project.id;
+
+            if (!projectId) throw new Error("ID Projet manquant");
+
+            if (bulkConfirmation.type === 'ACTION') {
+                const targetAction = bulkConfirmation.targetAction!;
+                let updateCount = 0;
+
+                surplusItems.forEach(item => {
+                    if (!item.id) return;
+                    const itemRef = doc(db, 'projects', projectId, 'items', item.id);
+                    const changes: any = { surplusAction: targetAction };
+
+                    if (targetAction === SurplusAction.MARKETPLACE) {
+                        const originalPrice = Number(item.originalPrice) || Number(item.price) || 0;
+                        const price = Number(item.price) || 0;
+                        if (!item.originalPrice) changes.originalPrice = originalPrice;
+                        if (item.price === undefined || item.price === null) changes.price = price;
+                    }
+
+                    batch.update(itemRef, changes);
+                    updateCount++;
+                });
+
+                if (updateCount > 0) {
+                    await batch.commit();
+                    addNotification(`${updateCount} articles déplacés avec succès.`, 'SUCCESS', 'PRODUCTION');
+                }
+
+            } else if (bulkConfirmation.type === 'BUYBACK') {
+                const itemsToSell = surplusItems.map(item => {
+                    const priceRaw = (Number(item.originalPrice) || Number(item.price) || 0);
+                    const safePrice = isNaN(priceRaw) ? 0 : priceRaw;
+                    const safeQty = Number(item.quantityCurrent) || 0;
+
+                    return {
+                        id: item.id,
+                        name: item.name || "Article Inconnu",
+                        quantity: safeQty,
+                        price: safePrice * 0.5
+                    };
+                });
+
+                const totalAmount = itemsToSell.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+                const transactionData: Omit<Transaction, 'id'> = {
+                    sellerId: project.id,
+                    sellerName: project.productionCompany || project.name || "Production",
+                    buyerId: 'ABETTERSET_PLATFORM',
+                    buyerName: 'A Better Set',
+                    items: itemsToSell,
+                    totalAmount: totalAmount,
+                    status: 'PENDING',
+                    createdAt: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'transactions'), transactionData);
+
+                surplusItems.forEach(item => {
+                    const itemRef = doc(db, 'projects', projectId, 'items', item.id);
+                    batch.update(itemRef, { surplusAction: SurplusAction.BUYBACK });
+                });
+
+                await batch.commit();
+                addNotification(`Vente en gros validée ! Transaction de ${totalAmount.toFixed(2)}€ créée.`, 'SUCCESS', 'PRODUCTION');
+            }
+
+        } catch (e: any) {
+            console.error("Bulk Item Error CRITICAL:", e);
+            alert("Erreur lors du traitement en masse : " + e.message);
+        } finally {
+            setBulkConfirmation(null);
+        }
+    };
 
     const groupItemsForDisplay = (items: typeof project.items) => {
         const grouped: any[] = [];
@@ -401,15 +504,53 @@ export const CircularEconomy: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {/* BULK CONFIRMATION MODAL */}
+            {bulkConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-cinema-900 border border-cinema-700 rounded-xl max-w-md w-full p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className={`p-3 rounded-full ${bulkConfirmation.type === 'BUYBACK' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                {bulkConfirmation.type === 'BUYBACK' ? <DollarSign className="h-6 w-6" /> : <RefreshCw className="h-6 w-6" />}
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Confirmer l'action</h3>
+                        </div>
+
+                        <p className="text-slate-300 mb-6">
+                            {bulkConfirmation.type === 'BUYBACK'
+                                ? `Voulez-vous vraiment revendre ${bulkConfirmation.count} articles à A Better Set ? Une transaction unique sera générée.`
+                                : `Voulez-vous vraiment déplacer ${bulkConfirmation.count} articles vers ${bulkConfirmation.targetAction} ?`
+                            }
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setBulkConfirmation(null)}
+                                className="px-4 py-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={processBulkAction}
+                                className={`px-4 py-2 rounded-lg font-bold text-white transition-colors ${bulkConfirmation.type === 'BUYBACK' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'
+                                    }`}
+                            >
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <header className="flex flex-col gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-white">{getTitle()}</h2>
                     <p className="text-slate-400 mt-1">{getSubtitle()}</p>
                 </div>
 
-                <div className="flex p-1 bg-cinema-800 w-fit rounded-lg border border-cinema-700">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
-
                         onClick={() => setView('overview')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'overview' ? 'bg-cinema-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
                     >
@@ -435,6 +576,49 @@ export const CircularEconomy: React.FC = () => {
                         <DollarSign className="h-4 w-4" /> Rachats ABS
                     </button>
                 </div>
+
+                {/* BULK ACTIONS (Visible only in Overview) */}
+                {view === 'overview' && surplusItems.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-3 bg-cinema-800 border border-cinema-700 rounded-xl animate-in fade-in slide-in-from-top-2">
+                        <span className="text-xs font-bold text-slate-500 uppercase flex items-center mr-2">Actions en masse :</span>
+
+                        <button
+                            type="button"
+                            onClick={() => handleBulkAction(SurplusAction.MARKETPLACE)}
+                            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-500/30 flex items-center gap-2 transition-colors"
+                        >
+                            <ShoppingBag className="h-3 w-3" />
+                            Tout Mettre en Vente
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleBulkBuyback()}
+                            className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-colors"
+                        >
+                            <DollarSign className="h-3 w-3" />
+                            Tout Revendre à ABS
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleBulkAction(SurplusAction.DONATION)}
+                            className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-purple-500/30 flex items-center gap-2 transition-colors"
+                        >
+                            <Gift className="h-3 w-3" />
+                            Tout Donner
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleBulkAction(SurplusAction.STORAGE)}
+                            className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-500/30 flex items-center gap-2 transition-colors"
+                        >
+                            <Archive className="h-3 w-3" />
+                            Tout Stocker
+                        </button>
+                    </div>
+                )}
 
                 {/* EXPORT ACTIONS */}
                 <div className="flex items-center gap-2">
@@ -986,4 +1170,3 @@ export const ViewSalesToABS = ({ items, project }: { items: any[], project: any 
         </div>
     );
 };
-

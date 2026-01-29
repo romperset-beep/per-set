@@ -35,6 +35,7 @@ export const TimesheetWidget: React.FC = () => {
     const [showCalculator, setShowCalculator] = useState(false); // Toggle for Calculator UI
 
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
+    const [debugSource, setDebugSource] = useState<string>(''); // Debug info for call time source
 
     // Dynamic Job List based on Convention
     const availableJobs = useMemo(() => {
@@ -73,16 +74,17 @@ export const TimesheetWidget: React.FC = () => {
 
         // 3. Synonym Matching
         const synonyms: Record<string, string[]> = {
-            'camera': ['image', 'photo', 'cadre', 'opv'],
-            'costume': ['habillage', 'wardrobe', 'costumes'],
-            'maquillage': ['hmc', 'makeup', 'make-up'],
-            'coiffure': ['hmc', 'coiff'],
-            'regie': ['general', 'transport', 'cantine'],
-            'mise en scene': ['realisation', 'real', 'assistant', 'mes'],
-            'lumiere': ['electro', 'elec', 'electricien'],
-            'machinerie': ['machino', 'grip', 'machiniste'],
-            'decoration': ['deco', 'art'],
-            'son': ['sound', 'audio', 'perchman']
+            'camera': ['image', 'photo', 'cadre', 'opv', 'cam'],
+            'costume': ['habillage', 'wardrobe', 'costumes', 'cost'],
+            'maquillage': ['hmc', 'makeup', 'make-up', 'mua'],
+            'coiffure': ['hmc', 'coiff', 'hair'],
+            'regie': ['general', 'transport', 'cantine', 'logistique', 'runner'],
+            'mise en scene': ['realisation', 'real', 'assistant', 'mes', 'cast'],
+            'lumiere': ['electro', 'elec', 'electricien', 'gaffer'],
+            'machinerie': ['machino', 'grip', 'machiniste', 'key grip'],
+            'decoration': ['deco', 'art', 'accessoiriste', 'ripper'],
+            'son': ['sound', 'audio', 'perchman', 'mixer'],
+            'production': ['prod', 'direction', 'admin', 'bureau', 'assistante prod']
         };
 
         const targetSynonyms = synonyms[target] || [];
@@ -103,16 +105,41 @@ export const TimesheetWidget: React.FC = () => {
         const sheet = callSheets.find(cs => cs.date === date);
         if (sheet) {
             // 1. Call Time
-            if (user?.department) {
-                const specificTime = getDepartmentTime(sheet, user.department);
-                if (specificTime) {
-                    setCallTime(specificTime);
-                } else if (sheet.callTime) {
-                    setCallTime(sheet.callTime);
-                }
+            // 1. Exact/Fuzzy match
+            const specificTime = getDepartmentTime(sheet, user.department);
+            if (specificTime) {
+                setCallTime(specificTime);
             } else if (sheet.callTime) {
-                setCallTime(sheet.callTime);
+                // Fallback to General Call Time
+                // SMART LOGIC: For Production/Regie, if Meal is BEFORE Call Time (Preparations), assume Meal IS the Call Time.
+                let finalCallTime = sheet.callTime;
+
+                if (sheet.cateringTime) {
+                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                    const isProdOrRegie = ['production', 'regie', 'direction', 'bureau'].some(d => normalize(user.department).includes(d));
+
+                    if (isProdOrRegie) {
+                        const parse = (t: string) => {
+                            const [h, m] = t.split(':').map(Number);
+                            return h + (m / 60);
+                        };
+                        const c = parse(sheet.callTime);
+                        const m = parse(sheet.cateringTime);
+
+                        // Calculate delay from Meal to Call (modulo 24h)
+                        // Ex: Meal 22h, Call 01h -> (1 - 22 + 24) % 24 = 3h gap.
+                        // If gap is small (e.g. < 5h), it means Meal is "Just Before" Call.
+                        const gap = (c - m + 24) % 24;
+
+                        if (gap > 0 && gap <= 5) {
+                            finalCallTime = sheet.cateringTime;
+                        }
+                    }
+                }
+
+                setCallTime(finalCallTime);
             }
+
 
             // 2. End Time
             if (sheet.endTime) {
@@ -1065,6 +1092,41 @@ export const TimesheetWidget: React.FC = () => {
                                             {formatHours(calculateHours(callTime, mealTime, endTime, hasShortenedMeal, isContinuousDay, breakDuration))}
                                         </span>
                                     </div>
+
+                                    {/* Inconsistent Meal Time Warning */}
+                                    {(() => {
+                                        if (!callTime || !endTime || !mealTime) return null;
+                                        const parse = (t: string) => {
+                                            const [h, m] = t.split(':').map(Number);
+                                            return h + m / 60;
+                                        };
+                                        let s = parse(callTime);
+                                        let e = parse(endTime);
+                                        const m = parse(mealTime);
+                                        if (e < s) e += 24;
+
+                                        // Check if meal (or meal+24h) is inside [start, end]
+                                        const inside = (m >= s && m <= e) || (m + 24 >= s && m + 24 <= e);
+
+                                        if (!inside) {
+                                            return (
+                                                <div className="col-span-full mt-2 bg-orange-900/20 px-4 py-2 rounded-lg border border-orange-700/50 flex items-start gap-3">
+                                                    <div className="p-1 bg-orange-500/20 rounded-full mt-0.5">
+                                                        <Utensils className="h-3 w-3 text-orange-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-orange-300">Attention : Heure de repas incohérente</p>
+                                                        <p className="text-[10px] text-orange-400/80 leading-snug">
+                                                            Le repas à <strong>{mealTime}</strong> semble être en dehors de vos horaires ({callTime} - {endTime}).
+                                                            <br />
+                                                            Vérifiez l'heure de <strong>Début</strong> (probablement <strong>{mealTime}</strong> ou avant ?)
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
 
                                     {/* Dynamic Night Hours Feedback */}
                                     {(() => {

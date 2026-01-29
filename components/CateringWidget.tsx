@@ -41,20 +41,27 @@ export const CateringWidget: React.FC = () => {
 
     // Merge User Profiles with Logs
     const tableData = useMemo(() => {
-        // 1. Existing Users
-        const userRows = userProfiles.map(profile => {
-            const log = dailyLogs.find(l => l.userId === profile.email); // Assume email is ID for now
-            return {
-                id: profile.email,
-                name: `${profile.firstName} ${profile.lastName}`,
-                department: profile.department,
-                diet: profile.dietaryHabits || 'Standard',
-                hasEaten: log?.hasEaten || false,
-                isVegetarian: log?.isVegetarian || (profile.dietaryHabits === 'Végétarien' || profile.dietaryHabits === 'Végétalien (Vegan)'), // Auto-check if profile says so
-                isManual: false,
-                role: profile.role
-            };
-        });
+        // 1. Existing Users (Filtered by Project)
+        const userRows = userProfiles
+            .filter(profile => {
+                const p = profile as any;
+                const isCurrent = p.currentProjectId === project.id;
+                const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
+                return isCurrent || isInHistory;
+            })
+            .map(profile => {
+                const log = dailyLogs.find(l => l.userId === profile.email); // Assume email is ID for now
+                return {
+                    id: profile.email,
+                    name: (profile.firstName && profile.lastName) ? `${profile.firstName} ${profile.lastName}` : ((profile as any).name || profile.email),
+                    department: profile.department,
+                    diet: profile.dietaryHabits || 'Standard',
+                    hasEaten: log?.hasEaten || false,
+                    isVegetarian: log?.isVegetarian || (profile.dietaryHabits === 'Végétarien' || profile.dietaryHabits === 'Végétalien (Vegan)'), // Auto-check if profile says so
+                    isManual: false,
+                    role: profile.role
+                };
+            });
 
         // 2. Manual Guests
         const manualRows = dailyLogs.filter(l => l.isManual).map(log => ({
