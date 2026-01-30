@@ -23,6 +23,7 @@ import {
 import { useProject } from '../context/ProjectContext'; // Restored
 import { useSocial } from '../context/SocialContext'; // Added
 import { useMarketplace } from '../context/MarketplaceContext'; // Added
+import { useIsMobile } from '../hooks/useIsMobile'; // Added
 
 interface SidebarProps {
   activeTab: string;
@@ -35,6 +36,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   const { currentDept, logout, leaveProject, unreadCount, user, t } = useProject();
   const { unreadSocialCount, markSocialAsRead } = useSocial(); // Added
   const { unreadMarketplaceCount, markMarketplaceAsRead } = useMarketplace(); // Added
+  const isMobile = useIsMobile();
+
 
   // Define Category Type
   type Category = {
@@ -87,6 +90,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   const filterItem = (item: any) => {
     // 1. Admin restricted (Top priority)
     if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
+
+    // 1.5 Mobile restrictions
+    // "revente inter-production, economie Circulaire , rapport rse +"
+    const mobileRestrictedItems = ['inter_marketplace', 'donations', 'report'];
+    if (isMobile && mobileRestrictedItems.includes(item.id)) {
+      return false;
+    }
+
 
     // 2. Production sees everything else
     if (currentDept === 'PRODUCTION') return true;
