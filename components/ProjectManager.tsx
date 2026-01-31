@@ -285,6 +285,32 @@ const SocialWidget = ({ onClick }: { onClick: () => void }) => {
     );
 };
 
+const MyListsTile = ({ onClick }: { onClick: () => void }) => {
+    const { getUserTemplates, user } = useProject();
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        const fetchCount = async () => {
+            if (getUserTemplates) {
+                const t = await getUserTemplates();
+                setCount(t.length);
+            }
+        };
+        fetchCount();
+    }, [getUserTemplates]);
+
+    return (
+        <button onClick={onClick} className={THEME_CLASSES.COMPTE}>
+            <div className="flex justify-between items-start">
+                <h3 className="text-lg font-semibold opacity-70">Mes Listes</h3>
+                <ClipboardList className="h-6 w-6 text-emerald-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-4xl font-bold mt-2 text-emerald-400">{count}</p>
+            <p className="text-xs text-slate-400 mt-1">Listes enregistrées</p>
+        </button>
+    );
+};
+
 
 interface ProjectManagerProps {
     activeTab: string;
@@ -300,7 +326,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     const allWidgets = [
         'orders', // Added
         'inventory', 'callsheets', 'timesheet', 'renforts', 'logistics',
-        'catering', 'energy', 'expenses', 'team', 'buyback', 'social'
+        'catering', 'energy', 'expenses', 'team', 'buyback', 'social',
+        'my-lists' // Added
     ];
 
     // Default order
@@ -361,7 +388,9 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             case 'team': return <TeamWidget onClick={() => setActiveTab('team')} />;
             case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
             case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
+            case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
             case 'social': return <SocialWidget onClick={() => setActiveTab('social')} />;
+            case 'my-lists': return <MyListsTile onClick={() => setActiveTab('my-lists')} />;
             default: return null;
         }
     };

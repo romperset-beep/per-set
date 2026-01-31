@@ -58,12 +58,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'orders', label: 'Gestion Commandes', icon: ClipboardList, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
         { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
-        { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
-        { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
         { id: 'energy', label: 'Énergie / Groupe', icon: Zap, allowedDepts: ['PRODUCTION', 'Lumière'] },
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
+      ]
+    },
+    {
+      title: 'Utile',
+      items: [
+        { id: 'renforts', label: 'Renforts', icon: Users, allowedDepts: 'ALL' },
+        { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
         { id: 'team', label: 'Bible Équipe Tournage', icon: Users },
         { id: 'inventory', label: 'Consommables', icon: Package },
+        { id: 'my-lists', label: 'Mes Listes & Stock', icon: ClipboardList },
+        { id: 'social', label: 'Mur Social', icon: MessageSquare },
       ]
     },
     {
@@ -80,8 +87,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Compte',
       items: [
         { id: 'profile', label: 'Mon Profil', icon: Settings },
-        { id: 'my-lists', label: 'Mes Listes & Stock', icon: ClipboardList },
-        { id: 'social', label: 'Mur Social', icon: MessageSquare },
         { id: 'admin', label: 'Administration', icon: ShieldCheck },
         { id: 'global-stats', label: 'Statistiques Globales', icon: BarChart2 },
       ]
