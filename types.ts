@@ -25,6 +25,20 @@ export interface Notification {
   itemId?: string;
 }
 
+export interface UserTemplate {
+  id: string;
+  userId: string;
+  name: string; // "Kit Bijoute", "Base Régie"
+  department: Department | 'PRODUCTION';
+  items: {
+    name: string;
+    quantity: number;
+    unit?: string;
+  }[];
+  type?: 'CONSUMABLE' | 'MATERIAL'; // Added to distinguish list types
+  createdAt: string;
+}
+
 export enum ItemStatus {
   NEW = 'Neuf',
   USED = 'Entamé',
@@ -228,13 +242,13 @@ export interface ExpenseLine {
   description: string;
   merchant: string;
   category: 'REPAS' | 'TRANSPORT' | 'HOTEL' | 'REGIE' | 'TECHNIQUE' | 'AUTRE';
-  
+
   // Amounts
   amountHT: number;
   vatRate: 0 | 5.5 | 10 | 20;
   vatAmount: number;
   amountTTC: number;
-  
+
   // Specifics
   isVatRecoverable: boolean;
   guestNames?: string; // For meals
@@ -244,7 +258,7 @@ export interface ExpenseLine {
 export interface ExpenseReport {
   id: string;
   date: string; // Submission Date (ISO)
-  
+
   // Mode
   mode?: 'SIMPLE' | 'ADVANCED'; // Default SIMPLE if undefined
 
@@ -252,18 +266,18 @@ export interface ExpenseReport {
   amountTTC: number;
   amountTVA: number;
   amountHT?: number;
-  
+
   // Simple Mode Fields
   merchantName?: string;
-  
+
   // Advanced Mode Fields
   lines?: ExpenseLine[];
 
   items?: string[]; // Deprecated: Kept for backward compatibility (list of item names)
-  
+
   status: ExpenseStatus;
   receiptUrl?: string; // Base64 or URL
-  receiptBase64?: string; 
+  receiptBase64?: string;
 
   // Context Data
   submittedBy: string; // User Name

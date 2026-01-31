@@ -3,6 +3,9 @@ import { Department, SurplusAction } from '../types';
 import { DailyDashboard } from './DailyDashboard';
 import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap, ClipboardList } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext'; // Added
+import { useSocial } from '../context/SocialContext'; // Added
+import { MyListsWidget } from './MyListsWidget';
 import { DndContext, closestCenter, TouchSensor, MouseSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -255,7 +258,7 @@ const TeamWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
-    const { buyBackItems } = useProject();
+    const { buyBackItems } = useMarketplace();
     return (
         <button onClick={onClick} className={THEME_CLASSES.PRODUCTION}>
             <div className="flex justify-between items-start">
@@ -269,7 +272,7 @@ const BuyBackWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const SocialWidget = ({ onClick }: { onClick: () => void }) => {
-    const { unreadSocialCount } = useProject();
+    const { unreadSocialCount } = useSocial();
     return (
         <button onClick={onClick} className={THEME_CLASSES.COMPTE}>
             <div className="flex justify-between items-start">
@@ -356,6 +359,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             case 'catering': return <CateringWidget onClick={() => setActiveTab('catering')} />;
             case 'expenses': return <ExpensesWidget onClick={() => setActiveTab('expenses')} />;
             case 'team': return <TeamWidget onClick={() => setActiveTab('team')} />;
+            case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
             case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
             case 'social': return <SocialWidget onClick={() => setActiveTab('social')} />;
             default: return null;

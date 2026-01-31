@@ -80,6 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
       title: 'Compte',
       items: [
         { id: 'profile', label: 'Mon Profil', icon: Settings },
+        { id: 'my-lists', label: 'Mes Listes & Stock', icon: ClipboardList },
         { id: 'social', label: 'Mur Social', icon: MessageSquare },
         { id: 'admin', label: 'Administration', icon: ShieldCheck },
         { id: 'global-stats', label: 'Statistiques Globales', icon: BarChart2 },
@@ -119,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     }
 
     // 5. All other items are visible to everyone (Universal)
-    // dashboard, profile, callsheets, timesheet, renforts, logistics, team, inventory, social, expenses, local_marketplace
+    // dashboard, profile, callsheets, timesheet, renforts, logistics, team, inventory, social, expenses, local_marketplace, my-lists
     return true;
   };
 

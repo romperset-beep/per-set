@@ -18,7 +18,8 @@ import {
   SurplusAction,
   CallSheet,
   CatalogItem,
-  LogisticsRequest // Added
+  LogisticsRequest, // Added
+  UserTemplate // Added
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db } from '../services/firebase';
@@ -97,6 +98,11 @@ interface ProjectContextType {
 
   userProfiles: UserProfile[];
   updateUserProfile: (profile: UserProfile) => void;
+
+  // Personal Templates
+  saveUserTemplate: (name: string, items: any[], type?: 'CONSUMABLE' | 'MATERIAL') => Promise<void>;
+  getUserTemplates: () => Promise<UserTemplate[]>;
+  deleteUserTemplate: (templateId: string) => Promise<void>;
 
   // Search
   searchProjects: (queryStr: string) => Promise<Project[]>;
@@ -514,8 +520,17 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteItem = async (itemId: string) => {
-    // Implementation for delete would go here
-    // await deleteDoc(doc(db, 'projects', 'demo-project', 'items', itemId));
+    try {
+      await deleteDoc(doc(db, 'projects', project.id, 'items', itemId));
+      setProject(prev => ({
+        ...prev,
+        items: prev.items.filter(i => i.id !== itemId)
+      }));
+      addNotification('Article supprimé', 'SUCCESS', currentDept as Department);
+    } catch (error: any) {
+      console.error("Error deleting item:", error);
+      addNotification("Erreur lors de la suppression", 'ERROR');
+    }
   };
 
 
@@ -992,6 +1007,40 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // --- User Templates ---
+  const saveUserTemplate = async (name: string, items: any[], type: 'CONSUMABLE' | 'MATERIAL' = 'CONSUMABLE') => {
+    if (!user?.id) throw new Error("Utilisateur non connecté");
+
+    const newTemplate: UserTemplate = {
+      id: `template_${Date.now()}`,
+      userId: user.id, // Fixed: Use user.id to match getUserTemplates query
+      name,
+      department: currentDept as any,
+      items: items.map(i => ({
+        name: i.name,
+        quantity: i.quantityCurrent || i.quantity || 0,
+        unit: i.unit || 'unités'
+      })),
+      type, // Added
+      createdAt: new Date().toISOString()
+    };
+
+    await setDoc(doc(db, 'user_templates', newTemplate.id), newTemplate);
+    addNotification(`Modèle "${name}" sauvegardé !`, 'SUCCESS', currentDept as any);
+  };
+
+  const getUserTemplates = async (): Promise<UserTemplate[]> => {
+    if (!user?.id) return [];
+    const q = query(collection(db, 'user_templates'), where('userId', '==', user.id));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as UserTemplate);
+  };
+
+  const deleteUserTemplate = async (templateId: string) => {
+    if (!user?.id) return;
+    await deleteDoc(doc(db, 'user_templates', templateId));
+    addNotification("Modèle supprimé.", 'INFO');
+  };
 
 
   // 2. Sync Social Posts
@@ -1196,6 +1245,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     debugStatus,
     lastLog,
     callSheets, // Exposed
+
+    // Templates
+    saveUserTemplate,
+    getUserTemplates,
+    deleteUserTemplate
   }), [
     project,
     currentDept,

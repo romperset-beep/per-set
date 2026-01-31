@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { InventoryManager } from './components/InventoryManager';
+import { MyListsWidget } from './components/MyListsWidget'; // Added
 import { CateringWidget } from './components/CateringWidget';
 import { TimesheetWidget } from './components/TimesheetWidget';
 import { RenfortsWidget } from './components/RenfortsWidget';
@@ -343,6 +344,8 @@ const AppContent: React.FC = () => {
         return <AdminDashboard />;
       case 'global-stats': // Added route
         return <SuperAdminStats />;
+      case 'my-lists': // Added route for Centralized Lists
+        return <MyListsWidget />;
 
       default:
         return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;

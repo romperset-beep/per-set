@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ItemStatus, SurplusAction, Department, Transaction } from '../types';
-import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft, ShoppingBag, Save } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { AddItemModal } from './AddItemModal';
@@ -8,10 +8,11 @@ import { ExpenseReportModal } from './ExpenseReportModal';
 import { ErrorBoundary } from './ErrorBoundary';
 import { db } from '../services/firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { TemplateManagerModal } from './TemplateManagerModal';
 
 
 export const InventoryManager: React.FC = () => {
-    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
+    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem, deleteItem } = useProject();
     const { getGlobalMarketplaceItems } = useMarketplace();
 
     // Form State
@@ -41,6 +42,17 @@ export const InventoryManager: React.FC = () => {
     // Expense Report State
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseItemName, setExpenseItemName] = useState<string>('');
+
+    // Templates State
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [templateMode, setTemplateMode] = useState<'MANAGE' | 'SAVE'>('MANAGE');
+    // For saving, we might want to select items, but for MVP "Save Template" saves the CURRENT VIEW of stock?
+    // User request: "enregistrer ses listes (consommables , materiel) qu'il garderait de projet en projet"
+    // Ideally, select items to save. 
+    // Implementation: "Sauvegarder l'inventaire actuel" (simple) or "Selectionner".
+    // Let's assume user builds a list in a project and wants to save it. 
+    // We'll pass the currently visible items (filtered by dept) as the source.
+
 
 
     // toggleExpenseSelection removed
@@ -98,6 +110,13 @@ export const InventoryManager: React.FC = () => {
                         items: []
                     };
                 }
+
+                // Price Persistence Logic: If agg lacks price but current item has it, update agg.
+                if ((!newItemsByName[key].price || newItemsByName[key].price === 0) && (item.price && item.price > 0)) {
+                    newItemsByName[key].price = item.price;
+                    newItemsByName[key].originalPrice = item.originalPrice || item.price;
+                }
+
                 newItemsByName[key].quantityCurrent += newQty;
                 newItemsByName[key].items.push(item);
             }
@@ -113,6 +132,13 @@ export const InventoryManager: React.FC = () => {
                         items: []
                     };
                 }
+
+                // Price Persistence Logic for Started items
+                if ((!startedItemsByName[key].price || startedItemsByName[key].price === 0) && (item.price && item.price > 0)) {
+                    startedItemsByName[key].price = item.price;
+                    startedItemsByName[key].originalPrice = item.originalPrice || item.price;
+                }
+
                 startedItemsByName[key].quantityCurrent += startedQty;
                 startedItemsByName[key].quantityStarted += startedQty;
                 startedItemsByName[key].items.push(item);
@@ -791,6 +817,33 @@ export const InventoryManager: React.FC = () => {
                             </button>
                         </div>
                     )}
+
+                    <button
+                        onClick={() => {
+                            setTemplateMode('MANAGE');
+                            setIsTemplateModalOpen(true);
+                        }}
+                        className="bg-cinema-700 hover:bg-cinema-600 text-slate-200 px-4 py-2 rounded-lg font-medium border border-cinema-600 flex items-center gap-2 transition-all"
+                    >
+                        <GraduationCap className="h-5 w-5" />
+                        Mes Listes
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (project.items.length === 0) {
+                                alert("L'inventaire est vide.");
+                                return;
+                            }
+                            setTemplateMode('SAVE');
+                            setIsTemplateModalOpen(true);
+                        }}
+                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:text-white hover:bg-cinema-700 transition-all"
+                        title="Sauvegarder cet inventaire comme modèle"
+                    >
+                        <Save className="h-5 w-5" />
+                    </button>
+
                     <button
                         onClick={() => setIsAddModalOpen(true)}
                         className="bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-eco-900/20 flex items-center gap-2 transition-all hover:scale-105"
@@ -813,7 +866,6 @@ export const InventoryManager: React.FC = () => {
             <ExpenseReportModal
                 isOpen={isExpenseModalOpen}
                 onClose={() => setIsExpenseModalOpen(false)}
-                prefillItemNames={project.items.filter(i => selectedForExpense.has(i.id)).map(i => i.name)}
             />
 
             {/* SECTION 0: VALIDATION QUEUE (PRODUCTION ONLY) */}
@@ -1278,9 +1330,29 @@ export const InventoryManager: React.FC = () => {
                                                         </button>
 
                                                         <button
-                                                            onClick={() => setSurplusConfirmation({ item, action: SurplusAction.DONATION })}
-                                                            className="p-2 text-slate-400 hover:text-white hover:bg-cinema-700/50 rounded-lg transition-colors"
-                                                            title="Gérer le surplus"
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                // Handle Delete
+                                                                if (!deleteItem) return;
+
+                                                                // Warn if mixed (Neuf/Started) or multiple items
+                                                                const isMixed = item.items.length > 1; // Assuming groupings imply potentially different states if checking raw docs
+                                                                // Check if any sub-item has BOTH started and curr? No, sub-items are raw docs.
+                                                                // If I delete this row, I delete all contributing docs?
+                                                                // For safety: Delete ALL docs associated with this line.
+                                                                // Message:
+                                                                const msg = isMixed
+                                                                    ? `Cet article regroupe ${item.items.length} éléments (potentiellement un mélange Neuf/Entamé si mal séparé, ou plusieurs entrées).\nTout supprimer ?`
+                                                                    : "Supprimer définitivement cet article ?";
+
+                                                                if (window.confirm(msg)) {
+                                                                    for (const subItem of item.items) {
+                                                                        await deleteItem(subItem.id);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                            title="Supprimer l'article"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </button>
@@ -1414,7 +1486,14 @@ export const InventoryManager: React.FC = () => {
                     </div>
                 )
             }
-        </div >
+            {/* Template Modal */}
+            <TemplateManagerModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                mode={templateMode}
+                currentStockToSave={project.items.filter(i => i.department === currentDept || currentDept === 'PRODUCTION')}
+            />
 
+        </div>
     );
 };
