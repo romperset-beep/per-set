@@ -40,7 +40,7 @@ import {
   where // Added
 } from 'firebase/firestore';
 
-import { getStorage, ref, deleteObject, uploadString, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, deleteObject, uploadString, getDownloadURL, uploadBytes } from 'firebase/storage';
 
 // Auth State Listener and Functions moved inside Provider
 
@@ -91,7 +91,7 @@ interface ProjectContextType {
 
   // Expense Reports
   expenseReports: ExpenseReport[];
-  addExpenseReport: (report: ExpenseReport) => void;
+  addExpenseReport: (report: ExpenseReport & { receiptFile?: File }) => Promise<void>;
   updateExpenseReportStatus: (id: string, status: ExpenseStatus) => void;
   deleteExpenseReport: (reportId: string, receiptUrl?: string) => Promise<void>; // Added
 
@@ -890,20 +890,49 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => unsubscribe();
   }, [project.id]);
 
-  const addExpenseReport = async (report: ExpenseReport) => {
+  const addExpenseReport = async (report: ExpenseReport & { receiptFile?: File }) => {
     try {
       const projectId = project.id;
-      // Use setDoc with the ID we generated in the modal, or use addDoc and let firestore generate it?
-      // The modal generates an ID. Let's stick to it or overwrite it.
-      // Better: Use `setDoc` with `report.id` if we want to keep that ID, OR `addDoc` and update the ID.
-      // Since modal generates an ID, let's use it as document ID for consistency.
       const reportRef = doc(db, 'projects', projectId, 'expenses', report.id);
-      const { id, ...reportData } = report;
 
-      // Sanitize undefined
-      const sanitizedData = Object.fromEntries(
-        Object.entries(reportData).map(([k, v]) => [k, v === undefined ? null : v])
-      );
+      // Extract file and properties
+      const { id, receiptFile, ...reportData } = report;
+      let finalReportData: any = { ...reportData };
+
+      // Handle File Upload if present
+      if (receiptFile) {
+        try {
+          const storage = getStorage();
+          const storageRef = ref(storage, `projects/${projectId}/expenses/${report.id}/${receiptFile.name}`);
+          const snapshot = await uploadBytes(storageRef, receiptFile);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+
+          finalReportData.receiptUrl = downloadURL;
+          console.log("Receipt uploaded to:", downloadURL);
+        } catch (uploadErr) {
+          console.error("Error uploading receipt:", uploadErr);
+          // Continue saving report even if image upload fails, but warn user via notification?
+          // For now, just log.
+        }
+      }
+
+      // Recursive Deep Sanitization Helper
+      const sanitizeData = (data: any): any => {
+        if (data === undefined) return null;
+        if (data === null) return null;
+        if (data instanceof Date) return data; // Preserve Dates
+        if (Array.isArray(data)) return data.map(sanitizeData);
+        if (typeof data === 'object') {
+          const sanitized: any = {};
+          for (const [key, value] of Object.entries(data)) {
+            sanitized[key] = sanitizeData(value);
+          }
+          return sanitized;
+        }
+        return data;
+      };
+
+      const sanitizedData = sanitizeData(finalReportData);
 
       await setDoc(reportRef, sanitizedData);
 
@@ -915,6 +944,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: any) {
       console.error("Error adding expense report:", err);
       setError(`Erreur sauvegarde note de frais: ${err.message}`);
+      throw err;
     }
   };
 

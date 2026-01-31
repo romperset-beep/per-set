@@ -1,497 +1,649 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, Camera, Loader2, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { ExpenseLine } from '../types';
+import { X, Upload, Plus, Trash2, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
-import { ExpenseReport, ExpenseStatus } from '../types';
-import { storage } from '../services/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { compressImage, applyScanEffect } from '../utils/imageUtils';
 
 interface ExpenseReportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    prefillItemName?: string;
-    prefillItemNames?: string[];
 }
 
-export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, onClose, prefillItemName, prefillItemNames }) => {
-    const { user, addExpenseReport } = useProject();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, onClose }) => {
+    const { addExpenseReport, user, project } = useProject();
 
-    const [step, setStep] = useState<'UPLOAD' | 'REVIEW' | 'SUCCESS'>('UPLOAD');
-    const [file, setFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [newItem, setNewItem] = useState('');
+    // Mode Toggle
+    const [mode, setMode] = useState<'SIMPLE' | 'ADVANCED'>('SIMPLE');
 
-    // Form Data
-    const [formData, setFormData] = useState<Partial<ExpenseReport>>({
-        amountTTC: 0,
-        amountTVA: 0,
-        amountHT: 0,
-        merchantName: '',
+    // Common State
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [receipt, setReceipt] = useState<File | null>(null);
+    const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+
+    // SIMPLE Mode State
+    const [merchant, setMerchant] = useState('');
+    const [description, setDescription] = useState('');
+    const [amountTTC, setAmountTTC] = useState('');
+    const [amountTVA, setAmountTVA] = useState('');
+    const [category, setCategory] = useState<'REPAS' | 'TRANSPORT' | 'HOTEL' | 'REGIE' | 'TECHNIQUE' | 'AUTRE'>('AUTRE');
+
+    // ADVANCED Mode State
+    const [lines, setLines] = useState<ExpenseLine[]>([]);
+
+    // New Line State (Advanced)
+    const [newLine, setNewLine] = useState<Partial<ExpenseLine>>({
         date: new Date().toISOString().split('T')[0],
-        items: prefillItemNames || (prefillItemName ? [prefillItemName] : [])
+        vatRate: 20,
+        isVatRecoverable: true,
+        category: 'AUTRE'
     });
 
-    const handleAddItem = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newItem.trim()) {
-            setFormData(prev => ({
-                ...prev,
-                items: [...(prev.items || []), newItem.trim()]
-            }));
-            setNewItem('');
-        }
-    };
-
-    const handleRemoveItem = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            items: prev.items?.filter((_, i) => i !== index)
-        }));
-    };
-
-    // Reset state when modal opens
-    React.useEffect(() => {
+    // Reset when opening
+    useEffect(() => {
         if (isOpen) {
-            setStep('UPLOAD');
-            setFile(null);
-            setPreviewUrl(null);
-            setError(null);
-            setIsAnalyzing(false);
-            setNewItem('');
-            setFormData({
-                amountTTC: 0,
-                amountTVA: 0,
-                merchantName: '',
-                date: new Date().toISOString().split('T')[0],
-                items: prefillItemNames || (prefillItemName ? [prefillItemName] : [])
-            });
+            setMode('SIMPLE');
+            setLines([]);
+            setReceipt(null);
+            setReceiptPreview(null);
+            setMerchant('');
+            setAmountTTC('');
+            setAmountTVA('');
+            setDescription('');
         }
-    }, [isOpen, prefillItemName]);
+    }, [isOpen]);
 
-    // Auto-calculation Handlers
-    const handleAmountChange = (field: 'amountHT' | 'amountTTC' | 'amountTVA', value: string) => {
-        const numValue = parseFloat(value);
-        if (isNaN(numValue)) {
-            setFormData(prev => ({ ...prev, [field]: 0 }));
-            return;
-        }
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setReceipt(file);
 
-        setFormData(prev => {
-            const newData = { ...prev, [field]: numValue };
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setReceiptPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
 
-            // Logic: Prioritize TTC (Total) as anchor if it exists.
-            const ttc = field === 'amountTTC' ? numValue : (prev.amountTTC || 0);
-            const ht = field === 'amountHT' ? numValue : (prev.amountHT || 0);
-            const tva = field === 'amountTVA' ? numValue : (prev.amountTVA || 0);
+            // AI Analysis
+            setIsScanning(true);
+            try {
+                const { data } = await analyzeReceipt(file);
+                if (data) {
+                    console.log("AI Analysis Result:", data);
 
-            if (field === 'amountHT') {
-                if (ttc > 0) {
-                    // If Total exists, HT change implies TVA adjustment (breaking down total)
-                    newData.amountTVA = Number(Math.max(0, ttc - numValue).toFixed(2));
-                } else if (tva > 0) {
-                    // If only Tax exists, HT change implies building Total
-                    newData.amountTTC = Number((numValue + tva).toFixed(2));
+                    // Auto-fill Global Date if present
+                    if (data.date) setDate(data.date);
+
+                    // SIMPLE MODE Auto-fill
+                    if (data.merchantName) setMerchant(data.merchantName);
+                    if (data.amountTTC) setAmountTTC(data.amountTTC.toString());
+                    if (data.amountTVA) setAmountTVA(data.amountTVA.toString());
+
+                    // Suggest category based on merchant (Simple heuristic)
+                    if (data.merchantName) { // Simple logic to be improved
+                        const m = data.merchantName.toLowerCase();
+                        if (m.includes('sncf') || m.includes('uber') || m.includes('taxi') || m.includes('train')) setCategory('TRANSPORT');
+                        else if (m.includes('restaurant') || m.includes('cafe') || m.includes('mcdo') || m.includes('burger')) setCategory('REPAS');
+                        else if (m.includes('hotel') || m.includes('ibis') || m.includes('bnb')) setCategory('HOTEL');
+                    }
+
+                    // ADVANCED MODE: Pre-fill ONLY (Reverted from Auto-Add)
+                    // User wants to see data in inputs. We handle "forgot to add" in handleSubmit.
+                    if (data.amountTTC && data.merchantName) {
+                        const amountVal = data.amountTTC;
+                        const htVal = data.amountHT || (amountVal / 1.2);
+
+                        setNewLine(prev => ({
+                            ...prev,
+                            date: data.date || prev.date,
+                            merchant: data.merchantName,
+                            category: 'AUTRE',
+                            description: data.items ? data.items.join(', ') : 'Ticket',
+                            amountTTC: amountVal,
+                            // VAT logic is recalculated in addLine/Submit, pre-fill basic:
+                            vatRate: 20
+                        }));
+                    } else {
+                        // Fallback
+                        setNewLine(prev => ({
+                            ...prev,
+                            date: data.date || prev.date,
+                            merchant: data.merchantName || prev.merchant,
+                            amountTTC: data.amountTTC || prev.amountTTC,
+                            description: data.items ? data.items.join(', ') : ''
+                        }));
+                    }
                 }
-            } else if (field === 'amountTVA') {
-                if (ttc > 0) {
-                    // If Total exists, TVA change implies HT adjustment
-                    newData.amountHT = Number(Math.max(0, ttc - numValue).toFixed(2));
-                } else if (ht > 0) {
-                    // If only Base exists, TVA change implies building Total
-                    newData.amountTTC = Number((ht + numValue).toFixed(2));
-                }
-            } else if (field === 'amountTTC') {
-                // If changing Total, adjust components if one exists
-                if (ht > 0) {
-                    newData.amountTVA = Number(Math.max(0, numValue - ht).toFixed(2));
-                } else if (tva > 0) {
-                    newData.amountHT = Number(Math.max(0, numValue - tva).toFixed(2));
-                }
+            } catch (err) {
+                console.error("AI Analysis failed:", err);
+            } finally {
+                setIsScanning(false);
             }
+        }
+    };
 
-            return newData;
+    const addLine = () => {
+        if (!newLine.description || !newLine.amountTTC) return;
+
+        const amountTTCVal = parseFloat(newLine.amountTTC as unknown as string);
+        const vatRate = newLine.vatRate || 0;
+        const amountHT = amountTTCVal / (1 + vatRate / 100);
+        const vatAmount = amountTTCVal - amountHT;
+
+        const line: ExpenseLine = {
+            id: crypto.randomUUID(),
+            date: newLine.date || date,
+            description: newLine.description,
+            merchant: newLine.merchant || merchant || 'Divers',
+            category: newLine.category || 'AUTRE',
+            amountTTC: amountTTCVal,
+            amountHT,
+            vatRate,
+            vatAmount,
+            isVatRecoverable: newLine.isVatRecoverable ?? true,
+            guestNames: newLine.guestNames,
+            destination: newLine.destination
+        };
+
+        setLines([...lines, line]);
+
+        // Reset line form but keep some logical defaults
+        setNewLine({
+            date: newLine.date,
+            merchant: newLine.merchant,
+            vatRate: 20,
+            isVatRecoverable: true,
+            category: 'AUTRE',
+            description: '',
+            amountTTC: 0,
+            guestNames: '',
+            destination: ''
         });
     };
 
-    if (!isOpen) return null;
-
-    // Helper for mobile/locale robust number parsing
-    const safeParseFloat = (val: any): number => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-            // Replace comma with dot, remove currency symbols or spaces if any
-            const cleaned = val.replace(',', '.').replace(/[^0-9.-]/g, '');
-            const parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? 0 : parsed;
-        }
-        return 0;
+    const removeLine = (id: string) => {
+        setLines(lines.filter(l => l.id !== id));
     };
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (!selectedFile) return;
-
-        // 1. Immediate UI Feedback: Show Preview & Form
-        setPreviewUrl(URL.createObjectURL(selectedFile));
-        setStep('REVIEW');
-        setError(null);
-        setIsAnalyzing(true);
-
-        // 2. Background Processing (Compression only)
-        setTimeout(async () => {
-            try {
-                let fileToProcess = selectedFile;
-
-                if (selectedFile.type.startsWith('image/')) {
-                    try {
-                        // 1. Compress
-                        fileToProcess = await compressImage(selectedFile);
-                        // 2. Scan Effect (Grayscale + Contrast)
-                        fileToProcess = await applyScanEffect(fileToProcess);
-                    } catch (e) {
-                        console.warn("Image processing failed, using original", e);
-                    }
-                }
-
-                setFile(fileToProcess);
-                // Update preview with processed image
-                setPreviewUrl(URL.createObjectURL(fileToProcess));
-
-                if (fileToProcess.size > 1024 * 1024) {
-                    // Non-blocking warning for user awareness
-                    // setError("Image volumineuse, compression appliquée.");
-                }
-
-                // AI Analysis
-                const result = await analyzeReceipt(fileToProcess);
-                if (result.data) {
-                    console.log("AI Analysis Result:", result.data);
-
-                    let ht = safeParseFloat(result.data.amountHT);
-                    let ttc = safeParseFloat(result.data.amountTTC);
-                    let tva = safeParseFloat(result.data.amountTVA);
-
-                    // Auto-complete missing values if 2 are present
-                    if (ttc > 0 && tva > 0 && ht === 0) ht = parseFloat((ttc - tva).toFixed(2));
-                    else if (ht > 0 && tva > 0 && ttc === 0) ttc = parseFloat((ht + tva).toFixed(2));
-                    else if (ttc > 0 && ht > 0 && tva === 0) tva = parseFloat((ttc - ht).toFixed(2));
-
-                    setFormData(prev => ({
-                        ...prev,
-                        merchantName: result.data.merchantName || prev.merchantName,
-                        date: result.data.date || prev.date,
-                        amountTTC: ttc,
-                        amountTVA: tva,
-                        amountHT: ht,
-                        items: result.data.items?.length > 0 ? result.data.items : prev.items
-                    }));
-                }
-
-            } catch (err) {
-                console.error("File processing failed:", err);
-                setError("Erreur lors du traitement de l'image.");
-            } finally {
-                setIsAnalyzing(false);
-            }
-        }, 500);
-    };
+    // Calculated Totals for Advanced Mode
+    const totalAdvancedTTC = lines.reduce((sum, l) => sum + l.amountTTC, 0);
+    const totalAdvancedTVA = lines.reduce((sum, l) => sum + l.vatAmount, 0);
+    const totalAdvancedHT = lines.reduce((sum, l) => sum + l.amountHT, 0);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
 
-        setIsUploading(true);
         try {
-            let finalReceiptUrl = previewUrl;
+            let finalAmountTTC = 0;
+            let finalAmountTVA = 0;
+            let finalAmountHT = 0;
+            let finalLines: ExpenseLine[] = [];
 
-            let receiptBase64: string | undefined;
+            if (mode === 'SIMPLE') {
+                finalAmountTTC = parseFloat(amountTTC);
+                finalAmountTVA = amountTVA ? parseFloat(amountTVA) : 0;
+                finalAmountHT = finalAmountTTC - finalAmountTVA;
 
-            // Upload file to Firebase Storage if it's a new file (not just a preview URL)
-            if (file) {
-                // 1. Convert to Base64 for PDF embedding (Bypass CORS)
-                receiptBase64 = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(file);
-                });
+                // Create a single virtual line for backward compatibility / structure uniformity
+                finalLines = [{
+                    id: crypto.randomUUID(),
+                    date: date,
+                    description: description || category,
+                    merchant: merchant,
+                    category: category,
+                    amountTTC: finalAmountTTC,
+                    amountHT: finalAmountHT,
+                    vatRate: 20, // Default assumption or 0, doesn't matter much for simple mode logic
+                    vatAmount: finalAmountTVA,
+                    isVatRecoverable: true,
+                }];
 
-                // 2. Upload to Storage (Backup/Link)
-                const fileExt = file.name.split('.').pop();
-                const fileName = `expense_${Date.now()}.${fileExt}`;
-                const storagePath = `production/${user.productionName}/${user.name}/expenses/${fileName}`;
-                const storageRef = ref(storage, storagePath);
+            } else {
+                // Check for "Implicit Submission" (Unsaved line in form)
+                let effectiveLines = [...lines];
+                if (newLine.amountTTC && (newLine.description || newLine.merchant)) {
+                    // Logic similar to addLine, but allowing submission of the pending line
+                    const amountTTCVal = parseFloat(newLine.amountTTC as unknown as string);
+                    if (!isNaN(amountTTCVal) && amountTTCVal > 0) {
+                        const vatRate = newLine.vatRate || 0;
+                        const amountHT = amountTTCVal / (1 + vatRate / 100);
+                        const vatAmount = amountTTCVal - amountHT;
 
-                await uploadBytes(storageRef, file);
-                finalReceiptUrl = await getDownloadURL(storageRef);
-            } else if (previewUrl?.startsWith('blob:')) {
-                // Critical Safety Check: Never save a blob URL
-                throw new Error("L'image n'a pas été traitée correctement. Veuillez réessayer.");
+                        const implicitLine: ExpenseLine = {
+                            id: crypto.randomUUID(),
+                            date: newLine.date || date,
+                            description: newLine.description || 'Dépense',
+                            merchant: newLine.merchant || merchant || 'Divers',
+                            category: newLine.category || 'AUTRE',
+                            amountTTC: amountTTCVal,
+                            amountHT,
+                            vatRate,
+                            vatAmount,
+                            isVatRecoverable: newLine.isVatRecoverable ?? true,
+                            guestNames: newLine.guestNames,
+                            destination: newLine.destination
+                        };
+                        effectiveLines.push(implicitLine);
+                    }
+                }
+
+                if (effectiveLines.length === 0) {
+                    alert("Veuillez ajouter au moins une ligne de dépense.");
+                    return;
+                }
+
+                // Recalculate totals with implicit line
+                finalAmountTTC = effectiveLines.reduce((sum, l) => sum + l.amountTTC, 0);
+                finalAmountTVA = effectiveLines.reduce((sum, l) => sum + l.vatAmount, 0);
+                finalAmountHT = effectiveLines.reduce((sum, l) => sum + l.amountHT, 0);
+                finalLines = effectiveLines;
             }
 
-            const newReport: ExpenseReport = {
-                id: Math.random().toString(36).substr(2, 9),
-                date: formData.date || new Date().toISOString(),
-                amountTTC: Number(formData.amountTTC),
-                amountTVA: Number(formData.amountTVA),
-                amountHT: Number(formData.amountHT),
-                merchantName: formData.merchantName,
-                items: formData.items || [],
-                status: ExpenseStatus.PENDING,
-                receiptUrl: finalReceiptUrl || undefined,
-                receiptBase64: receiptBase64, // Store local base64
+            // Determine Display Merchant Name
+            let displayMerchant = merchant;
+            if (mode === 'ADVANCED') {
+                const uniqueMerchants = Array.from(new Set(finalLines.map(l => l.merchant.trim())));
+                if (uniqueMerchants.length === 1) {
+                    displayMerchant = uniqueMerchants[0];
+                } else {
+                    displayMerchant = 'Multiples';
+                }
+            }
+
+            await addExpenseReport({
+                id: crypto.randomUUID(),
+                date: date,
+                amountTTC: finalAmountTTC,
+                amountTVA: finalAmountTVA,
+                amountHT: finalAmountHT,
+                merchantName: displayMerchant,
+                items: finalLines.map(l => l.description), // Backward compat
+                lines: finalLines,
+                mode: mode,
+                status: 'En attente' as any, // Cast to any to avoid enum issues or import ExpenseStatus checking
                 submittedBy: user.name,
                 department: user.department,
-                productionName: user.productionName,
-                filmTitle: user.filmTitle
-            };
+                productionName: project?.productionCompany || 'N/A', // Context specific
+                filmTitle: project?.filmTitle || 'N/A', // Context specific
+                receiptFile: receipt || undefined
+            });
 
-            addExpenseReport(newReport);
-            setStep('SUCCESS');
-            setTimeout(() => {
-                onClose();
-                setStep('UPLOAD');
-                setFile(null);
-                setPreviewUrl(null);
-                setIsUploading(false);
-            }, 2000);
-        } catch (error) {
-            console.error("Error uploading expense receipt:", error);
-            setError("Erreur lors de l'envoi du justificatif.");
-            setIsUploading(false);
+            onClose();
+        } catch (error: any) {
+            console.error("Error submitting expense report:", error);
+            alert(`Erreur: ${error.message}`);
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-cinema-800 border border-cinema-700 rounded-xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    if (!isOpen) return null;
 
-                {/* Header */}
-                <div className="p-4 border-b border-cinema-700 flex justify-between items-center bg-cinema-900/50">
-                    <h3 className="text-xl font-bold text-white">Créer une Note de Frais</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white">
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-cinema-800 rounded-xl border border-cinema-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="p-6 border-b border-cinema-700 flex justify-between items-center sticky top-0 bg-cinema-800 z-10">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">Nouvelle Note de Frais</h2>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-slate-400 text-sm">Mode :</span>
+                            <div className="flex bg-cinema-900 rounded-lg p-1 border border-cinema-700">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode('SIMPLE')}
+                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${mode === 'SIMPLE' ? 'bg-cinema-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Simple
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${mode === 'ADVANCED' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    Détaillé
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white p-2 hover:bg-cinema-700 rounded-full transition-colors">
                         <X className="h-6 w-6" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-                    {step === 'UPLOAD' && (
-                        <div className="text-center space-y-6 py-8">
-                            <div className="w-20 h-20 bg-cinema-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Camera className="h-10 w-10 text-slate-400" />
-                            </div>
-                            <p className="text-slate-300">
-                                Prenez en photo votre ticket de caisse ou importez une image/PDF.
-                                <br />
-                                <span className="text-sm text-slate-500">Image compressée et jointe au dossier. Saisie des montants manuelle.</span>
-                            </p>
-
+                    {/* --- GLOBAL FIELDS --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Date Globale</label>
                             <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
+                                type="date"
+                                required
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-eco-500"
                             />
-
-                            <div className="flex gap-4 justify-center">
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="bg-eco-600 hover:bg-eco-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105"
-                                >
-                                    <Upload className="h-5 w-5" />
-                                    Importer un ticket
-                                </button>
-                            </div>
                         </div>
-                    )}
-
-
-
-                    {step === 'REVIEW' && (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {error && (
-                                <div className="bg-red-900/20 border border-red-500/50 text-red-400 p-3 rounded-lg flex items-center gap-2 text-sm">
-                                    <AlertCircle className="h-4 w-4" />
-                                    {error}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Justificatif (Scan/Photo)</label>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    id="receipt-upload"
+                                />
+                                <label
+                                    htmlFor="receipt-upload"
+                                    className="w-full flex items-center gap-2 bg-cinema-900 border border-cinema-700 border-dashed rounded-lg px-4 py-2 text-slate-300 cursor-pointer hover:bg-cinema-800 hover:border-eco-500 transition-colors"
+                                >
+                                    <Upload className="h-4 w-4" />
+                                    {receipt ? (
+                                        <span className="truncate max-w-[200px]">{receipt.name}</span>
+                                    ) : (
+                                        "Cliquez pour ajouter un fichier..."
+                                    )}
+                                </label>
+                            </div>
+                            {isScanning && (
+                                <div className="mt-2 text-xs text-indigo-400 flex items-center gap-2 animate-pulse">
+                                    <Sparkles className="h-3 w-3" />
+                                    <span>Analyse IA en cours...</span>
                                 </div>
                             )}
+                        </div>
+                    </div>
 
-                            <div className="flex gap-4">
-                                {previewUrl && (
-                                    <div className="w-1/3 relative">
-                                        {file?.type === 'application/pdf' ? (
-                                            <div className="w-full h-32 bg-cinema-900 border border-cinema-600 rounded-lg flex flex-col items-center justify-center text-slate-400">
-                                                <FileText className="h-10 w-10 mb-2" />
-                                                <span className="text-xs">Document PDF</span>
-                                            </div>
-                                        ) : (
-                                            <img src={previewUrl} alt="Ticket" className="w-full h-32 object-cover rounded-lg border border-cinema-600" />
-                                        )}
-                                        {isAnalyzing && (
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg backdrop-blur-sm">
-                                                <Loader2 className="h-8 w-8 text-eco-400 animate-spin" />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                <div className="flex-1 space-y-3">
-                                    <div>
-                                        <div className="flex justify-between">
-                                            <label className="block text-xs text-slate-400 mb-1">Commerçant</label>
-                                            {isAnalyzing && <span className="text-xs text-eco-400 animate-pulse">Analyse IA...</span>}
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={formData.merchantName}
-                                            onChange={e => setFormData({ ...formData, merchantName: e.target.value })}
-                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:border-eco-500 outline-none"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Date</label>
-                                        <input
-                                            type="date"
-                                            value={formData.date}
-                                            onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:border-eco-500 outline-none"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
+                    {/* --- SIMPLE MODE FORM --- */}
+                    {mode === 'SIMPLE' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Montant HT (€)</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Commerçant / Enseigne</label>
                                     <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.amountHT || ''}
-                                        onChange={(e) => handleAmountChange('amountHT', e.target.value)}
-                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white outline-none focus:border-eco-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Montant TTC (€)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.amountTTC || ''}
-                                        onChange={(e) => handleAmountChange('amountTTC', e.target.value)}
-                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white font-bold text-lg focus:border-eco-500 outline-none"
+                                        type="text"
                                         required
+                                        placeholder="Ex: SNCF, Restaurant..."
+                                        value={merchant}
+                                        onChange={(e) => setMerchant(e.target.value)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-eco-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Dont TVA (€)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.amountTVA || ''}
-                                        onChange={(e) => handleAmountChange('amountTVA', e.target.value)}
-                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:border-eco-500 outline-none"
-                                    />
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Catégorie</label>
+                                    <select
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value as any)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-eco-500"
+                                    >
+                                        <option value="AUTRE">Autre</option>
+                                        <option value="REPAS">Repas</option>
+                                        <option value="TRANSPORT">Transport</option>
+                                        <option value="HOTEL">Hébergement</option>
+                                        <option value="REGIE">Régie</option>
+                                        <option value="TECHNIQUE">Matériel Technique</option>
+                                    </select>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs text-slate-400 mb-1">Articles</label>
-                                <div className="bg-cinema-900 border border-cinema-700 rounded-lg p-3 min-h-[60px] space-y-3">
-                                    {/* Input Area */}
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={newItem}
-                                            onChange={(e) => setNewItem(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault(); // Prevent form submit
-                                                    handleAddItem(e);
-                                                }
-                                            }}
-                                            placeholder="Ajouter un article..."
-                                            className="flex-1 bg-cinema-800 border border-cinema-700 rounded px-2 py-1.5 text-sm text-white focus:border-eco-500 outline-none"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={handleAddItem}
-                                            disabled={!newItem.trim()}
-                                            className="bg-cinema-700 hover:bg-cinema-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
-                                        >
-                                            Ajouter
-                                        </button>
-                                    </div>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Description (Optionnel)</label>
+                                <input
+                                    type="text"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Détails supplémentaires..."
+                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-eco-500"
+                                />
+                            </div>
 
-                                    {/* Items List */}
-                                    {formData.items?.length === 0 ? (
-                                        <span className="text-slate-500 italic text-sm block text-center py-2">Aucun article listé</span>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.items?.map((item, idx) => (
-                                                <span key={idx} className="bg-cinema-700 text-slate-200 text-xs px-2 py-1 rounded-full border border-cinema-600 flex items-center gap-2 group">
-                                                    {item}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveItem(idx)}
-                                                        className="text-slate-400 hover:text-red-400"
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-white mb-1">Montant TTC (€)</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        step="0.01"
+                                        min="0"
+                                        value={amountTTC}
+                                        onChange={(e) => setAmountTTC(e.target.value)}
+                                        className="w-full bg-cinema-700/50 border border-cinema-600 rounded-lg px-4 py-2 text-white font-bold text-lg focus:outline-none focus:border-eco-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Dont TVA (€) (Optionnel)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={amountTVA}
+                                        onChange={(e) => setAmountTVA(e.target.value)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-eco-500"
+                                    />
                                 </div>
                             </div>
-
-                            <div className="flex gap-3 mt-4">
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white py-3 rounded-xl font-bold transition-colors"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isUploading || isAnalyzing}
-                                    className={`flex-1 py-3 rounded-xl font-bold transition-colors ${isUploading || isAnalyzing ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-eco-600 hover:bg-eco-500 text-white'}`}
-                                >
-                                    {isUploading ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Envoi...
-                                        </span>
-                                    ) : isAnalyzing ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Analyse...
-                                        </span>
-                                    ) : (
-                                        "Valider"
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    )}
-
-                    {step === 'SUCCESS' && (
-                        <div className="text-center py-12 space-y-4 animate-in zoom-in duration-300">
-                            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-500">
-                                <CheckCircle2 className="h-8 w-8" />
-                            </div>
-                            <h4 className="text-2xl font-bold text-white">Note de frais créée !</h4>
-                            <p className="text-slate-400">Votre demande a été envoyée pour validation.</p>
                         </div>
                     )}
 
-                </div>
+                    {/* --- ADVANCED MODE FORM --- */}
+                    {mode === 'ADVANCED' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-300">
+
+                            {/* Warning / Info */}
+                            <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-lg flex gap-3 text-sm text-indigo-200">
+                                <AlertCircle className="h-5 w-5 shrink-0 text-indigo-400" />
+                                <div>
+                                    Ce mode permet de saisir le détail de chaque ligne TVA par TVA, d'indiquer les convives pour les repas, etc.
+                                    Le montant total de la note sera calculé automatiquement.
+                                </div>
+                            </div>
+
+                            {/* Add Line Form */}
+                            <div className="bg-cinema-900/50 p-4 rounded-lg border border-cinema-700 space-y-4">
+                                <h3 className="tex-sm font-bold text-slate-300 uppercase tracking-wider">Ajouter une ligne</h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-slate-500 block mb-1">Date</label>
+                                        <input
+                                            type="date"
+                                            className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white"
+                                            value={newLine.date}
+                                            onChange={e => setNewLine({ ...newLine, date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="text-xs text-slate-500 block mb-1">Commerçant</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white"
+                                            value={newLine.merchant || ''}
+                                            onChange={e => setNewLine({ ...newLine, merchant: e.target.value })}
+                                            placeholder="Enseigne..."
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <label className="text-xs text-slate-500 block mb-1">Description / Objet</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white"
+                                            value={newLine.description || ''}
+                                            onChange={e => setNewLine({ ...newLine, description: e.target.value })}
+                                            placeholder="Quoi ?"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-slate-500 block mb-1">Catégorie</label>
+                                        <select
+                                            className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white"
+                                            value={newLine.category}
+                                            onChange={e => setNewLine({ ...newLine, category: e.target.value as any })}
+                                        >
+                                            <option value="AUTRE">Autre</option>
+                                            <option value="REPAS">Repas</option>
+                                            <option value="TRANSPORT">Transport</option>
+                                            <option value="HOTEL">Hôtel</option>
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-white font-bold block mb-1">TTC (€)</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="w-full bg-cinema-700 border border-indigo-500/50 rounded p-1.5 text-sm text-white font-bold"
+                                            value={newLine.amountTTC || ''}
+                                            onChange={e => setNewLine({ ...newLine, amountTTC: parseFloat(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-slate-500 block mb-1">Taux TVA</label>
+                                        <select
+                                            className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white"
+                                            value={newLine.vatRate}
+                                            onChange={e => setNewLine({ ...newLine, vatRate: parseFloat(e.target.value) as any })}
+                                        >
+                                            <option value="20">20%</option>
+                                            <option value="10">10%</option>
+                                            <option value="5.5">5.5%</option>
+                                            <option value="0">0%</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Conditional fields based on Category */}
+                                    {newLine.category === 'REPAS' ? (
+                                        <div className="md:col-span-6">
+                                            <label className="text-xs text-slate-500 block mb-1">Convives (Prénom NOM)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white placeholder-slate-600"
+                                                value={newLine.guestNames || ''}
+                                                onChange={e => setNewLine({ ...newLine, guestNames: e.target.value })}
+                                                placeholder="Ex: Romain PERSET, John DOE..."
+                                            />
+                                        </div>
+                                    ) : newLine.category === 'TRANSPORT' ? (
+                                        <div className="md:col-span-6">
+                                            <label className="text-xs text-slate-500 block mb-1">Destination / Trajet</label>
+                                            <input
+                                                type="text"
+                                                className="w-full bg-cinema-800 border border-cinema-600 rounded p-1.5 text-sm text-white placeholder-slate-600"
+                                                value={newLine.destination || ''}
+                                                onChange={e => setNewLine({ ...newLine, destination: e.target.value })}
+                                                placeholder="Ex: Gare -> Studio"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="md:col-span-6"></div>
+                                    )}
+
+                                    <div className="md:col-span-2 flex items-center gap-2 pb-2">
+                                        <input
+                                            type="checkbox"
+                                            id="vat-recoverable"
+                                            checked={newLine.isVatRecoverable}
+                                            onChange={e => setNewLine({ ...newLine, isVatRecoverable: e.target.checked })}
+                                            className="w-4 h-4 rounded bg-cinema-800 border-cinema-600 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-cinema-900"
+                                        />
+                                        <label htmlFor="vat-recoverable" className="text-xs text-slate-300 cursor-pointer">TVA Récup.</label>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <button
+                                            type="button"
+                                            onClick={addLine}
+                                            disabled={!newLine.amountTTC || !newLine.description}
+                                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-1.5 rounded flex items-center justify-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Ajouter
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Lines Table */}
+                            {lines.length > 0 && (
+                                <div className="rounded-lg border border-cinema-700 overflow-hidden">
+                                    <table className="w-full text-sm text-left text-slate-400">
+                                        <thead className="bg-cinema-900 text-xs uppercase font-medium">
+                                            <tr>
+                                                <th className="px-3 py-2">Date</th>
+                                                <th className="px-3 py-2">Objet</th>
+                                                <th className="px-3 py-2 text-right">TTC</th>
+                                                <th className="px-3 py-2 text-right">TVA</th>
+                                                <th className="px-3 py-2 text-center">Récup.</th>
+                                                <th className="px-3 py-2 w-10"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-cinema-700 bg-cinema-800/30">
+                                            {lines.map((line) => (
+                                                <tr key={line.id} className="hover:bg-cinema-700/30">
+                                                    <td className="px-3 py-2 whitespace-nowrap">{new Date(line.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</td>
+                                                    <td className="px-3 py-2">
+                                                        <div className="text-white font-medium">{line.merchant}</div>
+                                                        <div className="text-xs text-slate-500">{line.description}</div>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right font-bold text-white">{line.amountTTC.toFixed(2)} €</td>
+                                                    <td className="px-3 py-2 text-right">
+                                                        <div>{line.vatAmount.toFixed(2)} €</div>
+                                                        <div className="text-[10px] text-slate-600">{line.vatRate}%</div>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {line.isVatRecoverable ? (
+                                                            <span className="text-green-500">Oui</span>
+                                                        ) : (
+                                                            <span className="text-red-500">Non</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeLine(line.id)}
+                                                            className="text-slate-500 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="bg-cinema-900/80 font-bold text-white border-t border-cinema-700">
+                                            <tr>
+                                                <td colSpan={2} className="px-3 py-2 text-right text-slate-400">TOTAL</td>
+                                                <td className="px-3 py-2 text-right text-indigo-400">{totalAdvancedTTC.toFixed(2)} €</td>
+                                                <td className="px-3 py-2 text-right text-slate-400">{totalAdvancedTVA.toFixed(2)} €</td>
+                                                <td colSpan={2}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            )}
+
+                        </div>
+                    )}
+
+
+                    {/* Actions */}
+                    <div className="flex justify-end pt-4 border-t border-cinema-700">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-slate-400 hover:text-white px-4 py-2 mr-2 transition-colors"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            className="bg-eco-600 hover:bg-eco-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-eco-900/20 transition-all hover:scale-105"
+                        >
+                            Soumettre la note ({mode === 'SIMPLE' ? (amountTTC || '0') : totalAdvancedTTC.toFixed(2)} €)
+                        </button>
+                    </div>
+
+                </form>
             </div>
         </div>
     );

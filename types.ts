@@ -221,17 +221,49 @@ export enum ExpenseStatus {
   REJECTED = 'Refusé'
 }
 
-export interface ExpenseReport {
+
+export interface ExpenseLine {
   id: string;
   date: string; // ISO Date
+  description: string;
+  merchant: string;
+  category: 'REPAS' | 'TRANSPORT' | 'HOTEL' | 'REGIE' | 'TECHNIQUE' | 'AUTRE';
+  
+  // Amounts
+  amountHT: number;
+  vatRate: 0 | 5.5 | 10 | 20;
+  vatAmount: number;
+  amountTTC: number;
+  
+  // Specifics
+  isVatRecoverable: boolean;
+  guestNames?: string; // For meals
+  destination?: string; // For transport
+}
+
+export interface ExpenseReport {
+  id: string;
+  date: string; // Submission Date (ISO)
+  
+  // Mode
+  mode?: 'SIMPLE' | 'ADVANCED'; // Default SIMPLE if undefined
+
+  // Amounts (Calculated or Manual in Simple Mode)
   amountTTC: number;
   amountTVA: number;
   amountHT?: number;
+  
+  // Simple Mode Fields
   merchantName?: string;
-  items: string[]; // List of item names or IDs
+  
+  // Advanced Mode Fields
+  lines?: ExpenseLine[];
+
+  items?: string[]; // Deprecated: Kept for backward compatibility (list of item names)
+  
   status: ExpenseStatus;
   receiptUrl?: string; // Base64 or URL
-  receiptBase64?: string; // Store small images directly for PDF export
+  receiptBase64?: string; 
 
   // Context Data
   submittedBy: string; // User Name

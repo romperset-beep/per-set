@@ -106,28 +106,49 @@ export const ExpenseReports: React.FC = () => {
                     {/* Quick View Button (Eye) */}
                     {report.receiptUrl && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); setPreviewImage(report.receiptUrl || null); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (report.receiptUrl?.toLowerCase().includes('.pdf')) {
+                                    window.open(report.receiptUrl, '_blank');
+                                } else {
+                                    setPreviewImage(report.receiptUrl || null);
+                                }
+                            }}
                             className="bg-cinema-700 hover:bg-cinema-600 text-slate-300 p-1 rounded-full transition-colors ml-2"
                             title="Voir le justificatif"
                         >
-                            <User className="h-0 w-0 hidden" /> {/* Dummy to keep import used if needed, but better to use Eye */}
-                            <Users className="h-0 w-0 hidden" />
-                            {/* We need Eye icon import, let's use a standard svg or existing icon if possible. "User" was mistakenly used? No, waiting for lucide import update. */}
-                            {/* Using Receipt icon as placeholder or Eye if imported. Let's use Receipt for now or add Eye to imports. */}
-                            {/* Actually, I will add 'Eye' to imports in the next step. For now using inline SVG or existing */}
                             <Receipt className="h-3 w-3" />
                         </button>
                     )}
                 </div>
 
-                {report.items.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {report.items.map((item, idx) => (
-                            <span key={idx} className="text-[10px] text-slate-400 bg-cinema-900/50 px-2 py-1 rounded border border-cinema-700/50">
-                                {item}
-                            </span>
-                        ))}
+                {report.mode === 'ADVANCED' && report.lines && report.lines.length > 0 ? (
+                    <div className="mt-2 space-y-1">
+                        <div className="text-[10px] text-indigo-300 font-medium mb-1">
+                            {report.lines.length} ligne{report.lines.length > 1 ? 's' : ''} détaillée{report.lines.length > 1 ? 's' : ''} :
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {report.lines.slice(0, 3).map((line, idx) => (
+                                <span key={idx} className="text-[10px] text-slate-400 bg-cinema-900/50 px-2 py-1 rounded border border-cinema-700/50 flex items-center gap-1">
+                                    <span className="text-white">{line.merchant}</span>
+                                    <span className="opacity-50">- {line.amountTTC.toFixed(0)}€</span>
+                                </span>
+                            ))}
+                            {report.lines.length > 3 && (
+                                <span className="text-[10px] text-slate-500 px-1 py-1">+{report.lines.length - 3} autres...</span>
+                            )}
+                        </div>
                     </div>
+                ) : (
+                    report.items && report.items.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {report.items.map((item, idx) => (
+                                <span key={idx} className="text-[10px] text-slate-400 bg-cinema-900/50 px-2 py-1 rounded border border-cinema-700/50">
+                                    {item}
+                                </span>
+                            ))}
+                        </div>
+                    )
                 )}
             </div>
 
@@ -144,12 +165,23 @@ export const ExpenseReports: React.FC = () => {
                     {/* Quick View (Eye) - Clean Button */}
                     {report.receiptUrl && (
                         <button
-                            onClick={(e) => { e.stopPropagation(); setPreviewImage(report.receiptUrl || null); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (report.receiptUrl?.toLowerCase().includes('.pdf')) {
+                                    window.open(report.receiptUrl, '_blank');
+                                } else {
+                                    setPreviewImage(report.receiptUrl || null);
+                                }
+                            }}
                             className="p-1.5 text-slate-400 hover:text-blue-400 transition-colors"
                             title="Aperçu rapide"
                         >
-                            {/* Eye Icon SVG directly to avoid import issues for now */}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                            {/* Eye Icon or FileText for PDF */}
+                            {report.receiptUrl?.toLowerCase().includes('.pdf') ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                            )}
                         </button>
                     )}
 

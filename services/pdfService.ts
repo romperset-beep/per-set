@@ -23,43 +23,148 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
     doc.text(`Production: ${report.productionName}`, 20, 52);
     doc.text(`Film: ${report.filmTitle}`, 20, 58);
 
-    // -- Details --
     doc.line(20, 65, pageWidth - 20, 65);
 
-    doc.setFontSize(14);
-    doc.text('Détails de la dépense', 20, 75);
+    let yPos = 80;
 
-    doc.setFontSize(11);
-    doc.text(`Commerçant: ${report.merchantName || 'Non spécifié'}`, 20, 85);
+    // --- ADVANCED MODE (Table View) ---
+    if (report.mode === 'ADVANCED' && report.lines && report.lines.length > 0) {
 
-    doc.text('Articles:', 20, 95);
-    let yPos = 102;
-    report.items.forEach(item => {
-        doc.text(`- ${item}`, 25, yPos);
-        yPos += 6;
-    });
+        // Table Header
+        doc.setFillColor(230, 230, 230);
+        doc.rect(15, yPos - 8, pageWidth - 30, 10, 'F');
 
-    // -- Amounts --
-    const amountY = Math.max(yPos + 10, 130);
-    doc.setFillColor(240, 240, 240); // Light gray
-    doc.rect(pageWidth - 80, amountY, 60, 30, 'F');
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text('Date', 15, yPos);
+        doc.text('Nature / Convives', 35, yPos);
+        doc.text('TVA', 135, yPos, { align: 'right' });
+        doc.text('Récup.', 150, yPos, { align: 'center' });
+        doc.text('TTC', pageWidth - 15, yPos, { align: 'right' });
+
+        yPos += 10;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+
+        // Lines
+        report.lines.forEach(line => {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            const dateStr = new Date(line.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+
+            // Complex Description Construction
+            let desc = `${line.merchant}`;
+            if (line.description) desc += ` - ${line.description}`;
+            if (line.guestNames) desc += ` (Invités: ${line.guestNames})`;
+            if (line.destination) desc += ` (Trajet: ${line.destination})`;
+
+            // Split long text (Wider column: 90 width)
+            const splitDesc = doc.splitTextToSize(desc, 95);
+
+            doc.text(dateStr, 15, yPos);
+            doc.text(splitDesc, 35, yPos);
+
+            // Amounts
+            doc.text(`${line.vatAmount.toFixed(2)} (${line.vatRate}%)`, 135, yPos, { align: 'right' });
+            doc.text(line.isVatRecoverable ? 'Oui' : 'Non', 150, yPos, { align: 'center' });
+            doc.text(`${line.amountTTC.toFixed(2)} €`, pageWidth - 15, yPos, { align: 'right' });
+
+            yPos += (splitDesc.length * 5) + 4; // Dynamic Row Height
+        });
+
+        yPos += 5;
+        doc.line(20, yPos, pageWidth - 20, yPos);
+        yPos += 10;
+
+        // Breakdown Block
+        // Check page break for Breakdown Block
+        if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+        }
+
+        // Breakdown Block
+        const breakdownY = yPos;
+        doc.setFillColor(245, 245, 245);
+        doc.rect(pageWidth - 100, breakdownY, 80, 45, 'F');
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text('Récapitulatif TVA', pageWidth - 95, breakdownY + 8);
+        doc.setFont("helvetica", "normal");
+
+        const rates = [20, 10, 5.5, 0];
+        let offY = 16;
+        rates.forEach(rate => {
+            const sumBase = report.lines!.filter(l => l.vatRate === rate).reduce((acc, l) => acc + l.amountHT, 0);
+            const sumVat = report.lines!.filter(l => l.vatRate === rate).reduce((acc, l) => acc + l.vatAmount, 0);
+            if (sumBase > 0 || sumVat > 0) {
+                doc.text(`TVA ${rate}%: Base ${sumBase.toFixed(2)}€ | Taxe ${sumVat.toFixed(2)}€`, pageWidth - 95, breakdownY + offY);
+                offY += 6;
+            }
+        });
+
+        // Push yPos below the breakdown block so Totals don't overlap
+        yPos += 55;
+
+    }
+    // --- SIMPLE MODE (Legacy View) ---
+    else {
+        doc.setFontSize(14);
+        doc.text('Détails de la dépense', 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(11);
+        doc.text(`Commerçant: ${report.merchantName || 'Non spécifié'}`, 20, yPos);
+        yPos += 10;
+
+        doc.text('Description:', 20, yPos);
+        yPos += 7;
+
+        // Items or Description
+        const items = report.items || [];
+        items.forEach(item => {
+            doc.text(`- ${item}`, 25, yPos);
+            yPos += 6;
+        });
+
+        // Simple Amounts Box matching original style
+        yPos = Math.max(yPos + 10, 140);
+    }
+
+    // --- TOTALS (Common) ---
+    const finalY = Math.max(yPos + 20, 160);
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TOTAL TTC: ${report.amountTTC.toFixed(2)} €`, pageWidth - 20, finalY, { align: 'right' });
 
     doc.setFontSize(10);
-    doc.text('Montant HT:', pageWidth - 75, amountY + 8);
-    doc.text(`${(report.amountHT || 0).toFixed(2)} €`, pageWidth - 25, amountY + 8, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Dont TVA: ${report.amountTVA.toFixed(2)} €`, pageWidth - 20, finalY + 6, { align: 'right' });
+    if (report.amountHT) {
+        doc.text(`Hors Taxe: ${report.amountHT.toFixed(2)} €`, pageWidth - 20, finalY + 12, { align: 'right' });
+    }
 
-    doc.text('TVA:', pageWidth - 75, amountY + 16);
-    doc.text(`${report.amountTVA.toFixed(2)} €`, pageWidth - 25, amountY + 16, { align: 'right' });
+    // -- Signatures --
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    const sigY = 250;
 
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text('Total TTC:', pageWidth - 75, amountY + 26);
-    doc.text(`${report.amountTTC.toFixed(2)} €`, pageWidth - 25, amountY + 26, { align: 'right' });
+    doc.text('Signature du Salarié :', 40, sigY);
+    doc.rect(40, sigY + 5, 60, 20); // Box for employee
+
+    doc.text('Validation Production :', 120, sigY);
+    doc.rect(120, sigY + 5, 60, 20); // Box for production
 
     // -- Footer --
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text('Document généré via A Better Set', pageWidth / 2, 280, { align: 'center' });
+    doc.setTextColor(150);
+    doc.text('Document généré via A Better Set - Certifié conforme à l\'original', pageWidth / 2, 285, { align: 'center' });
 
     // -- Receipt Link & Image --
     if (report.receiptUrl) {
@@ -67,7 +172,7 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
         doc.setFontSize(10);
         doc.setTextColor(0, 0, 255);
         const linkText = 'Cliquez ici pour voir le justificatif original (Navigateur)';
-        doc.textWithLink(linkText, 20, amountY + 40, { url: report.receiptUrl });
+        doc.textWithLink(linkText, 20, finalY + 30, { url: report.receiptUrl });
 
         try {
             // 2. Embed Image on Page 2
@@ -96,11 +201,20 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
             }
 
             if (base64data) {
-                const imgProps = doc.getImageProperties(base64data);
-                const pdfWidth = doc.internal.pageSize.getWidth() - 40;
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                // DETECT PDF (Mime Type or Header)
+                if (base64data.startsWith('data:application/pdf')) {
+                    doc.setFontSize(10);
+                    doc.setTextColor(100);
+                    doc.text("Le justificatif est au format PDF.", 20, 40);
+                    doc.text("Veuillez cliquer sur le lien ci-dessus pour le consulter.", 20, 46);
+                } else {
+                    // It's an image
+                    const imgProps = doc.getImageProperties(base64data);
+                    const pdfWidth = doc.internal.pageSize.getWidth() - 40;
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-                doc.addImage(base64data, 'JPEG', 20, 40, pdfWidth, pdfHeight);
+                    doc.addImage(base64data, 'JPEG', 20, 40, pdfWidth, pdfHeight);
+                }
             }
 
         } catch (e) {
@@ -111,7 +225,7 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
         }
     }
 
-    doc.save(`Frais_${report.date.split('T')[0]}_${report.merchantName?.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+    doc.save(`Frais_${report.date.split('T')[0]}_${report.merchantName?.replace(/[^a-z0-9]/gi, '_') || 'Multi'}.pdf`);
 };
 
 export const generateSummaryPDF = async (reports: ExpenseReport[], userName: string, department: string) => {
