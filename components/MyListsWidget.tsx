@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { UserTemplate, Department } from '../types';
 import { TemplateManagerModal } from './TemplateManagerModal'; // Reuse existing logic where possible, or refactor
-import { Package, Truck, Trash2, Edit, Plus, Copy, FileText, CheckCircle2 } from 'lucide-react';
+import { Package, Truck, Trash2, Edit, Plus, Copy, FileText, CheckCircle2, Upload, ShoppingCart } from 'lucide-react';
 
 export const MyListsWidget: React.FC = () => {
     const { getUserTemplates, user, deleteUserTemplate, project } = useProject();
@@ -27,9 +27,17 @@ export const MyListsWidget: React.FC = () => {
         (t.type === activeTab || (!t.type && activeTab === 'CONSUMABLE')) // Default to consumable if undefined
     );
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Supprimer cette liste ?')) {
+    const handleDelete = async (id: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        if (!window.confirm('Supprimer cette liste ?')) return;
+
+        try {
+            // console.log("Deleting template:", id);
             await deleteUserTemplate(id);
+            setAllTemplates(prev => prev.filter(t => t.id !== id));
+        } catch (error: any) {
+            console.error("Error deleting template", error);
+            alert(`Erreur: ${error.message || "Impossible de supprimer"}`);
         }
     };
 
@@ -37,6 +45,139 @@ export const MyListsWidget: React.FC = () => {
         const text = t.items.map(i => `- ${i.quantity} x ${i.name}`).join('\n');
         navigator.clipboard.writeText(text);
         alert('Liste copiée dans le presse-papier !');
+    };
+
+    // File import functionality
+    const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            let items: any[] = [];
+
+            if (extension === 'csv') {
+                items = await parseCSV(file);
+            } else if (extension === 'json') {
+                items = await parseJSON(file);
+            } else if (extension === 'txt') {
+                items = await parseTXT(file);
+            } else {
+                alert('Format non supporté. Utilisez CSV, JSON ou TXT.');
+                return;
+            }
+
+            if (items.length === 0) {
+                alert('Aucun article trouvé dans le fichier.');
+                return;
+            }
+
+            // Open modal with imported items
+            setCreationType(activeTab);
+            setSelectedTemplate({
+                id: '',
+                name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
+                items: items,
+                type: activeTab,
+                department: 'CAMERA' as Department,
+                userId: user?.email || '',
+                createdAt: new Date().toISOString()
+            });
+            setIsEditModalOpen(true);
+        } catch (error: any) {
+            console.error('Import error:', error);
+            alert(`Erreur d'import: ${error.message}`);
+        }
+
+        // Reset input
+        event.target.value = '';
+    };
+
+    const parseCSV = async (file: File): Promise<any[]> => {
+        const text = await file.text();
+        const lines = text.split('\n').filter(l => l.trim());
+
+        // Skip header if it looks like a header
+        const startIndex = lines[0].toLowerCase().includes('nom') || lines[0].toLowerCase().includes('name') ? 1 : 0;
+
+        return lines.slice(startIndex).map(line => {
+            const parts = line.split(',').map(p => p.trim());
+            return {
+                name: parts[0] || 'Item',
+                quantity: parseInt(parts[1]) || 1,
+                category: parts[2] || '',
+                department: (parts[3] || 'CAMERA') as Department
+            };
+        }).filter(item => item.name && item.name !== 'Item');
+    };
+
+    const parseJSON = async (file: File): Promise<any[]> => {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // Handle different JSON formats
+        if (Array.isArray(data)) {
+            return data;
+        } else if (data.items && Array.isArray(data.items)) {
+            return data.items;
+        }
+
+        throw new Error('Format JSON invalide');
+    };
+
+    const parseTXT = async (file: File): Promise<any[]> => {
+        const text = await file.text();
+        const lines = text.split('\n').filter(l => l.trim());
+
+        return lines.map(line => {
+            // Parse formats like "5x Camera RED" or "Camera RED x5" or just "Camera RED"
+            const match = line.match(/(\d+)\s*x\s*(.+)|(.+)\s*x\s*(\d+)|(.+)/i);
+
+            if (match) {
+                const quantity = parseInt(match[1] || match[4] || '1');
+                const name = (match[2] || match[3] || match[5] || '').trim();
+
+                return {
+                    name,
+                    quantity,
+                    category: '',
+                    department: 'CAMERA' as Department
+                };
+            }
+
+            return null;
+        }).filter(item => item !== null) as any[];
+    };
+
+    // Send to order functionality
+    const handleSendToOrder = async (template: UserTemplate) => {
+        if (template.type !== 'CONSUMABLE') {
+            alert('Seules les listes de consommables peuvent être commandées');
+            return;
+        }
+
+        if (!window.confirm(`Envoyer "${template.name}" en commande ?\n\n${template.items.length} articles seront ajoutés à votre liste de courses.`)) {
+            return;
+        }
+
+        try {
+            // Navigate to inventory/shopping list and add items
+            // This will be handled by the InventoryManager component
+            alert(`✓ ${template.items.length} articles envoyés en commande !\n\nRendez-vous dans "Consommables" pour finaliser la commande.`);
+
+            // Store in localStorage for InventoryManager to pick up
+            localStorage.setItem('pendingOrder', JSON.stringify({
+                templateName: template.name,
+                items: template.items,
+                timestamp: new Date().toISOString()
+            }));
+
+            // Optional: Navigate to inventory
+            // window.location.hash = '#inventory';
+        } catch (error: any) {
+            console.error('Order error:', error);
+            alert(`Erreur: ${error.message}`);
+        }
     };
 
     return (
@@ -48,22 +189,37 @@ export const MyListsWidget: React.FC = () => {
                         <FileText className="h-8 w-8" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-white">Mes Listes & Inventaires</h2>
+                        <h2 className="text-2xl font-bold text-white">Mes Listes</h2>
                         <p className="text-slate-400">Gérez vos listes de matériel et de consommables</p>
                     </div>
                 </div>
 
-                <button
-                    onClick={() => {
-                        setCreationType(activeTab);
-                        setSelectedTemplate(null);
-                        setIsEditModalOpen(true);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    Nouvelle Liste {activeTab === 'MATERIAL' ? 'Matériel' : 'Consommable'}
-                </button>
+                <div className="flex gap-2">
+                    {/* Import Button */}
+                    <label className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors cursor-pointer">
+                        <Upload className="h-4 w-4" />
+                        Importer
+                        <input
+                            type="file"
+                            accept=".csv,.json,.txt"
+                            onChange={handleImportFile}
+                            className="hidden"
+                        />
+                    </label>
+
+                    {/* New List Button */}
+                    <button
+                        onClick={() => {
+                            setCreationType(activeTab);
+                            setSelectedTemplate(null);
+                            setIsEditModalOpen(true);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Nouvelle Liste {activeTab === 'MATERIAL' ? 'Matériel' : 'Consommable'}
+                    </button>
+                </div>
             </div>
 
             {/* Tabs */}
@@ -125,7 +281,7 @@ export const MyListsWidget: React.FC = () => {
                                         <Edit className="h-4 w-4" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(t.id)}
+                                        onClick={(e) => handleDelete(t.id, e)}
                                         className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
                                         title="Supprimer"
                                     >
@@ -153,6 +309,17 @@ export const MyListsWidget: React.FC = () => {
                                 <span>•</span>
                                 <span>{new Date(t.createdAt).toLocaleDateString()}</span>
                             </div>
+
+                            {/* Send to Order Button (only for consumables) */}
+                            {activeTab === 'CONSUMABLE' && (
+                                <button
+                                    onClick={() => handleSendToOrder(t)}
+                                    className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                                >
+                                    <ShoppingCart className="h-4 w-4" />
+                                    Envoyer en Commande
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'logistics', label: 'Aller-Retour Matériel', icon: Truck, allowedDepts: 'ALL' },
         { id: 'team', label: 'Bible Équipe Tournage', icon: Users },
         { id: 'inventory', label: 'Consommables', icon: Package },
-        { id: 'my-lists', label: 'Mes Listes & Stock', icon: ClipboardList },
+        { id: 'my-lists', label: 'Mes Listes', icon: ClipboardList },
         { id: 'social', label: 'Mur Social', icon: MessageSquare },
       ]
     },
