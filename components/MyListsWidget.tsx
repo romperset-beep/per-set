@@ -171,24 +171,29 @@ export const MyListsWidget: React.FC = () => {
             return;
         }
 
-        if (!window.confirm(`Envoyer "${template.name}" en commande ?\n\n${template.items.length} articles seront ajoutés à votre liste de courses.`)) {
+        if (!window.confirm(`Envoyer "${template.name}" en commande ?\n\n${template.items.length} articles seront ajoutés à vos consommables.`)) {
             return;
         }
 
         try {
-            // Navigate to inventory/shopping list and add items
-            // This will be handled by the InventoryManager component
+            // Store order data for InventoryManager to pick up
+            const orderData = {
+                templateName: template.name,
+                items: template.items.map(item => ({
+                    ...item,
+                    status: 'REQUESTED',
+                    requestedBy: user?.email,
+                    requestedAt: new Date().toISOString()
+                })),
+                timestamp: new Date().toISOString(),
+                userId: user?.email
+            };
+
+            localStorage.setItem('pendingOrder', JSON.stringify(orderData));
+
+            // Success notification
             alert(`✓ ${template.items.length} articles envoyés en commande !\n\nRendez-vous dans "Consommables" pour finaliser la commande.`);
 
-            // Store in localStorage for InventoryManager to pick up
-            localStorage.setItem('pendingOrder', JSON.stringify({
-                templateName: template.name,
-                items: template.items,
-                timestamp: new Date().toISOString()
-            }));
-
-            // Optional: Navigate to inventory
-            // window.location.hash = '#inventory';
         } catch (error: any) {
             console.error('Order error:', error);
             alert(`Erreur: ${error.message}`);
