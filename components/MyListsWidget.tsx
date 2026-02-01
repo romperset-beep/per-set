@@ -166,7 +166,8 @@ export const MyListsWidget: React.FC = () => {
 
     // Send to order functionality
     const handleSendToOrder = async (template: UserTemplate) => {
-        if (template.type !== 'CONSUMABLE') {
+        // Check if we're in the consumables tab (lists shown in this tab are consumables)
+        if (activeTab !== 'CONSUMABLE') {
             alert('Seules les listes de consommables peuvent être commandées');
             return;
         }
