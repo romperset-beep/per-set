@@ -1,7 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { UserTemplate, Department } from '../types';
 import { useProject } from '../context/ProjectContext';
-import { X, Trash2, Download, Plus, Save, ChevronRight, Loader2, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check } from 'lucide-react';
+import rvzCatalog from '../src/data/rvz_catalog.json';
+
+const mapCategoryToDepartment = (rvzCategory: string): Department => {
+    const map: Record<string, Department> = {
+        'Cameras': Department.CAMERA, // Legacy/Generic
+        'Full Frame': Department.CAMERA,
+        'Super 35': Department.CAMERA,
+        'High Speed': Department.CAMERA,
+        'Film 35': Department.CAMERA,
+        'Film 16': Department.CAMERA,
+        'Lightweight': Department.CAMERA,
+        'Director\'s Viewfinder': Department.CAMERA,
+        'Focus/Zoom Unit': Department.CAMERA,
+        'Mattebox': Department.CAMERA,
+        'Camera accessories': Department.CAMERA,
+        'Lenses accessories': Department.CAMERA,
+        'Monitoring': Department.CAMERA,
+        'Filters': Department.CAMERA,
+        'Energy': Department.CAMERA,
+        'Data': Department.CAMERA,
+        'Heads': Department.CAMERA,
+        'Camera supports': Department.CAMERA,
+        'Stabilisateurs': Department.CAMERA,
+        'Roulantes': Department.CAMERA,
+        'Sous Marin': Department.CAMERA,
+
+        'Caméras (Divers)': Department.CAMERA, // Legacy/Generic container
+
+        'Primes full frame': Department.CAMERA,
+        'Primes super 35': Department.CAMERA,
+        'Primes super 16': Department.CAMERA,
+        'Primes anamorphiques': Department.CAMERA,
+        'Macro': Department.CAMERA,
+        'Hors série': Department.CAMERA,
+        'Zooms full frame': Department.CAMERA,
+        'Zooms super 35': Department.CAMERA,
+        'Zooms super 16': Department.CAMERA,
+
+        'Optiques': Department.CAMERA,
+        'Accessoires Camera': Department.CAMERA, // Legacy container
+
+        'Lumière': Department.LUMIERE, // Legacy/Generic
+        'Sources': Department.LUMIERE,
+        'LED': Department.LUMIERE,
+        'HMI': Department.LUMIERE,
+        'Tungstène': Department.LUMIERE,
+        'Fluo': Department.LUMIERE,
+        'Accessoires Lumière': Department.LUMIERE,
+        'Grip': Department.LUMIERE,
+        'Toiles et cadres': Department.LUMIERE,
+        'Branchements': Department.LUMIERE,
+        'Accessoires LED': Department.LUMIERE,
+        'Accessoires HMI & Tungsten': Department.LUMIERE,
+        'Chimeras & Octa': Department.LUMIERE,
+        'Projecteurs LED': Department.LUMIERE,
+        'Projecteurs HMI': Department.LUMIERE,
+        'Projecteurs Tungstène': Department.LUMIERE,
+        'Projecteurs Fluorescents': Department.LUMIERE,
+        'Projecteurs (Divers)': Department.LUMIERE,
+
+        'Energie': Department.LUMIERE,
+
+        'Machinerie': Department.MACHINERIE,
+        // Sub-categories Machinerie
+        'Tête télécommandée': Department.MACHINERIE,
+        'Grue télescopique': Department.MACHINERIE,
+        'Grue fixe': Department.MACHINERIE,
+        'Bras de grue': Department.MACHINERIE,
+        'Dolly': Department.MACHINERIE,
+        'Chariot mixte (sol/rail)': Department.MACHINERIE,
+        'Chariot pneumatique': Department.MACHINERIE,
+        'Accessoires machinerie': Department.MACHINERIE,
+        'Bras de déport': Department.MACHINERIE,
+        'Rails': Department.MACHINERIE,
+        'Construction': Department.MACHINERIE,
+        'Accroche Voiture': Department.MACHINERIE,
+        'Slider': Department.MACHINERIE,
+        'Antivibratoire': Department.MACHINERIE,
+        'Tour Samia': Department.MACHINERIE,
+
+        'Régie': Department.REGIE,
+        'Véhicules': Department.REGIE,
+        // 'Energie': Department.LUMIERE, // Removed duplicate
+        'Photo': Department.CAMERA,
+        'Boitiers Canon': Department.CAMERA,
+        'Optiques Canon Fixes': Department.CAMERA,
+        'Optiques Canon Zooms': Department.CAMERA,
+        'Optiques à Bascule/décentrement': Department.CAMERA,
+        'Optiques Adaptées en monture Canon': Department.CAMERA,
+        'Accessoires Optiques': Department.CAMERA,
+        'Accessoires Canon': Department.CAMERA,
+        'Boitiers Nikon': Department.CAMERA,
+        'Optiques Nikon Fixes': Department.CAMERA,
+        'Optiques Nikon Zooms': Department.CAMERA,
+        'Optiques Nikon à Bascule/décentrement': Department.CAMERA,
+        'Accessoires Optiques Nikon': Department.CAMERA,
+        'Accessoires Nikon': Department.CAMERA,
+        'Boitiers PhaseOne': Department.CAMERA,
+        'Optiques PhaseOne': Department.CAMERA,
+        'Dos numériques PhaseOne': Department.CAMERA,
+        'Accessoires PhaseOne': Department.CAMERA,
+        'Boitiers Hasselbald série H': Department.CAMERA,
+        'Optiques Hasselblad Fixes': Department.CAMERA,
+        'Optiques Hasselblad Zooms': Department.CAMERA,
+        'Accessoires Optiques Hasselblad': Department.CAMERA,
+        'Ordinateurs Capture': Department.CAMERA,
+        'Ecrans Capture': Department.CAMERA,
+        'Batteries Externes MacBook': Department.CAMERA,
+        'Imprimantes': Department.CAMERA,
+        'Accessoires Capture': Department.CAMERA,
+        'Flashs B2PRO': Department.CAMERA,
+        'Flashs Briese': Department.CAMERA,
+        'Flashs Broncolor': Department.CAMERA,
+        'Flashs Elinchrom': Department.CAMERA,
+        'Flashs légers': Department.CAMERA,
+        'Flashs Profoto': Department.CAMERA,
+        'Accessoires Briese': Department.CAMERA,
+        'Accessoires Broncolor': Department.CAMERA,
+        'Accessoires Elinchrom': Department.CAMERA,
+        'Accessoires Flashs': Department.CAMERA,
+        'Accessoires Profoto': Department.CAMERA,
+        'Toiles & Cadres': Department.CAMERA,
+        'Trépieds & Rotules': Department.CAMERA,
+        'Divers Flashs': Department.CAMERA,
+    };
+    return map[rvzCategory] || Department.REGIE;
+};
 // import { Dialog } from '@headlessui/react';
 
 interface TemplateManagerModalProps {
@@ -39,6 +166,267 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
     // Import State
     const [importDestination, setImportDestination] = useState<'SHOPPING' | 'STOCK'>('SHOPPING'); // Default to Shopping List
 
+    // Catalog Logic
+    const [newItemName, setNewItemName] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+    // Extract unique categories and format them hierarchically with items
+    const categoriesStructure = React.useMemo(() => {
+        const rawItems = rvzCatalog as any[];
+        const rawCategories = Array.from(new Set(rawItems.map((i: any) => i.category)));
+
+        // Helper to get items for a category
+        const getItems = (cat: string) => rawItems.filter(i => i.category === cat).sort((a, b) => a.name.localeCompare(b.name));
+
+        // Define hierarchy groups
+        // For Camera, we use a nested structure to support sub-groups
+        type HierarchyValue = string[] | Record<string, string[]>;
+        const hierarchy: Record<string, HierarchyValue> = {
+            'Cameras': {
+                'Corps Camera': [
+                    'Full Frame',
+                    'Super 35',
+                    'High Speed',
+                    'Film 35',
+                    'Film 16',
+                    'Lightweight',
+                    'Director\'s Viewfinder'
+                ],
+                'Optiques': [
+                    'Primes full frame',
+                    'Primes super 35',
+                    'Primes super 16',
+                    'Primes anamorphiques',
+                    'Macro',
+                    'Hors série',
+                    'Zooms full frame',
+                    'Zooms super 35',
+                    'Zooms super 16'
+                ],
+                'Accessoires Camera': [
+                    'Focus/Zoom Unit',
+                    'Mattebox',
+                    'Camera accessories',
+                    'Lenses accessories',
+                    'Monitoring',
+                    'Filters',
+                    'Energy',
+                    'Data',
+                    'Heads',
+                    'Camera supports',
+                    'Stabilisateurs',
+                    'Roulantes',
+                    'Sous Marin',
+                    'Caméras (Divers)'
+                ]
+            },
+            'Lumière': [
+                'LED',
+                'HMI',
+                'Tungstène',
+                'Fluo',
+                'Accessoires Lumière',
+                'Grip',
+                'Toiles et cadres',
+                'Branchements',
+                'Accessoires LED',
+                'Accessoires HMI & Tungsten',
+                'Chimeras & Octa'
+            ],
+            'Photo': [
+                'Boitiers Canon',
+                'Optiques Canon Fixes',
+                'Optiques Canon Zooms',
+                'Optiques à Bascule/décentrement',
+                'Optiques Adaptées en monture Canon',
+                'Accessoires Optiques',
+                'Accessoires Canon',
+                'Boitiers Nikon',
+                'Optiques Nikon Fixes',
+                'Optiques Nikon Zooms',
+                'Optiques Nikon à Bascule/décentrement',
+                'Accessoires Optiques Nikon',
+                'Accessoires Nikon',
+                'Boitiers PhaseOne',
+                'Optiques PhaseOne',
+                'Dos numériques PhaseOne',
+                'Accessoires PhaseOne',
+                'Boitiers Hasselbald série H',
+                'Optiques Hasselblad Fixes',
+                'Optiques Hasselblad Zooms',
+                'Accessoires Optiques Hasselblad',
+                'Ordinateurs Capture',
+                'Ecrans Capture',
+                'Batteries Externes MacBook',
+                'Imprimantes',
+                'Accessoires Capture',
+                'Flashs B2PRO',
+                'Flashs Briese',
+                'Flashs Broncolor',
+                'Flashs Elinchrom',
+                'Flashs légers',
+                'Flashs Profoto',
+                'Accessoires Briese',
+                'Accessoires Broncolor',
+                'Accessoires Elinchrom',
+                'Accessoires Flashs',
+                'Accessoires Profoto',
+                'Toiles & Cadres',
+                'Trépieds & Rotules',
+                'Divers Flashs'
+            ],
+            'Machinerie': [
+                'Tête télécommandée',
+                'Grue télescopique',
+                'Grue fixe',
+                'Bras de grue',
+                'Dolly',
+                'Chariot mixte (sol/rail)',
+                'Chariot pneumatique',
+                'Accessoires machinerie',
+                'Bras de déport',
+                'Rails',
+                'Slider',
+                'Antivibratoire',
+                'Construction',
+                'Tour Samia',
+                'Accroche Voiture'
+            ]
+        };
+
+        type HierarchyGroup = {
+            name: string;
+            children?: { name: string, items: any[] }[];
+            subGroups?: { name: string, children: { name: string, items: any[] }[] }[];
+        };
+
+        const hierarchyGroups: HierarchyGroup[] = [];
+        const used = new Set<string>();
+
+        // 1. Add Hierarchical Groups
+        Object.entries(hierarchy).forEach(([parent, value]) => {
+            // Check if this is a nested structure (like Camera) or flat (like Machinerie)
+            if (Array.isArray(value)) {
+                // Flat structure: parent -> categories
+                const mappedChildren = value.map(childName => ({
+                    name: childName,
+                    items: getItems(childName)
+                }));
+
+                hierarchyGroups.push({ name: parent, children: mappedChildren });
+                used.add(parent);
+                value.forEach(c => used.add(c));
+            } else {
+                // Nested structure: parent -> sub-groups -> categories
+                const subGroups = Object.entries(value).map(([subGroupName, categories]) => ({
+                    name: subGroupName,
+                    children: categories.map(catName => ({
+                        name: catName,
+                        items: getItems(catName)
+                    }))
+                }));
+
+                hierarchyGroups.push({ name: parent, subGroups });
+                used.add(parent);
+                Object.values(value).flat().forEach(c => used.add(c));
+            }
+        });
+
+        // 2. Add remaining categories alphabetically
+        // Exclude categories that are duplicates or already organized in hierarchical groups
+        const excludedCategories = new Set([
+            'Accessoires Camera',  // Already in Cameras > Accessoires Camera
+            'Optiques',            // Already in Cameras > Optiques
+            'Projecteurs (Divers)' // Already organized in Lumière hierarchy
+        ]);
+
+        const flatCategories = rawCategories
+            .filter(c => !used.has(c) && !excludedCategories.has(c))
+            .sort()
+            .map(cat => ({
+                name: cat,
+                items: getItems(cat)
+            }));
+
+        return { hierarchyGroups, flatCategories };
+    }, []);
+
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+
+    // Level 1: Groups (Machines, Cameras...)
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+        'Machinerie': false,
+        'Cameras': false,
+        'Lumière': false
+    });
+
+    // Level 2: Sub-groups (Corps Camera, Optiques, Accessoires Camera) and Categories (Dolly, Rails...)
+    const [expandedSubGroups, setExpandedSubGroups] = useState<Record<string, boolean>>({});
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    // Click outside to close
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsCategoryDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleGroup = (groupName: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+    };
+
+    // Map internal group names to display names
+    const getGroupDisplayName = (groupName: string): string => {
+        const displayNames: Record<string, string> = {
+            'Cameras': 'Caméra',
+            'Machinerie': 'Machinerie',
+            'Lumière': 'Lumière',
+            'Photo': 'Photo'
+        };
+        return displayNames[groupName] || groupName;
+    };
+
+    const handleSelectCategory = (cat: string) => {
+        setSelectedCategory(cat);
+        setIsCategoryDropdownOpen(false);
+    };
+
+    // Filter catalog based on category AND input
+    const catalogSuggestions = React.useMemo(() => {
+        if (!newItemName || newItemName.length < 1) return [];
+
+        const lower = newItemName.toLowerCase();
+        let filtered = rvzCatalog as any[];
+
+        if (selectedCategory) {
+            filtered = filtered.filter(item => item.category === selectedCategory);
+        }
+
+        return filtered
+            .filter(item => item.name.toLowerCase().includes(lower))
+            .slice(0, 50);
+    }, [newItemName, selectedCategory]);
+
+    const handleAddItem = (name: string, category?: string) => {
+        if (!name.trim()) return;
+
+        const categoryToUse = category || selectedCategory;
+        const dept = categoryToUse ? mapCategoryToDepartment(categoryToUse) : currentDept;
+
+        setItemsToSave([...itemsToSave, {
+            name: name.trim(),
+            quantity: 1,
+            quantityCurrent: 1,
+            department: dept
+        }]);
+        setNewItemName('');
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -183,7 +571,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-cinema-800 rounded-2xl shadow-2xl max-w-lg w-full border border-cinema-600 flex flex-col max-h-[80vh]">
+            <div className="bg-cinema-800 rounded-2xl shadow-2xl max-w-2xl w-full border border-cinema-600 flex flex-col max-h-[80vh]">
 
                 {/* Header */}
                 <div className="p-6 border-b border-cinema-700 flex justify-between items-center bg-cinema-900 rounded-t-2xl">
@@ -223,46 +611,219 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                         Décochez ou supprimez les articles inutiles.
                                     </span>
                                 </div>
-                                {/* Manual Add Item (For Material Lists or creating from scratch) */}
-                                {(templateType === 'MATERIAL' || itemsToSave.length === 0) && (
-                                    <div className="flex gap-2 mb-4">
-                                        <input
-                                            id="newItemName"
-                                            type="text"
-                                            placeholder="Ajouter un article..."
-                                            className="flex-1 bg-cinema-800 border border-cinema-700 rounded-lg px-3 py-2 text-white text-sm"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    const input = e.currentTarget;
-                                                    if (input.value.trim()) {
-                                                        setItemsToSave([...itemsToSave, {
-                                                            name: input.value.trim(),
-                                                            quantity: 1,
-                                                            quantityCurrent: 1,
-                                                            department: currentDept
-                                                        }]);
-                                                        input.value = '';
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                const input = document.getElementById('newItemName') as HTMLInputElement;
-                                                if (input && input.value.trim()) {
-                                                    setItemsToSave([...itemsToSave, {
-                                                        name: input.value.trim(),
-                                                        quantity: 1,
-                                                        quantityCurrent: 1,
-                                                        department: currentDept
-                                                    }]);
-                                                    input.value = '';
-                                                }
-                                            }}
-                                            className="bg-cinema-700 hover:bg-cinema-600 text-white p-2 rounded-lg"
-                                        >
-                                            <Plus className="h-5 w-5" />
-                                        </button>
+                                {/* Manual Add Item with Catalog Search */}
+                                {(templateType === 'MATERIAL' || itemsToSave.length === 0 || true) && (
+                                    <div className="relative mb-4 space-y-2">
+
+                                        {/* Custom Category Dropdown */}
+                                        <div className="relative" ref={dropdownRef}>
+                                            <button
+                                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                                className="w-full bg-cinema-800 border border-cinema-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none flex justify-between items-center hover:bg-cinema-700 transition-colors"
+                                            >
+                                                <span className={!selectedCategory ? 'text-slate-400' : ''}>
+                                                    {selectedCategory || "-- Categories --"}
+                                                </span>
+                                                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+
+                                            {isCategoryDropdownOpen && (
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-cinema-800 border border-cinema-600 rounded-lg shadow-xl z-[60] max-h-80 overflow-y-auto custom-scrollbar">
+                                                    {/* Default Option */}
+                                                    <button
+                                                        onClick={() => handleSelectCategory('')}
+                                                        className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:bg-cinema-700 hover:text-white transition-colors border-b border-cinema-700/50"
+                                                    >
+                                                        -- Toutes les catégories --
+                                                    </button>
+
+                                                    {/* Hierarchical Groups */}
+                                                    {categoriesStructure.hierarchyGroups.map(group => (
+                                                        <div key={group.name} className="border-b border-cinema-700/30 last:border-0">
+                                                            {/* Level 1: Group (e.g. Machinerie) */}
+                                                            <button
+                                                                onClick={(e) => toggleGroup(group.name, e)}
+                                                                className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-200 hover:bg-cinema-700/50 hover:text-white transition-colors"
+                                                            >
+                                                                <span className="flex items-center gap-2">
+                                                                    {getGroupDisplayName(group.name)}
+                                                                </span>
+                                                                <ChevronRight className={`h-3.5 w-3.5 text-slate-500 transition-transform ${expandedGroups[group.name] ? 'rotate-90' : ''}`} />
+                                                            </button>
+
+                                                            {expandedGroups[group.name] && (
+                                                                <div className="bg-cinema-900/30">
+                                                                    {/* Check if this group has sub-groups (3-level) or direct children (2-level) */}
+                                                                    {group.subGroups ? (
+                                                                        // 3-level structure: Group > Sub-groups > Categories > Items
+                                                                        group.subGroups.map(subGroup => (
+                                                                            <div key={subGroup.name}>
+                                                                                {/* Level 2: Sub-group (e.g. Corps Camera, Optiques) */}
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setExpandedSubGroups(prev => ({ ...prev, [subGroup.name]: !prev[subGroup.name] }));
+                                                                                    }}
+                                                                                    className={`w-full text-left pl-6 pr-3 py-1.5 text-sm font-medium transition-colors flex items-center justify-between hover:bg-cinema-700/50 ${expandedSubGroups[subGroup.name] ? 'text-purple-300' : 'text-slate-300'}`}
+                                                                                >
+                                                                                    <span>{subGroup.name}</span>
+                                                                                    <ChevronRight className={`h-3.5 w-3.5 text-slate-500 transition-transform ${expandedSubGroups[subGroup.name] ? 'rotate-90' : ''}`} />
+                                                                                </button>
+
+                                                                                {expandedSubGroups[subGroup.name] && (
+                                                                                    <div className="bg-cinema-900/50">
+                                                                                        {subGroup.children.map(child => (
+                                                                                            <div key={child.name}>
+                                                                                                {/* Level 3: Category (e.g. Full Frame) */}
+                                                                                                <button
+                                                                                                    onClick={(e) => {
+                                                                                                        e.stopPropagation();
+                                                                                                        setExpandedCategories(prev => ({ ...prev, [child.name]: !prev[child.name] }));
+                                                                                                    }}
+                                                                                                    className={`w-full text-left pl-12 pr-3 py-1.5 text-sm transition-colors flex items-center justify-between hover:bg-cinema-700/50 ${expandedCategories[child.name] ? 'text-purple-300' : 'text-slate-400'}`}
+                                                                                                >
+                                                                                                    <span className="flex items-center gap-2">
+                                                                                                        {child.name}
+                                                                                                        <span className="text-xs text-slate-600">({child.items.length})</span>
+                                                                                                    </span>
+                                                                                                    <ChevronRight className={`h-3 w-3 text-slate-600 transition-transform ${expandedCategories[child.name] ? 'rotate-90' : ''}`} />
+                                                                                                </button>
+
+                                                                                                {/* Level 4: Items */}
+                                                                                                {expandedCategories[child.name] && (
+                                                                                                    <div className="pl-16 pr-2 pb-1 space-y-0.5">
+                                                                                                        {child.items.map(item => (
+                                                                                                            <button
+                                                                                                                key={item.id}
+                                                                                                                onClick={() => handleAddItem(item.name, item.category)}
+                                                                                                                className="w-full text-left py-1 text-xs text-slate-500 hover:text-white hover:bg-purple-500/10 px-2 rounded flex justify-between items-center group/item"
+                                                                                                            >
+                                                                                                                <span className="truncate">{item.name}</span>
+                                                                                                                <Plus className="h-3 w-3 opacity-0 group-hover/item:opacity-100 text-purple-400" />
+                                                                                                            </button>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        // 2-level structure: Group > Categories > Items
+                                                                        group.children?.map(child => (
+                                                                            <div key={child.name}>
+                                                                                {/* Level 2: Category (e.g. Dolly) - Toggleable if has items */}
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setExpandedCategories(prev => ({ ...prev, [child.name]: !prev[child.name] }));
+                                                                                    }}
+                                                                                    className={`w-full text-left pl-6 pr-3 py-1.5 text-sm transition-colors flex items-center justify-between hover:bg-cinema-700/50 ${expandedCategories[child.name] ? 'text-purple-300' : 'text-slate-400'}`}
+                                                                                >
+                                                                                    <span className="flex items-center gap-2">
+                                                                                        {child.name}
+                                                                                        <span className="text-xs text-slate-600">({child.items.length})</span>
+                                                                                    </span>
+                                                                                    <ChevronRight className={`h-3 w-3 text-slate-600 transition-transform ${expandedCategories[child.name] ? 'rotate-90' : ''}`} />
+                                                                                </button>
+
+                                                                                {/* Level 3: Items (e.g. Fisher 10) */}
+                                                                                {expandedCategories[child.name] && (
+                                                                                    <div className="pl-9 pr-2 pb-1 space-y-0.5">
+                                                                                        {child.items.map(item => (
+                                                                                            <button
+                                                                                                key={item.id}
+                                                                                                onClick={() => handleAddItem(item.name, item.category)}
+                                                                                                className="w-full text-left py-1 text-xs text-slate-500 hover:text-white hover:bg-purple-500/10 px-2 rounded flex justify-between items-center group/item"
+                                                                                            >
+                                                                                                <span className="truncate">{item.name}</span>
+                                                                                                <Plus className="h-3 w-3 opacity-0 group-hover/item:opacity-100 text-purple-400" />
+                                                                                            </button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+
+                                                    {/* Flat Categories */}
+                                                    {categoriesStructure.flatCategories.map(cat => (
+                                                        <div key={cat.name} className="border-b border-cinema-700/50 last:border-0">
+                                                            <button
+                                                                onClick={() => setExpandedCategories(prev => ({ ...prev, [cat.name]: !prev[cat.name] }))}
+                                                                className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between ${expandedCategories[cat.name] ? 'text-purple-300' : 'text-slate-300 hover:bg-cinema-700 hover:text-white'}`}
+                                                            >
+                                                                <span>{cat.name}</span>
+                                                                <ChevronRight className={`h-3 w-3 text-slate-500 transition-transform ${expandedCategories[cat.name] ? 'rotate-90' : ''}`} />
+                                                            </button>
+
+                                                            {expandedCategories[cat.name] && (
+                                                                <div className="pl-6 pr-2 pb-1 space-y-0.5 bg-cinema-900/30">
+                                                                    {cat.items.map(item => (
+                                                                        <button
+                                                                            key={item.id}
+                                                                            onClick={() => handleAddItem(item.name, item.category)}
+                                                                            className="w-full text-left py-1 text-xs text-slate-500 hover:text-white hover:bg-purple-500/10 px-2 rounded flex justify-between items-center group/item"
+                                                                        >
+                                                                            <span className="truncate">{item.name}</span>
+                                                                            <Plus className="h-3 w-3 opacity-0 group-hover/item:opacity-100 text-purple-400" />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="relative flex gap-2">
+                                            <div className="relative flex-1">
+                                                <input
+                                                    type="text"
+                                                    placeholder={selectedCategory ? `Rechercher dans ${selectedCategory}...` : "Rechercher un article..."}
+                                                    value={newItemName}
+                                                    onChange={(e) => setNewItemName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleAddItem(newItemName);
+                                                    }}
+                                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg pl-3 pr-10 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                                />
+                                                <div className="absolute right-3 top-2.5 text-slate-500">
+                                                    <Search className="h-4 w-4" />
+                                                </div>
+
+                                                {/* Suggestions */}
+                                                {catalogSuggestions.length > 0 && (
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-cinema-800 border border-cinema-600 rounded-lg shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+                                                        {catalogSuggestions.map((item: any) => (
+                                                            <button
+                                                                key={item.id}
+                                                                onClick={() => handleAddItem(item.name, item.category)}
+                                                                className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-purple-600/20 hover:text-white transition-colors flex justify-between items-center group border-b border-cinema-700/50 last:border-0"
+                                                            >
+                                                                <span>{item.name}</span>
+                                                                {!selectedCategory && (
+                                                                    <span className="text-xs text-slate-500 bg-cinema-900 px-1 rounded">{item.category}</span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleAddItem(newItemName)}
+                                                className="bg-cinema-700 hover:bg-cinema-600 text-white p-2 rounded-lg"
+                                            >
+                                                <Plus className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
 
