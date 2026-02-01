@@ -3,6 +3,7 @@ import { useProject } from '../context/ProjectContext';
 import { UserTemplate, Department } from '../types';
 import { TemplateManagerModal } from './TemplateManagerModal'; // Reuse existing logic where possible, or refactor
 import { Package, Truck, Trash2, Edit, Plus, Copy, FileText, CheckCircle2, Upload, ShoppingCart } from 'lucide-react';
+import { analyzeOrderFile, analyzeMarketplaceMatch } from '../services/geminiService';
 
 export const MyListsWidget: React.FC = () => {
     const { getUserTemplates, user, deleteUserTemplate, project } = useProject();
@@ -56,14 +57,28 @@ export const MyListsWidget: React.FC = () => {
             const extension = file.name.split('.').pop()?.toLowerCase();
             let items: any[] = [];
 
-            if (extension === 'csv') {
+            // Use Gemini AI for PDF and images
+            if (extension === 'pdf' || extension === 'png' || extension === 'jpg' || extension === 'jpeg') {
+                const result = await analyzeOrderFile(file);
+                if (result.items && result.items.length > 0) {
+                    items = result.items.map(item => ({
+                        name: item.name || 'Item',
+                        quantity: item.quantityInitial || 1,
+                        category: (item as any).category || '',
+                        department: (item.department || 'CAMERA') as Department
+                    }));
+                } else {
+                    alert('Aucun article trouvé dans le fichier. Vérifiez le format.');
+                    return;
+                }
+            } else if (extension === 'csv') {
                 items = await parseCSV(file);
             } else if (extension === 'json') {
                 items = await parseJSON(file);
             } else if (extension === 'txt') {
                 items = await parseTXT(file);
             } else {
-                alert('Format non supporté. Utilisez CSV, JSON ou TXT.');
+                alert('Format non supporté. Utilisez PDF, CSV, JSON ou TXT.');
                 return;
             }
 
@@ -201,7 +216,7 @@ export const MyListsWidget: React.FC = () => {
                         Importer
                         <input
                             type="file"
-                            accept=".csv,.json,.txt"
+                            accept=".csv,.json,.txt,.pdf"
                             onChange={handleImportFile}
                             className="hidden"
                         />

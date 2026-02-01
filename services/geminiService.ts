@@ -238,3 +238,80 @@ export const analyzeReceipt = async (file: File): Promise<{ data: any, rawRespon
     return { data: null, rawResponse: `Error: ${error instanceof Error ? error.message : String(error)}` };
   }
 };
+
+/**
+ * Analyze if requested items match available marketplace items
+ * Returns a mapping of requested items to marketplace availability
+ */
+export const analyzeMarketplaceMatch = async (
+  requestedItems: Array<{ name: string; quantity: number }>,
+  marketplaceItems: Array<{ name: string; category?: string }>
+): Promise<Record<string, { available: boolean; matchedItem?: string; confidence: number; suggestion?: string }>> => {
+  if (!genAI) {
+    // Fallback: simple string matching
+    const results: Record<string, any> = {};
+    requestedItems.forEach(req => {
+      const match = marketplaceItems.find(m =>
+        m.name.toLowerCase().includes(req.name.toLowerCase()) ||
+        req.name.toLowerCase().includes(m.name.toLowerCase())
+      );
+      results[req.name] = {
+        available: !!match,
+        matchedItem: match?.name,
+        confidence: match ? 70 : 0,
+        suggestion: match ? undefined : "Vérifier manuellement le marketplace"
+      };
+    });
+    return results;
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+      Tu es un assistant qui aide à matcher des articles demandés avec un inventaire disponible.
+      
+      ARTICLES DEMANDÉS :
+      ${requestedItems.map(i => `- ${i.name} (quantité: ${i.quantity})`).join('\n')}
+      
+      INVENTAIRE DISPONIBLE (Marketplace A Better Set) :
+      ${marketplaceItems.map(m => `- ${m.name}${m.category ? ` (catégorie: ${m.category})` : ''}`).join('\n')}
+      
+      Pour chaque article demandé, indique :
+      1. S'il existe dans l'inventaire (match exact ou similaire)
+      2. Le nom exact de l'article correspondant dans l'inventaire (si match)
+      3. Un score de confiance (0-100%)
+      4. Une suggestion si pas de match exact
+      
+      Retourne UNIQUEMENT du JSON respectant ce format :
+      {
+        "Article demandé": {
+          "available": true/false,
+          "matchedItem": "Nom exact dans inventaire" ou null,
+          "confidence": 95,
+          "suggestion": "Explication si pas de match exact" ou null
+        }
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const jsonStr = text.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(jsonStr);
+
+  } catch (error) {
+    console.error("Marketplace analysis error:", error);
+    // Fallback to simple matching
+    const results: Record<string, any> = {};
+    requestedItems.forEach(req => {
+      results[req.name] = {
+        available: false,
+        confidence: 0,
+        suggestion: "Analyse IA indisponible, vérifier manuellement"
+      };
+    });
+    return results;
+  }
+};
