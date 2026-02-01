@@ -76,6 +76,52 @@ export const InventoryManager: React.FC = () => {
         fetchMarketplace();
     }, [getGlobalMarketplaceItems]);
 
+    // Handle pending orders from "Mes Listes"
+    React.useEffect(() => {
+        const pendingOrderStr = localStorage.getItem('pendingOrder');
+        if (!pendingOrderStr) return;
+
+        try {
+            const orderData = JSON.parse(pendingOrderStr);
+            console.log('Processing pending order:', orderData);
+
+            // Add each item from the order
+            if (orderData.items && Array.isArray(orderData.items) && addItem) {
+                orderData.items.forEach(async (item: any) => {
+                    const newItem = {
+                        ...item,
+                        id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        status: item.status || ItemStatus.REQUESTED,
+                        purchased: false,
+                        isBought: false,
+                        quantityCurrent: 0,
+                        quantityInitial: item.quantity || 1,
+                        quantityStarted: 0,
+                        requestedBy: orderData.userId || user?.email,
+                        requestedAt: orderData.timestamp || new Date().toISOString(),
+                        department: item.department || currentDept
+                    };
+
+                    await addItem(newItem);
+                });
+
+                // Clear the pending order after processing
+                localStorage.removeItem('pendingOrder');
+
+                // Notify user
+                addNotification(
+                    `✓ ${orderData.items.length} articles de "${orderData.templateName}" ajoutés à la liste d'achats`,
+                    'SUCCESS',
+                    currentDept
+                );
+            }
+        } catch (error) {
+            console.error('Error processing pending order:', error);
+            localStorage.removeItem('pendingOrder'); // Clear invalid data
+        }
+    }, []); // Run once on mount
+
+
 
     const toggleExpenseSelection = (id: string) => {
         setSelectedForExpense(prev => {
