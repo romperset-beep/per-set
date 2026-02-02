@@ -3,6 +3,7 @@ import { UserTemplate, Department } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check, Mail } from 'lucide-react';
 import rvzCatalog from '../src/data/rvz_catalog.json';
+import { CONSUMABLES_CATALOG, DEPARTMENT_DISPLAY_NAMES } from '../src/data/consumables_catalog';
 
 const mapCategoryToDepartment = (rvzCategory: string): Department => {
     const map: Record<string, Department> = {
@@ -172,6 +173,29 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
     // Extract unique categories and format them hierarchically with items
     const categoriesStructure = React.useMemo(() => {
+        // CONSUMABLES: Use simple department-based structure
+        if (templateType === 'CONSUMABLE') {
+            type HierarchyGroup = {
+                name: string;
+                children?: { name: string, items: any[] }[];
+            };
+
+            const hierarchyGroups: HierarchyGroup[] = Object.entries(CONSUMABLES_CATALOG).map(([dept, items]) => ({
+                name: DEPARTMENT_DISPLAY_NAMES[dept] || dept,
+                children: [{
+                    name: 'Tous',
+                    items: items.map(name => ({
+                        name,
+                        category: dept,
+                        department: dept
+                    }))
+                }]
+            }));
+
+            return { hierarchyGroups, flatCategories: [] };
+        }
+
+        // MATERIAL: Use RVZ hierarchical structure
         const rawItems = rvzCatalog as any[];
         const rawCategories = Array.from(new Set(rawItems.map((i: any) => i.category)));
 
@@ -349,7 +373,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             }));
 
         return { hierarchyGroups, flatCategories };
-    }, []);
+    }, [templateType]);
 
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
