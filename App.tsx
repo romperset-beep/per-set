@@ -788,84 +788,29 @@ const AppContent: React.FC = () => {
 
       {/* Offline Indicator */}
       <OfflineIndicator />
+
+      {/* Configuration Modal */}
+      {isConfigModalOpen && (
+        <ProjectConfigurationModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+        />
+      )}
+
+      {/* Online Users Modal */}
+      {isOnlineUsersOpen && (
+        <OnlineUsersModal
+          onClose={() => setIsOnlineUsersOpen(false)}
+          onMessage={(userId) => {
+            setSocialTargetUserId(userId);
+            setSocialAudience('USER');
+            setActiveTab('social');
+            setIsOnlineUsersOpen(false);
+            setIsSidebarOpen(false);
+          }}
+        />
+      )}
     </div>
-
-      {/* Modals */ }
-  {
-    isEditingDates && (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-cinema-800 rounded-xl p-6 max-w-md w-full">
-          <h3 className="text-xl font-bold mb-4">Modifier les dates</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Date de début</label>
-              <input
-                type="date"
-                value={project.startDate || ''}
-                onChange={(e) => setProject(prev => ({ ...prev, startDate: e.target.value }))}
-                className="w-full bg-cinema-700 border border-cinema-600 rounded px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">Date de fin</label>
-              <input
-                type="date"
-                value={project.endDate || ''}
-                onChange={(e) => setProject(prev => ({ ...prev, endDate: e.target.value }))}
-                className="w-full bg-cinema-700 border border-cinema-600 rounded px-3 py-2 text-white"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  updateProjectDetails({ startDate: project.startDate, endDate: project.endDate });
-                  setIsEditingDates(false);
-                }}
-                className="flex-1 bg-eco-500 hover:bg-eco-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Enregistrer
-              </button>
-              <button
-                onClick={() => setIsEditingDates(false)}
-                className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {
-    isConfigModalOpen && (
-      <ProjectConfigurationModal
-        isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
-      />
-    )
-  }
-
-  {
-    isOnlineUsersOpen && (
-      <OnlineUsersModal
-        onClose={() => setIsOnlineUsersOpen(false)}
-        onMessage={(userId) => {
-          setSocialTargetUserId(userId);
-          setSocialAudience('USER');
-          setActiveTab('social');
-          setIsOnlineUsersOpen(false);
-          setIsSidebarOpen(false);
-        }}
-      />
-    )
-  }
-    </div >
-  );
-};
-{/* <DebugFooter /> */ }
-    </div >
   );
 };
 
