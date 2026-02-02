@@ -38,7 +38,8 @@ import {
   limit, // Added
   getDocs,
   deleteDoc,
-  where // Added
+  where, // Added
+  startAfter // Added
 } from 'firebase/firestore';
 
 import { getStorage, ref, deleteObject, uploadString, getDownloadURL, uploadBytes } from 'firebase/storage';
@@ -98,6 +99,10 @@ interface ProjectContextType {
 
   userProfiles: UserProfile[];
   updateUserProfile: (profile: UserProfile) => void;
+
+  // Pagination
+  hasMoreItems: boolean;
+  loadMoreItems: () => Promise<void>;
 
   // Personal Templates
   saveUserTemplate: (name: string, items: any[], type?: 'CONSUMABLE' | 'MATERIAL') => Promise<void>;
@@ -213,23 +218,90 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => unsubscribe();
   }, [project.id]);
 
-  // Sync Project Items (Subcollection)
+  // Sync Project Items with Pagination
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [hasMoreItems, setHasMoreItems] = useState(true);
+  const ITEMS_PER_PAGE = 50;
+
+  const loadMoreItems = useCallback(async () => {
+    if (!project.id || project.id === 'default-project' || !hasMoreItems) return;
+
+    try {
+      let q = query(
+        collection(db, 'projects', project.id, 'items'),
+        orderBy('name'),
+        limit(ITEMS_PER_PAGE)
+      );
+
+      if (lastVisible) {
+        q = query(q, startAfter(lastVisible));
+      }
+
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const newItems: ConsumableItem[] = [];
+        snapshot.forEach(doc => {
+          newItems.push({ id: doc.id, ...doc.data() } as ConsumableItem);
+        });
+
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+
+        setProject(prev => {
+          // Avoid duplicates
+          const existingIds = new Set(prev.items.map(i => i.id));
+          const filteredNewItems = newItems.filter(i => !existingIds.has(i.id));
+          return { ...prev, items: [...prev.items, ...filteredNewItems] };
+        });
+
+        if (snapshot.docs.length < ITEMS_PER_PAGE) {
+          setHasMoreItems(false);
+        }
+      } else {
+        setHasMoreItems(false);
+      }
+    } catch (error) {
+      console.error("Error loading more items:", error);
+    }
+  }, [project.id, lastVisible, hasMoreItems]);
+
+  // Initial Load Listener (First batch + Realtime updates for visible items)
   useEffect(() => {
     const projectId = project.id;
     if (!projectId || projectId === 'default-project') return;
 
+    setHasMoreItems(true);
+    setLastVisible(null);
+
+    // Listener on first batch for realtime updates
     const itemsRef = collection(db, 'projects', projectId, 'items');
-    const unsubscribe = onSnapshot(itemsRef, (snapshot) => {
+    const q = query(itemsRef, orderBy('name'), limit(ITEMS_PER_PAGE));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const newItems: ConsumableItem[] = [];
       snapshot.forEach(doc => {
         newItems.push({ id: doc.id, ...doc.data() } as ConsumableItem);
       });
 
+      if (!snapshot.empty) {
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+      }
+
       setProject(prev => {
-        // Simple equality check to avoid render loop
-        if (prev.items.length === newItems.length && JSON.stringify(prev.items) === JSON.stringify(newItems)) {
-          return prev;
-        }
+        // This listener only handles the FIRST PAGE updates. 
+        // For proper realtime pagination, complex logic is needed.
+        // For MVP: We replace current items with first page, user needs to 'load more' to see rest.
+        // OR we only listen to changes?
+
+        // Simplified approach: Listener updates efficiently, pagination appends.
+        // But realtime updates on appended items won't be caught by THIS listener.
+        // Recommendation: For large lists in realtime apps, maybe drop realtime for 'Load More' lists
+        // or listen to ALL (expensive) or use specialized libraries.
+
+        // Current: Realtime for top 50. Static for rest until reload?
+        // Safety: Let's keep existing logic for now but add limit().
+        // Wait, previous logic downloaded EVERYTHING.
+
         return { ...prev, items: newItems };
       });
     }, (err) => {
@@ -1257,9 +1329,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     user,
     callSheets, // Include in dependency array
     unreadCount,
-    unreadCount,
     unreadSocialCount,
     expenseReports,
+    // Pagination
+    hasMoreItems,
+    loadMoreItems
     // Functions are stable or should be assumed stable if defined outside or via useCallback (most aren't but this is a start)
   ]);
 

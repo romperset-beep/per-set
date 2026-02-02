@@ -11,8 +11,21 @@ import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestor
 import { TemplateManagerModal } from './TemplateManagerModal';
 
 
+
 export const InventoryManager: React.FC = () => {
-    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem, deleteItem } = useProject();
+    const {
+        project,
+        setProject,
+        currentDept,
+        addNotification,
+        user,
+        markNotificationAsReadByItemId,
+        updateItem,
+        addItem,
+        deleteItem,
+        hasMoreItems,
+        loadMoreItems
+    } = useProject();
     const { getGlobalMarketplaceItems } = useMarketplace();
 
     // Form State

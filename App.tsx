@@ -27,6 +27,7 @@ import { OnlineUsersModal } from './components/OnlineUsersModal';
 import { GlobalSearch } from './components/GlobalSearch';
 import { BottomNav } from './components/BottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { useSwipeable } from 'react-swipeable'; // Added
 
 // Lazy imports - Heavy components loaded on demand
 const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
@@ -131,6 +132,22 @@ const AppContent: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Swipe Handlers
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (activeTab === 'dashboard') setActiveTab('inventory');
+      else if (activeTab === 'inventory') setActiveTab('social');
+      else if (activeTab === 'social') setActiveTab('notifications');
+    },
+    onSwipedRight: () => {
+      if (activeTab === 'notifications') setActiveTab('social');
+      else if (activeTab === 'social') setActiveTab('inventory');
+      else if (activeTab === 'inventory') setActiveTab('dashboard');
+    },
+    preventScrollOnSwipe: false, // Allow vertical scroll
+    trackMouse: false // Touch only
+  });
 
 
 
@@ -383,7 +400,10 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-cinema-900 text-slate-200 font-sans overflow-hidden">
+    <div
+      {...swipeHandlers}
+      className="flex h-screen bg-cinema-900 text-slate-200 font-sans overflow-hidden"
+    >
       {/* Global Search Modal */}
       {showGlobalSearch && (
         <GlobalSearch
