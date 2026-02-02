@@ -5,7 +5,8 @@ import {
     Users,
     Bell,
     Menu,
-    Clock, // Added
+    Clock,
+    FileText,
     type LucideIcon
 } from 'lucide-react';
 
@@ -35,10 +36,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
     const mainTabs: NavItem[] = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Tableau' },
-        { id: 'inventory', icon: Package, label: 'Stock' },
+        { id: 'callsheet-summary', icon: FileText, label: 'FDS' },
         { id: 'timesheet', icon: Clock, label: 'Heures' },
+        { id: 'inventory', icon: Package, label: 'Stock' },
         { id: 'social', icon: Users, label: 'Social' },
-        { id: 'notifications', icon: Bell, label: 'Notifs', badge: unreadCount },
     ];
 
     return (

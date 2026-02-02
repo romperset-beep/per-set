@@ -28,6 +28,7 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { BottomNav } from './components/BottomNav';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { useSwipeable } from 'react-swipeable'; // Added
+import { DailyCallSheetSummary } from './components/DailyCallSheetSummary'; // Added
 
 // Lazy imports - Heavy components loaded on demand
 const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
@@ -136,16 +137,16 @@ const AppContent: React.FC = () => {
   // Swipe Handlers
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
-      if (activeTab === 'dashboard') setActiveTab('inventory');
-      else if (activeTab === 'inventory') setActiveTab('timesheet');
-      else if (activeTab === 'timesheet') setActiveTab('social');
-      else if (activeTab === 'social') setActiveTab('notifications');
+      if (activeTab === 'dashboard') setActiveTab('callsheet-summary');
+      else if (activeTab === 'callsheet-summary') setActiveTab('timesheet');
+      else if (activeTab === 'timesheet') setActiveTab('inventory');
+      else if (activeTab === 'inventory') setActiveTab('social');
     },
     onSwipedRight: () => {
-      if (activeTab === 'notifications') setActiveTab('social');
-      else if (activeTab === 'social') setActiveTab('timesheet');
-      else if (activeTab === 'timesheet') setActiveTab('inventory');
-      else if (activeTab === 'inventory') setActiveTab('dashboard');
+      if (activeTab === 'social') setActiveTab('inventory');
+      else if (activeTab === 'inventory') setActiveTab('timesheet');
+      else if (activeTab === 'timesheet') setActiveTab('callsheet-summary');
+      else if (activeTab === 'callsheet-summary') setActiveTab('dashboard');
     },
     preventScrollOnSwipe: false, // Allow vertical scroll
     trackMouse: false // Touch only
@@ -382,6 +383,11 @@ const AppContent: React.FC = () => {
           return <EnergyTracker />;
         case 'callsheets':
           return <CallSheetView />;
+        case 'callsheet-summary':
+          // Need to pass currentDept to show correct call time
+          // ProjectManager holds the currentDept state, but App.tsx doesn't natively expose it easily unless we lift state up or use Context.
+          // Wait, useProject has currentDept!
+          return <DailyCallSheetSummary />;
         case 'admin':
           return <AdminDashboard />;
         case 'global-stats': // Added route
