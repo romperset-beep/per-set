@@ -200,9 +200,6 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                         <>
                             {/* 3. NOTE DU DÉPARTEMENT */}
                             {(() => {
-                                if (effectiveDept === 'PRODUCTION' || effectiveDept === 'Production') {
-                                    return null;
-                                }
                                 if (effectiveDept) {
                                     const getDeptNotes = (sheet: any, dept: string) => {
                                         if (!sheet?.departmentNotes) return null;
@@ -259,7 +256,7 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                 return null;
                             })()}
 
-                            {/* 4. SÉQUENCES DU JOUR (Collapsible) */}
+                            {/* 4. SÉQUENCES DU JOUR (Collapsible) - Visible pour tout le monde */}
                             {todayCallSheet.sequences && todayCallSheet.sequences.length > 0 && (
                                 <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
                                     <button
@@ -304,14 +301,15 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                 </div>
                             )}
 
-                            {/* 4b. CAST & FIGURATION (Collapsible) */}
+                            {/* 4b. CAST & FIGURATION (Collapsible) - Visible pour Prod, Régie, Mise en Scène */}
                             {(() => {
-                                const isMiseEnScene = (dept?: string) => {
+                                const isAuthorized = (dept?: string) => {
                                     if (!dept) return false;
-                                    return dept.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("mise en scene");
+                                    const d = dept.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                                    return d.includes('production') || d.includes('regie') || (d.includes('mise') && d.includes('scene')) || d.includes('realisation');
                                 };
 
-                                if (isMiseEnScene(effectiveDept)) {
+                                if (isAuthorized(effectiveDept)) {
                                     return (
                                         <>
                                             {(todayCallSheet.cast?.length || todayCallSheet.extras?.length) ? (
@@ -410,16 +408,14 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                 return null;
                             })()}
 
-                            {/* 4c. TRANSPORTS (Collapsible) */}
+                            {/* 4c. TRANSPORTS (Collapsible) - Visible pour Prod, Régie, Mise en Scène */}
                             {(() => {
-                                const normalize = (str?: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+                                const normalize = (str?: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "") : "";
                                 const deptInfo = normalize(effectiveDept);
 
-                                const isMiseEnScene = deptInfo.includes("mise") && deptInfo.includes("scene");
-                                const isRegie = deptInfo.includes("regie");
-                                const isAllowed = isMiseEnScene || isRegie;
+                                const isAuthorized = deptInfo.includes('production') || deptInfo.includes('regie') || (deptInfo.includes('mise') && deptInfo.includes('scene')) || deptInfo.includes('realisation');
 
-                                if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
+                                if (isAuthorized && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
                                     return (
                                         <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
                                             <button
