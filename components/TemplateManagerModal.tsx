@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserTemplate, Department } from '../types';
 import { useProject } from '../context/ProjectContext';
+import { useMarketplace } from '../context/MarketplaceContext';
 import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check, Mail } from 'lucide-react';
 import rvzCatalog from '../src/data/rvz_catalog.json';
 import { CONSUMABLES_CATALOG, DEPARTMENT_DISPLAY_NAMES } from '../src/data/consumables_catalog';
@@ -153,6 +154,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
     initialName
 }) => {
     const { getUserTemplates, saveUserTemplate, deleteUserTemplate, addItem, updateItem, project, currentDept } = useProject(); // Added updateItem
+    const { addToCatalog } = useMarketplace();
 
 
     const [templates, setTemplates] = useState<UserTemplate[]>([]);
@@ -479,6 +481,12 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             quantityCurrent: 1,
             department: dept
         }]);
+
+        // Add to global catalog for future searches (consumables only)
+        if (templateType === 'CONSUMABLE' && addToCatalog) {
+            addToCatalog(name.trim(), dept);
+        }
+
         setNewItemName('');
     };
 
