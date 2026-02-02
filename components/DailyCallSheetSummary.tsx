@@ -65,6 +65,17 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
 
     const getMapsLink = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
+    // Collapsible Sections State
+    const [openSections, setOpenSections] = useState<{ sequences: boolean, cast: boolean, transports: boolean }>({
+        sequences: true, // Default open on mobile for sequences? User asked for them.
+        cast: false,
+        transports: false
+    });
+
+    const toggleSection = (section: 'sequences' | 'cast' | 'transports') => {
+        setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
     if (!todayCallSheet) {
         return (
             <div className="flex flex-col items-center justify-center p-8 text-slate-400 bg-cinema-800 rounded-xl border border-cinema-700">
@@ -182,6 +193,281 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                 <div className="text-xs text-blue-400 font-bold group-hover:underline">Voir</div>
                             </div>
                         </a>
+                    )}
+
+                    {/* DIGITAL CONTENT */}
+                    {todayCallSheet && (todayCallSheet.isDigital ?? true) && (
+                        <>
+                            {/* 3. NOTE DU DÉPARTEMENT */}
+                            {(() => {
+                                if (effectiveDept === 'PRODUCTION' || effectiveDept === 'Production') {
+                                    return null;
+                                }
+                                if (effectiveDept) {
+                                    const getDeptNotes = (sheet: any, dept: string) => {
+                                        if (!sheet?.departmentNotes) return null;
+                                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                                        const target = normalize(dept);
+                                        const keys = Object.keys(sheet.departmentNotes);
+
+                                        if (sheet.departmentNotes[dept]) return sheet.departmentNotes[dept];
+
+                                        const synonyms: Record<string, string[]> = {
+                                            'camera': ['image', 'photo', 'cadre', 'opv'],
+                                            'costume': ['habillage', 'wardrobe', 'costumes'],
+                                            'maquillage': ['hmc', 'makeup', 'make-up'],
+                                            'coiffure': ['hmc', 'coiff'],
+                                            'regie': ['general', 'transport', 'cantine'],
+                                            'mise en scene': ['realisation', 'real', 'assistant', 'mes'],
+                                            'lumiere': ['electro', 'elec', 'electricien'],
+                                            'machinerie': ['machino', 'grip', 'machiniste'],
+                                            'decoration': ['deco', 'art'],
+                                            'son': ['sound', 'audio', 'perchman']
+                                        };
+                                        const targetSynonyms = synonyms[target] || [];
+
+                                        const match = keys.find(k => {
+                                            const normKey = normalize(k);
+                                            if (normKey.includes(target)) return true;
+                                            if (target.includes(normKey)) return true;
+                                            return targetSynonyms.some(syn => normKey.includes(syn) || syn.includes(normKey));
+                                        });
+                                        return match ? sheet.departmentNotes[match] : null;
+                                    };
+
+                                    const notes = getDeptNotes(todayCallSheet, effectiveDept);
+
+                                    if (notes && notes.length > 0) {
+                                        return (
+                                            <div className="mt-6 bg-purple-900/20 p-4 rounded-xl border border-purple-500/20 animate-pulse-once">
+                                                <h4 className="text-sm font-bold text-purple-400 mb-2 uppercase tracking-wide flex items-center gap-2">
+                                                    <FileText className="w-4 h-4" />
+                                                    Notes {effectiveDept}
+                                                </h4>
+                                                <ul className="space-y-2">
+                                                    {notes.map((note: string, idx: number) => (
+                                                        <li key={idx} className="text-sm text-purple-200/90 flex gap-2">
+                                                            <span className="text-purple-500 font-bold">•</span>
+                                                            {note}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        );
+                                    }
+                                }
+                                return null;
+                            })()}
+
+                            {/* 4. SÉQUENCES DU JOUR (Collapsible) */}
+                            {todayCallSheet.sequences && todayCallSheet.sequences.length > 0 && (
+                                <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
+                                    <button
+                                        onClick={() => toggleSection('sequences')}
+                                        className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {openSections.sequences ? <ChevronDown className="w-4 h-4 text-purple-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                            <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                <Film className="w-4 h-4 text-purple-400" />
+                                                Séquences du Jour
+                                            </h4>
+                                        </div>
+                                        <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full">
+                                            {todayCallSheet.sequences.length} seq.
+                                        </span>
+                                    </button>
+
+                                    {openSections.sequences && (
+                                        <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                            <table className="w-full text-left text-xs">
+                                                <thead className="bg-cinema-900 text-gray-400 font-medium">
+                                                    <tr>
+                                                        <th className="px-4 py-2 w-12 text-center">N°</th>
+                                                        <th className="px-4 py-2">Décor / Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-cinema-700">
+                                                    {todayCallSheet.sequences.map((seq: any) => (
+                                                        <tr key={seq.id} className="hover:bg-cinema-800/50 transition-colors">
+                                                            <td className="px-4 py-3 text-center font-bold text-white bg-cinema-800/30">{seq.sequenceNumber}</td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="font-bold text-purple-200 mb-0.5">{seq.decor}</div>
+                                                                <div className="text-gray-400 line-clamp-2">{seq.description}</div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* 4b. CAST & FIGURATION (Collapsible) */}
+                            {(() => {
+                                const isMiseEnScene = (dept?: string) => {
+                                    if (!dept) return false;
+                                    return dept.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("mise en scene");
+                                };
+
+                                if (isMiseEnScene(effectiveDept)) {
+                                    return (
+                                        <>
+                                            {(todayCallSheet.cast?.length || todayCallSheet.extras?.length) ? (
+                                                <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
+                                                    <button
+                                                        onClick={() => toggleSection('cast')}
+                                                        className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            {openSections.cast ? <ChevronDown className="w-4 h-4 text-pink-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                                            <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                                <Film className="w-4 h-4 text-pink-400" />
+                                                                Comédiens & Figuration
+                                                            </h4>
+                                                        </div>
+                                                    </button>
+
+                                                    {openSections.cast && (
+                                                        <div className="p-4 space-y-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                                                            {todayCallSheet.cast && todayCallSheet.cast.length > 0 && (
+                                                                <div>
+                                                                    <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens</h5>
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-left text-xs border-collapse">
+                                                                            <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                                <tr>
+                                                                                    <th className="p-2 border border-cinema-700">Rôle</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">P-U</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {todayCallSheet.cast.map((c: any, i: number) => (
+                                                                                    <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                                        <td className="p-2 border-r border-cinema-700">
+                                                                                            <div className="font-bold text-white">{c.role}</div>
+                                                                                            <div className="text-slate-400 text-[10px]">{c.actor}</div>
+                                                                                        </td>
+                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.pickupTime || '-'}</td>
+                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.hmcTime || '-'}</td>
+                                                                                        <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{c.mealTime || '-'}</td>
+                                                                                        <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{c.readyTime || '-'}</td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {todayCallSheet.extras && todayCallSheet.extras.length > 0 && (
+                                                                <div className="mt-4 pt-4 border-t border-cinema-700">
+                                                                    <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h5>
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-left text-xs border-collapse">
+                                                                            <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                                                <tr>
+                                                                                    <th className="p-2 border border-cinema-700">Groupe</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">Qté</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">HMC</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">DÎNER</th>
+                                                                                    <th className="p-2 border border-cinema-700 w-16 text-center">PAR</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {todayCallSheet.extras.map((e: any, i: number) => {
+                                                                                    const isObj = typeof e !== 'string';
+                                                                                    const name = isObj ? e.name : e;
+                                                                                    const qty = isObj ? e.quantity : '';
+                                                                                    const hmc = isObj ? e.hmcTime : '';
+                                                                                    const meal = isObj ? e.mealTime : '';
+                                                                                    const ready = isObj ? e.readyTime : '';
+                                                                                    return (
+                                                                                        <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                                            <td className="p-2 border-r border-cinema-700 font-medium text-white">{name}</td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-slate-400">{qty}</td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{hmc || '-'}</td>
+                                                                                            <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{meal || '-'}</td>
+                                                                                            <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{ready || '-'}</td>
+                                                                                        </tr>
+                                                                                    );
+                                                                                })}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                        </>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            {/* 4c. TRANSPORTS (Collapsible) */}
+                            {(() => {
+                                const normalize = (str?: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+                                const deptInfo = normalize(effectiveDept);
+
+                                const isMiseEnScene = deptInfo.includes("mise") && deptInfo.includes("scene");
+                                const isRegie = deptInfo.includes("regie");
+                                const isAllowed = isMiseEnScene || isRegie;
+
+                                if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
+                                    return (
+                                        <div className="mt-6 bg-cinema-900/50 rounded-xl border border-cinema-700 overflow-hidden">
+                                            <button
+                                                onClick={() => toggleSection('transports')}
+                                                className="w-full bg-cinema-800/50 px-4 py-3 border-b border-cinema-700 flex justify-between items-center hover:bg-cinema-800 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {openSections.transports ? <ChevronDown className="w-4 h-4 text-gray-300" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                                        <span className="text-base">🚕</span>
+                                                        Transports
+                                                    </h4>
+                                                </div>
+                                            </button>
+                                            {openSections.transports && (
+                                                <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                                    <table className="w-full text-left text-xs border-collapse">
+                                                        <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
+                                                            <tr>
+                                                                <th className="p-2 border border-cinema-700">Nom</th>
+                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Pick-Up</th>
+                                                                <th className="p-2 border border-cinema-700">Lieu</th>
+                                                                <th className="p-2 border border-cinema-700">Conducteur</th>
+                                                                <th className="p-2 border border-cinema-700">Dest.</th>
+                                                                <th className="p-2 border border-cinema-700 w-16 text-center">Sur Place</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {todayCallSheet.transports.map((t: any, i: number) => (
+                                                                <tr key={i} className="border-b border-cinema-700 hover:bg-white/5 transition-colors">
+                                                                    <td className="p-2 border-r border-cinema-700 font-bold text-white">{t.name}</td>
+                                                                    <td className="p-2 text-center border-r border-cinema-700 text-white font-mono">{t.pickupTime || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.pickupLocation || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-400">{t.driver || '-'}</td>
+                                                                    <td className="p-2 border-r border-cinema-700 text-slate-300">{t.destination || '-'}</td>
+                                                                    <td className="p-2 text-center text-white font-mono font-bold bg-white/5">{t.arrivalTime || '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </>
                     )}
 
                     {/* WEATHER & SECURITY */}
