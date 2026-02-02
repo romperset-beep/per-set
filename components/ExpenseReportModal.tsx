@@ -3,6 +3,7 @@ import { useProject } from '../context/ProjectContext';
 import { ExpenseLine } from '../types';
 import { X, Upload, Plus, Trash2, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
+import { validateFile } from '../src/utils/validation';
 
 interface ExpenseReportModalProps {
     isOpen: boolean;
@@ -56,6 +57,19 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+
+            // Validate file size and type
+            try {
+                validateFile(file, {
+                    maxSizeMB: file.type === 'application/pdf' ? 50 : 10,
+                    allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+                });
+            } catch (error: any) {
+                alert(error.message);
+                e.target.value = ''; // Reset input
+                return;
+            }
+
             setReceipt(file);
 
             // Create preview

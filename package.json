@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "scrape:rvz": "node scripts/scrape_rvz.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -30,7 +31,9 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "cheerio": "^1.2.0",
     "firebase-tools": "^14.27.0",
+    "pdf-parse": "^2.4.5",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

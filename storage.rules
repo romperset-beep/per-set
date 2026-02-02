@@ -27,10 +27,45 @@ service firebase.storage {
 
     // 3. Expenses / Receipts
     // PATH: production/{productionName}/{userName}/expenses/...
-    // Note: This path structure is based on names, which is less secure than IDs.
-    // For now, we allow authenticated users to write, but ideally this should be refactored.
-    match /production/{allPaths=**} {
-      allow read, write: if isAuth();
+    match /production/{productionName}/{userName}/expenses/{fileName} {
+      allow read: if isAuth();
+      
+      // Write with validation
+      allow write: if isAuth() && 
+        // File size limits: 50 MB for PDF, 10 MB for images
+        (
+          (request.resource.contentType == 'application/pdf' && request.resource.size < 50 * 1024 * 1024) ||
+          (request.resource.contentType.matches('image/.*') && request.resource.size < 10 * 1024 * 1024)
+        ) &&
+        // Only allow specific MIME types
+        (
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'image/jpeg' ||
+          request.resource.contentType == 'image/png' ||
+          request.resource.contentType == 'image/webp'
+        );
+    }
+    
+    // 4. Marketplace Images
+    // PATH: marketplace/...
+    match /marketplace/{allPaths=**} {
+      allow read: if isAuth();
+      
+      // Images only, max 10 MB
+      allow write: if isAuth() &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // 5. Social Feed Images
+    // PATH: social/...
+    match /social/{allPaths=**} {
+      allow read: if isAuth();
+      
+      // Images only, max 10 MB
+      allow write: if isAuth() &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 10 * 1024 * 1024;
     }
 
     // Default: Deny all other access

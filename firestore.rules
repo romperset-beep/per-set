@@ -22,17 +22,34 @@ service cloud.firestore {
     }
 
     // 2. Projects & Subcollections (Items, Logs, etc.)
-    match /projects/{projectId}/{document=**} {
-      // Currently, all authenticated users can access projects.
-      // Future improvement: Check if user is member of project.
-      allow read, write: if isAuth();
+    match /projects/{projectId} {
+      // Read: User must be authenticated
+      // TODO: Add membership check when project.members field is implemented
+      allow read: if isAuth();
+      
+      // Write: User must be authenticated
+      // TODO: Restrict to project members only
+      allow write: if isAuth();
+      
+      // Subcollections inherit parent permissions
+      match /{document=**} {
+        allow read, write: if isAuth();
+      }
     }
 
     // 3. Global Catalog
     match /catalog/{itemId} {
       allow read: if isAuth();
-      // Users can add to catalog
-      allow write: if isAuth();
+      
+      // Users can add to catalog, but with rate limiting
+      // (Firebase doesn't support rate limiting in rules, use Cloud Functions for production)
+      allow create: if isAuth() && 
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 2 &&
+        request.resource.data.name.size() < 100;
+      
+      // Only allow updates/deletes by admin
+      allow update, delete: if isAdmin();
     }
 
     // Default: Deny everything else

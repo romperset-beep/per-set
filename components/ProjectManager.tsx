@@ -387,8 +387,6 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             case 'expenses': return <ExpensesWidget onClick={() => setActiveTab('expenses')} />;
             case 'team': return <TeamWidget onClick={() => setActiveTab('team')} />;
             case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
-            case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
-            case 'buyback': return <BuyBackWidget onClick={() => setActiveTab('buyback')} />;
             case 'social': return <SocialWidget onClick={() => setActiveTab('social')} />;
             case 'my-lists': return <MyListsTile onClick={() => setActiveTab('my-lists')} />;
             default: return null;

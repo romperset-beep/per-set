@@ -3,6 +3,7 @@ import { useProject } from '../context/ProjectContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { Department, BuyBackItem } from '../types';
 import { X, Upload, Camera, Euro, Tag, MessageSquare, Image as ImageIcon } from 'lucide-react';
+import { validatePrice, validateFile } from '../src/utils/validation';
 
 interface SellItemModalProps {
     isOpen: boolean;
@@ -25,6 +26,18 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // Validate file
+            try {
+                validateFile(file, {
+                    maxSizeMB: 10,
+                    allowedTypes: ['image/jpeg', 'image/png', 'image/webp']
+                });
+            } catch (error: any) {
+                alert(error.message);
+                e.target.value = '';
+                return;
+            }
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPhoto(reader.result as string);
@@ -37,10 +50,19 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ isOpen, onClose })
         e.preventDefault();
         if (!name || (!price && !isPriceTBD)) return;
 
+        // Validate price
+        const priceValue = isPriceTBD ? -1 : parseFloat(price);
+        try {
+            validatePrice(priceValue);
+        } catch (error: any) {
+            alert(error.message);
+            return;
+        }
+
         const newItem: BuyBackItem = {
             id: `buyback_${Date.now()}`,
             name,
-            price: isPriceTBD ? -1 : parseFloat(price),
+            price: priceValue,
             originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
             description,
             photo: photo || undefined,
