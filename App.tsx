@@ -25,6 +25,8 @@ import { SaaSAgreementScreen } from './components/SaaSAgreementScreen';
 import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
 import { OnlineUsersModal } from './components/OnlineUsersModal';
 import { GlobalSearch } from './components/GlobalSearch';
+import { BottomNav } from './components/BottomNav';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 // Lazy imports - Heavy components loaded on demand
 const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
@@ -54,6 +56,7 @@ const AppContent: React.FC = () => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isOnlineUsersOpen, setIsOnlineUsersOpen] = useState(false); // Added
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -775,27 +778,85 @@ const AppContent: React.FC = () => {
         </div>
       </main >
 
-      {/* Configuration Modal */}
-      <ProjectConfigurationModal
-        isOpen={isConfigModalOpen}
-        onClose={() => setIsConfigModalOpen(false)}
+      {/* Mobile Bottom Navigation */}
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        unreadCount={unreadNotificationCount}
+        onMenuClick={() => setIsSidebarOpen(true)}
       />
 
-      {/* Online Users Modal */}
-      {isOnlineUsersOpen && (
-        <OnlineUsersModal
-          onClose={() => setIsOnlineUsersOpen(false)}
-          onMessage={(userId) => {
-            setSocialTargetUserId(userId);
-            setSocialAudience('USER');
-            setActiveTab('social');
-            setIsOnlineUsersOpen(false);
-            setIsSidebarOpen(false); // Close sidebar if on mobile
-          }}
-        />
-      )}
+      {/* Offline Indicator */}
+      <OfflineIndicator />
+    </div>
 
-      {/* <DebugFooter /> */}
+      {/* Modals */ }
+  {
+    isEditingDates && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-cinema-800 rounded-xl p-6 max-w-md w-full">
+          <h3 className="text-xl font-bold mb-4">Modifier les dates</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Date de début</label>
+              <input
+                type="date"
+                value={project.startDate || ''}
+                onChange={(e) => setProject(prev => ({ ...prev, startDate: e.target.value }))}
+                className="w-full bg-cinema-700 border border-cinema-600 rounded px-3 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Date de fin</label>
+              <input
+                type="date"
+                value={project.endDate || ''}
+                onChange={(e) => setProject(prev => ({ ...prev, endDate: e.target.value }))}
+                className="w-full bg-cinema-700 border border-cinema-600 rounded px-3 py-2 text-white"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  updateProjectDetails({ startDate: project.startDate, endDate: project.endDate });
+                  setIsEditingDates(false);
+                }}
+                className="flex-1 bg-eco-500 hover:bg-eco-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Enregistrer
+              </button>
+              <button
+                onClick={() => setIsEditingDates(false)}
+                className="flex-1 bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  {
+    isConfigModalOpen && (
+      <ProjectConfigurationModal
+        project={project}
+        onClose={() => setIsConfigModalOpen(false)}
+        onSave={updateProjectDetails}
+      />
+    )
+  }
+
+  {
+    isOnlineUsersOpen && (
+      <OnlineUsersModal
+        onClose={() => setIsOnlineUsersOpen(false)}
+      />
+    )
+  }
+
+  {/* <DebugFooter /> */ }
     </div >
   );
 };
