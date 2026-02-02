@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserTemplate, Department } from '../types';
 import { useProject } from '../context/ProjectContext';
-import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check } from 'lucide-react';
+import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check, Mail } from 'lucide-react';
 import rvzCatalog from '../src/data/rvz_catalog.json';
 
 const mapCategoryToDepartment = (rvzCategory: string): Department => {
@@ -458,6 +458,64 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         }
     };
 
+    const handleExportCSV = () => {
+        if (itemsToSave.length === 0) {
+            alert("La liste est vide.");
+            return;
+        }
+
+        // Create CSV content
+        const headers = ['Nom', 'Quantité', 'Unité', 'Département', 'Catégorie'];
+        const rows = itemsToSave.map(item => [
+            item.name || '',
+            item.quantityCurrent || item.quantity || 1,
+            item.unit || 'unités',
+            item.department || '',
+            item.category || ''
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        // Create download link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${newTemplateName || 'liste'}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleSendEmail = () => {
+        if (itemsToSave.length === 0) {
+            alert("La liste est vide.");
+            return;
+        }
+
+        const listName = newTemplateName || 'Ma Liste';
+        const subject = `Liste: ${listName}`;
+
+        let body = `Bonjour,\n\nVoici la liste "${listName}":\n\n`;
+
+        itemsToSave.forEach((item, index) => {
+            const qty = item.quantityCurrent || item.quantity || 1;
+            const unit = item.unit || 'unités';
+            body += `${index + 1}. ${item.name} - ${qty} ${unit}`;
+            if (item.department) body += ` (${item.department})`;
+            body += '\n';
+        });
+
+        body += `\n\nTotal: ${itemsToSave.length} articles\n\nCordialement`;
+
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
     const handleSave = async () => {
         if (!newTemplateName.trim()) return;
         setIsSaving(true);
@@ -871,14 +929,39 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleSave}
-                                disabled={!newTemplateName.trim() || itemsToSave.length === 0 || isSaving}
-                                className="w-full bg-eco-600 hover:bg-eco-500 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-eco-900/20"
-                            >
-                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                                Sauvegarder la liste
-                            </button>
+                            {/* Action Buttons */}
+                            <div className="space-y-3">
+                                {/* Primary Save Button */}
+                                <button
+                                    onClick={handleSave}
+                                    disabled={!newTemplateName.trim() || itemsToSave.length === 0 || isSaving}
+                                    className="w-full bg-eco-600 hover:bg-eco-500 text-white font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-eco-900/20"
+                                >
+                                    {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                                    Sauvegarder la liste
+                                </button>
+
+                                {/* Export Options */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={handleSendEmail}
+                                        disabled={itemsToSave.length === 0}
+                                        className="bg-cinema-700 hover:bg-cinema-600 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-cinema-600"
+                                    >
+                                        <Mail className="h-4 w-4" />
+                                        Envoyer par Email
+                                    </button>
+
+                                    <button
+                                        onClick={handleExportCSV}
+                                        disabled={itemsToSave.length === 0}
+                                        className="bg-cinema-700 hover:bg-cinema-600 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-cinema-600"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Exporter CSV
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-4">
