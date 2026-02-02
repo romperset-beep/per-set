@@ -841,9 +841,8 @@ const AppContent: React.FC = () => {
   {
     isConfigModalOpen && (
       <ProjectConfigurationModal
-        project={project}
+        isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
-        onSave={updateProjectDetails}
       />
     )
   }
@@ -852,11 +851,20 @@ const AppContent: React.FC = () => {
     isOnlineUsersOpen && (
       <OnlineUsersModal
         onClose={() => setIsOnlineUsersOpen(false)}
+        onMessage={(userId) => {
+          setSocialTargetUserId(userId);
+          setSocialAudience('USER');
+          setActiveTab('social');
+          setIsOnlineUsersOpen(false);
+          setIsSidebarOpen(false);
+        }}
       />
     )
   }
-
-  {/* <DebugFooter /> */ }
+    </div >
+  );
+};
+{/* <DebugFooter /> */ }
     </div >
   );
 };
