@@ -110,7 +110,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
             </div>
 
             {/* MAIN DAILY CARD */}
-            <div className="bg-gradient-to-br from-cinema-800 to-cinema-900 rounded-2xl p-6 border border-cinema-700 shadow-xl relative overflow-hidden">
+            <div className="bg-gradient-to-br from-cinema-800 to-cinema-900 rounded-2xl p-6 border border-cinema-700 shadow-xl relative overflow-hidden hidden md:block">
                 {/* Background Pattern */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
