@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
-import { getFirestore, setLogLevel } from 'firebase/firestore';
+import { getFirestore, setLogLevel, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
@@ -22,6 +22,16 @@ setLogLevel('debug');
 
 // Revert to simple init to fix crash, but keep named DB
 export const db = getFirestore(app, 'cinestock-db');
+
+// Enable offline persistence for PWA support
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+        console.warn('⚠️ Persistence failed: Multiple tabs open. Only one tab can have persistence enabled.');
+    } else if (err.code === 'unimplemented') {
+        console.warn('⚠️ Persistence not available in this browser.');
+    }
+});
+
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 

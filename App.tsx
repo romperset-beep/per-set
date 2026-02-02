@@ -1,4 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
+import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -23,6 +24,7 @@ import { PendingApprovalScreen } from './components/PendingApprovalScreen';
 import { SaaSAgreementScreen } from './components/SaaSAgreementScreen';
 import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
 import { OnlineUsersModal } from './components/OnlineUsersModal';
+import { GlobalSearch } from './components/GlobalSearch';
 
 // Lazy imports - Heavy components loaded on demand
 const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
@@ -51,6 +53,7 @@ const AppContent: React.FC = () => {
   const [isEditingDates, setIsEditingDates] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isOnlineUsersOpen, setIsOnlineUsersOpen] = useState(false); // Added
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   /* Notification State */
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -111,8 +114,20 @@ const AppContent: React.FC = () => {
   } = useSocial();
 
 
-  // Auto-init Push Notifications & Save Token if logged in
+  // Auto-init Push Notifications & Save Token
   const { permission, requestPermission, disableNotifications, fcmToken, loading } = usePushNotifications(user?.id);
+
+  // Global Search Keyboard Shortcut (Cmd/Ctrl + K)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowGlobalSearch(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
 
 
@@ -366,7 +381,13 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-cinema-900 text-slate-200 font-sans overflow-hidden">
-
+      {/* Global Search Modal */}
+      {showGlobalSearch && (
+        <GlobalSearch
+          onClose={() => setShowGlobalSearch(false)}
+          onNavigate={(tab) => setActiveTab(tab)}
+        />
+      )}
 
       <Sidebar
         activeTab={activeTab}
@@ -791,6 +812,29 @@ const App: React.FC = () => {
         <NotificationProvider>
           <SocialProvider>
             <MarketplaceProvider>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#1e293b',
+                    color: '#fff',
+                    border: '1px solid #334155',
+                  },
+                  success: {
+                    iconTheme: {
+                      primary: '#10b981',
+                      secondary: '#fff',
+                    },
+                  },
+                  error: {
+                    iconTheme: {
+                      primary: '#ef4444',
+                      secondary: '#fff',
+                    },
+                  },
+                }}
+              />
               <AppContent />
             </MarketplaceProvider>
           </SocialProvider>
