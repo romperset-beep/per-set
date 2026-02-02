@@ -67,7 +67,7 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
 
     // Collapsible Sections State
     const [openSections, setOpenSections] = useState<{ sequences: boolean, cast: boolean, transports: boolean }>({
-        sequences: true, // Default open on mobile for sequences? User asked for them.
+        sequences: false,
         cast: false,
         transports: false
     });
@@ -276,7 +276,10 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                     </button>
 
                                     {openSections.sequences && (
-                                        <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <div
+                                            className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200"
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                        >
                                             <table className="w-full text-left text-xs">
                                                 <thead className="bg-cinema-900 text-gray-400 font-medium">
                                                     <tr>
@@ -332,7 +335,10 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                                             {todayCallSheet.cast && todayCallSheet.cast.length > 0 && (
                                                                 <div>
                                                                     <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Comédiens</h5>
-                                                                    <div className="overflow-x-auto">
+                                                                    <div
+                                                                        className="overflow-x-auto"
+                                                                        onTouchStart={(e) => e.stopPropagation()}
+                                                                    >
                                                                         <table className="w-full text-left text-xs border-collapse">
                                                                             <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
                                                                                 <tr>
@@ -364,7 +370,10 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                                             {todayCallSheet.extras && todayCallSheet.extras.length > 0 && (
                                                                 <div className="mt-4 pt-4 border-t border-cinema-700">
                                                                     <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Figuration</h5>
-                                                                    <div className="overflow-x-auto">
+                                                                    <div
+                                                                        className="overflow-x-auto"
+                                                                        onTouchStart={(e) => e.stopPropagation()}
+                                                                    >
                                                                         <table className="w-full text-left text-xs border-collapse">
                                                                             <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
                                                                                 <tr>
@@ -431,7 +440,10 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                                 </div>
                                             </button>
                                             {openSections.transports && (
-                                                <div className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200">
+                                                <div
+                                                    className="overflow-x-auto animate-in slide-in-from-top-2 fade-in duration-200"
+                                                    onTouchStart={(e) => e.stopPropagation()}
+                                                >
                                                     <table className="w-full text-left text-xs border-collapse">
                                                         <thead className="bg-cinema-800 text-slate-400 font-bold uppercase">
                                                             <tr>
