@@ -426,6 +426,36 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         if (!newItemName || newItemName.length < 1) return [];
 
         const lower = newItemName.toLowerCase();
+
+        // CONSUMABLES: Use flat list from CONSUMABLES_CATALOG
+        if (templateType === 'CONSUMABLE') {
+            let allConsumables: { name: string; department: string }[] = [];
+
+            // Flatten all consumables from all departments
+            Object.entries(CONSUMABLES_CATALOG).forEach(([dept, items]) => {
+                items.forEach(name => {
+                    allConsumables.push({ name, department: dept });
+                });
+            });
+
+            // Filter by selected category (department) if any
+            if (selectedCategory) {
+                const deptKey = Object.keys(DEPARTMENT_DISPLAY_NAMES).find(
+                    key => DEPARTMENT_DISPLAY_NAMES[key] === selectedCategory
+                );
+                if (deptKey) {
+                    allConsumables = allConsumables.filter(item => item.department === deptKey);
+                }
+            }
+
+            // Filter by search term
+            return allConsumables
+                .filter(item => item.name.toLowerCase().includes(lower))
+                .slice(0, 50)
+                .map(item => ({ name: item.name, category: item.department }));
+        }
+
+        // MATERIAL: Use RVZ catalog
         let filtered = rvzCatalog as any[];
 
         if (selectedCategory) {
@@ -435,7 +465,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         return filtered
             .filter(item => item.name.toLowerCase().includes(lower))
             .slice(0, 50);
-    }, [newItemName, selectedCategory]);
+    }, [newItemName, selectedCategory, templateType]);
 
     const handleAddItem = (name: string, category?: string) => {
         if (!name.trim()) return;
