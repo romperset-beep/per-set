@@ -23,17 +23,22 @@ service cloud.firestore {
 
     // 2. Projects & Subcollections (Items, Logs, etc.)
     match /projects/{projectId} {
-      // Read: User must be authenticated
-      // TODO: Add membership check when project.members field is implemented
-      allow read: if isAuth();
+      // Helper function to check if user is member of this project
+      // A user is a member if their email exists in the users collection for this project
+      function isMemberOfProject() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.currentProjectId == projectId;
+      }
       
-      // Write: User must be authenticated
-      // TODO: Restrict to project members only
-      allow write: if isAuth();
+      // Read: User must be authenticated AND (admin OR member of project)
+      allow read: if isAuth() && (isAdmin() || isMemberOfProject());
+      
+      // Write: User must be authenticated AND (admin OR member of project)
+      allow write: if isAuth() && (isAdmin() || isMemberOfProject());
       
       // Subcollections inherit parent permissions
       match /{document=**} {
-        allow read, write: if isAuth();
+        allow read, write: if isAuth() && (isAdmin() || isMemberOfProject());
       }
     }
 
