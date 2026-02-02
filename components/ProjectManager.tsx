@@ -450,3 +450,18 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
         </div>
     );
 };
+
+// Memoize all widget components to prevent unnecessary re-renders
+const MemoizedOrdersWidget = React.memo(OrdersWidget);
+const MemoizedInventoryWidget = React.memo(InventoryWidget);
+const MemoizedCallSheetWidget = React.memo(CallSheetWidget);
+const MemoizedHoursWidget = React.memo(HoursWidget);
+const MemoizedRenfortsWidget = React.memo(RenfortsWidget);
+const MemoizedLogisticsWidget = React.memo(LogisticsWidget);
+const MemoizedEnergyWidget = React.memo(EnergyWidget);
+const MemoizedCateringWidget = React.memo(CateringWidget);
+const MemoizedExpensesWidget = React.memo(ExpensesWidget);
+const MemoizedTeamWidget = React.memo(TeamWidget);
+const MemoizedBuyBackWidget = React.memo(BuyBackWidget);
+const MemoizedSocialWidget = React.memo(SocialWidget);
+const MemoizedMyListsTile = React.memo(MyListsTile);

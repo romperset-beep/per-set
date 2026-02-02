@@ -1,44 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
-import { ProjectManager } from './components/ProjectManager';
-import { InventoryManager } from './components/InventoryManager';
-import { MyListsWidget } from './components/MyListsWidget'; // Added
-import { CateringWidget } from './components/CateringWidget';
-import { TimesheetWidget } from './components/TimesheetWidget';
-import { RenfortsWidget } from './components/RenfortsWidget';
-import { LogisticsWidget } from './components/LogisticsWidget';
-import { EnergyTracker } from './components/EnergyTracker';
-
-import { CircularEconomy } from './components/CircularEconomy';
-import { ImpactReport } from './components/ImpactReport';
-import { GlobalStock } from './components/GlobalStock';
-import { ExpenseReports } from './components/ExpenseReports';
-import { BuyBackMarketplace } from './components/BuyBackMarketplace';
-import { SocialFeed } from './components/SocialFeed';
-import { UserProfilePage } from './components/UserProfilePage';
-import { TeamDirectory } from './components/TeamDirectory';
-import { CallSheetView } from './components/CallSheetView';
 import { ProjectProvider, useProject } from './context/ProjectContext';
-import { AuthProvider, useAuth } from './context/AuthContext'; // Added
-import { NotificationProvider, useNotification } from './context/NotificationContext'; // Added
-import { useSocial } from './context/SocialContext'; // Added
-import { MarketplaceProvider } from './context/MarketplaceContext'; // Added
-import { LoginPage } from './components/LoginPage';
-import { ProjectSelection } from './components/ProjectSelection';
-import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
-import { AdminDashboard } from './components/AdminDashboard';
-import { MarketplacePage } from './components/MarketplacePage'; // Added
-import { PendingApprovalScreen } from './components/PendingApprovalScreen';
-import { SaaSAgreementScreen } from './components/SaaSAgreementScreen'; // Added
-import { OnlineUsersModal } from './components/OnlineUsersModal'; // Added
-import { DepartmentOrders } from './components/DepartmentOrders'; // Added
-import { SuperAdminStats } from './components/SuperAdminStats'; // Added
-import { SocialProvider } from './context/SocialContext'; // Added
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider, useNotification } from './context/NotificationContext';
+import { useSocial } from './context/SocialContext';
+import { MarketplaceProvider } from './context/MarketplaceContext';
+import { SocialProvider } from './context/SocialContext';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
+import { LoadingFallback } from './components/LoadingFallback';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings, BellOff, CheckCircle, Loader2 } from 'lucide-react';
 import { Department } from './types';
+
+// Eager imports - Components used frequently or on initial load
+import { ProjectManager } from './components/ProjectManager';
+import { InventoryManager } from './components/InventoryManager';
+import { SocialFeed } from './components/SocialFeed';
+import { LoginPage } from './components/LoginPage';
+import { ProjectSelection } from './components/ProjectSelection';
+import { PendingApprovalScreen } from './components/PendingApprovalScreen';
+import { SaaSAgreementScreen } from './components/SaaSAgreementScreen';
+import { ProjectConfigurationModal } from './components/ProjectConfigurationModal';
+import { OnlineUsersModal } from './components/OnlineUsersModal';
+
+// Lazy imports - Heavy components loaded on demand
+const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
+const CateringWidget = lazy(() => import('./components/CateringWidget').then(m => ({ default: m.CateringWidget })));
+const TimesheetWidget = lazy(() => import('./components/TimesheetWidget').then(m => ({ default: m.TimesheetWidget })));
+const RenfortsWidget = lazy(() => import('./components/RenfortsWidget').then(m => ({ default: m.RenfortsWidget })));
+const LogisticsWidget = lazy(() => import('./components/LogisticsWidget').then(m => ({ default: m.LogisticsWidget })));
+const EnergyTracker = lazy(() => import('./components/EnergyTracker').then(m => ({ default: m.EnergyTracker })));
+const CircularEconomy = lazy(() => import('./components/CircularEconomy').then(m => ({ default: m.CircularEconomy })));
+const ImpactReport = lazy(() => import('./components/ImpactReport').then(m => ({ default: m.ImpactReport })));
+const GlobalStock = lazy(() => import('./components/GlobalStock').then(m => ({ default: m.GlobalStock })));
+const ExpenseReports = lazy(() => import('./components/ExpenseReports').then(m => ({ default: m.ExpenseReports })));
+const BuyBackMarketplace = lazy(() => import('./components/BuyBackMarketplace').then(m => ({ default: m.BuyBackMarketplace })));
+const UserProfilePage = lazy(() => import('./components/UserProfilePage').then(m => ({ default: m.UserProfilePage })));
+const TeamDirectory = lazy(() => import('./components/TeamDirectory').then(m => ({ default: m.TeamDirectory })));
+const CallSheetView = lazy(() => import('./components/CallSheetView').then(m => ({ default: m.CallSheetView })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const MarketplacePage = lazy(() => import('./components/MarketplacePage').then(m => ({ default: m.MarketplacePage })));
+const DepartmentOrders = lazy(() => import('./components/DepartmentOrders').then(m => ({ default: m.DepartmentOrders })));
+const SuperAdminStats = lazy(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
 
 const AppContent: React.FC = () => {
 
@@ -299,57 +303,65 @@ const AppContent: React.FC = () => {
   }
 
   const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
-      case 'inventory':
-        return <InventoryManager />;
-      case 'orders':
-        return <DepartmentOrders />;
-      case 'inter_marketplace':
-        return <MarketplacePage />; // Global Inter-Production
-      case 'local_marketplace':
-        return <BuyBackMarketplace />; // Local Production Sell/Buy
-      case 'donations':
-        return <CircularEconomy />;
-      case 'circular':
-        return <CircularEconomy />;
-      case 'report':
-        return <ImpactReport />;
-      case 'global-stock':
-        return <GlobalStock />;
-      case 'expenses':
-        return <ExpenseReports />;
-      case 'buyback':
-        return <BuyBackMarketplace />;
-      case 'social':
-        return <SocialFeed />;
-      case 'profile':
-        return <UserProfilePage />;
-      case 'team':
-        return <TeamDirectory />;
-      case 'catering':
-        return <CateringWidget />;
-      case 'timesheet':
-        return <TimesheetWidget />;
-      case 'renforts':
-        return <RenfortsWidget />;
-      case 'logistics':
-        return <LogisticsWidget />;
-      case 'energy':
-        return <EnergyTracker />;
-      case 'callsheets':
-        return <CallSheetView />;
-      case 'admin':
-        return <AdminDashboard />;
-      case 'global-stats': // Added route
-        return <SuperAdminStats />;
-      case 'my-lists': // Added route for Centralized Lists
-        return <MyListsWidget />;
+    const content = (() => {
+      switch (activeTab) {
+        case 'dashboard':
+          return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
+        case 'inventory':
+          return <InventoryManager />;
+        case 'orders':
+          return <DepartmentOrders />;
+        case 'inter_marketplace':
+          return <MarketplacePage />; // Global Inter-Production
+        case 'local_marketplace':
+          return <BuyBackMarketplace />; // Local Production Sell/Buy
+        case 'donations':
+          return <CircularEconomy />;
+        case 'circular':
+          return <CircularEconomy />;
+        case 'report':
+          return <ImpactReport />;
+        case 'global-stock':
+          return <GlobalStock />;
+        case 'expenses':
+          return <ExpenseReports />;
+        case 'buyback':
+          return <BuyBackMarketplace />;
+        case 'social':
+          return <SocialFeed />;
+        case 'profile':
+          return <UserProfilePage />;
+        case 'team':
+          return <TeamDirectory />;
+        case 'catering':
+          return <CateringWidget />;
+        case 'timesheet':
+          return <TimesheetWidget />;
+        case 'renforts':
+          return <RenfortsWidget />;
+        case 'logistics':
+          return <LogisticsWidget />;
+        case 'energy':
+          return <EnergyTracker />;
+        case 'callsheets':
+          return <CallSheetView />;
+        case 'admin':
+          return <AdminDashboard />;
+        case 'global-stats': // Added route
+          return <SuperAdminStats />;
+        case 'my-lists': // Added route for Centralized Lists
+          return <MyListsWidget />;
 
-      default:
-        return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
-    }
+        default:
+          return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
+      }
+    })();
+
+    return (
+      <Suspense fallback={<LoadingFallback message="Chargement du module..." />}>
+        {content}
+      </Suspense>
+    );
   };
 
   return (

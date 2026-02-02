@@ -237,4 +237,5 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   );
 };
 
-export default Sidebar;
+// Memoize to prevent re-renders when props haven't changed
+export default React.memo(Sidebar);
