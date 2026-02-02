@@ -41,15 +41,20 @@ service cloud.firestore {
     match /catalog/{itemId} {
       allow read: if isAuth();
       
-      // Users can add to catalog, but with rate limiting
-      // (Firebase doesn't support rate limiting in rules, use Cloud Functions for production)
+      // All authenticated users can add to catalog with validation
       allow create: if isAuth() && 
         request.resource.data.name is string &&
         request.resource.data.name.size() > 2 &&
         request.resource.data.name.size() < 100;
       
-      // Only allow updates/deletes by admin
-      allow update, delete: if isAdmin();
+      // All authenticated users can update catalog items
+      allow update: if isAuth() &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 2 &&
+        request.resource.data.name.size() < 100;
+      
+      // Only admin can delete catalog items
+      allow delete: if isAdmin();
     }
 
     // Default: Deny everything else
