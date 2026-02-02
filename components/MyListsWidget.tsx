@@ -4,6 +4,7 @@ import { UserTemplate, Department } from '../types';
 import { TemplateManagerModal } from './TemplateManagerModal'; // Reuse existing logic where possible, or refactor
 import { Package, Truck, Trash2, Edit, Plus, Copy, FileText, CheckCircle2, Upload, ShoppingCart } from 'lucide-react';
 import { analyzeOrderFile, analyzeMarketplaceMatch } from '../services/geminiService';
+import { validateFile } from '../src/utils/validation';
 
 export const MyListsWidget: React.FC = () => {
     const { getUserTemplates, user, deleteUserTemplate, project } = useProject();
@@ -52,6 +53,18 @@ export const MyListsWidget: React.FC = () => {
     const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+
+        // Validate file
+        try {
+            validateFile(file, {
+                maxSizeMB: file.type === 'application/pdf' ? 50 : 10,
+                allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/csv', 'application/json', 'text/plain']
+            });
+        } catch (error: any) {
+            alert(error.message);
+            event.target.value = '';
+            return;
+        }
 
         try {
             const extension = file.name.split('.').pop()?.toLowerCase();

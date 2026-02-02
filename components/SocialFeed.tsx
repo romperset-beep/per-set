@@ -3,6 +3,7 @@ import { useProject } from '../context/ProjectContext'; // Restored
 import { useSocial } from '../context/SocialContext'; // Added
 import { MessageSquare, Image as ImageIcon, Send, Heart, User, Clock, Trash2, Users, Lock, ChevronDown } from 'lucide-react'; // Restored
 import { SocialPost, Department } from '../types'; // Restored
+import { validateFile } from '../src/utils/validation';
 
 export const SocialFeed: React.FC = () => {
     // State now comes from SocialContext
@@ -118,6 +119,18 @@ export const SocialFeed: React.FC = () => {
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // Validate file
+            try {
+                validateFile(file, {
+                    maxSizeMB: 10,
+                    allowedTypes: ['image/jpeg', 'image/png', 'image/webp']
+                });
+            } catch (error: any) {
+                alert(error.message);
+                e.target.value = '';
+                return;
+            }
+
             setIsProcessing(true);
             const reader = new FileReader();
 
