@@ -5,6 +5,7 @@ import {
     Users,
     Bell,
     Menu,
+    Clock, // Added
     type LucideIcon
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     const mainTabs: NavItem[] = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Tableau' },
         { id: 'inventory', icon: Package, label: 'Stock' },
+        { id: 'timesheet', icon: Clock, label: 'Heures' },
         { id: 'social', icon: Users, label: 'Social' },
         { id: 'notifications', icon: Bell, label: 'Notifs', badge: unreadCount },
     ];
@@ -57,8 +59,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex flex-col items-center justify-center flex-1 py-2 transition-colors relative ${activeTab === tab.id
-                                ? 'text-eco-400'
-                                : 'text-slate-400 active:bg-cinema-800'
+                            ? 'text-eco-400'
+                            : 'text-slate-400 active:bg-cinema-800'
                             }`}
                     >
                         <div className="relative">

@@ -137,12 +137,14 @@ const AppContent: React.FC = () => {
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
       if (activeTab === 'dashboard') setActiveTab('inventory');
-      else if (activeTab === 'inventory') setActiveTab('social');
+      else if (activeTab === 'inventory') setActiveTab('timesheet');
+      else if (activeTab === 'timesheet') setActiveTab('social');
       else if (activeTab === 'social') setActiveTab('notifications');
     },
     onSwipedRight: () => {
       if (activeTab === 'notifications') setActiveTab('social');
-      else if (activeTab === 'social') setActiveTab('inventory');
+      else if (activeTab === 'social') setActiveTab('timesheet');
+      else if (activeTab === 'timesheet') setActiveTab('inventory');
       else if (activeTab === 'inventory') setActiveTab('dashboard');
     },
     preventScrollOnSwipe: false, // Allow vertical scroll
