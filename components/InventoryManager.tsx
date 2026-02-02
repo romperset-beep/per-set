@@ -848,18 +848,18 @@ export const InventoryManager: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            <header className="flex justify-between items-end">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">Stock & Achats</h2>
-                    <p className="text-slate-400 mt-1">
+                    <h2 className="text-2xl md:text-3xl font-bold text-white">Stock & Achats</h2>
+                    <p className="text-slate-400 mt-1 text-sm md:text-base">
                         {currentDept === 'PRODUCTION'
                             ? "Gérez la liste d'achats globale et suivez l'inventaire."
                             : "Commandez vos consommables et gérez votre stock départemental."}
                     </p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     {selectedForExpense.size > 0 && (
-                        <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2 w-full md:w-auto">
                             <button
                                 onClick={() => setSelectedForExpense(new Set())}
                                 className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:border-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
@@ -869,10 +869,12 @@ export const InventoryManager: React.FC = () => {
                             </button>
                             <button
                                 onClick={() => setIsExpenseModalOpen(true)}
-                                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium transition-all"
+                                className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-medium transition-all"
                             >
                                 <Receipt className="h-5 w-5" />
-                                Créer Note de Frais ({selectedForExpense.size})
+                                <span className="hidden sm:inline">Créer Note de Frais</span>
+                                <span className="sm:hidden">Note de Frais</span>
+                                ({selectedForExpense.size})
                             </button>
                         </div>
                     )}
@@ -882,22 +884,23 @@ export const InventoryManager: React.FC = () => {
                             setTemplateMode('MANAGE');
                             setIsTemplateModalOpen(true);
                         }}
-                        className="bg-cinema-700 hover:bg-cinema-600 text-slate-200 px-4 py-2 rounded-lg font-medium border border-cinema-600 flex items-center gap-2 transition-all"
+                        className="flex-1 md:flex-initial bg-cinema-700 hover:bg-cinema-600 text-slate-200 px-4 py-2 rounded-lg font-medium border border-cinema-600 flex items-center justify-center gap-2 transition-all"
                     >
                         <GraduationCap className="h-5 w-5" />
-                        Mes Listes
+                        <span className="whitespace-nowrap">Mes Listes</span>
                     </button>
 
                     <button
                         onClick={() => {
                             if (project.items.length === 0) {
                                 alert("L'inventaire est vide.");
+                                import('react-hot-toast').then(t => t.default.error("L'inventaire est vide."));
                                 return;
                             }
                             setTemplateMode('SAVE');
                             setIsTemplateModalOpen(true);
                         }}
-                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:text-white hover:bg-cinema-700 transition-all"
+                        className="p-2 rounded-lg border border-cinema-600 text-slate-400 hover:text-white hover:bg-cinema-700 transition-all flex-none"
                         title="Sauvegarder cet inventaire comme modèle"
                     >
                         <Save className="h-5 w-5" />
@@ -905,10 +908,10 @@ export const InventoryManager: React.FC = () => {
 
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-eco-900/20 flex items-center gap-2 transition-all hover:scale-105"
+                        className="flex-1 md:flex-initial bg-eco-600 hover:bg-eco-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-eco-900/20 flex items-center justify-center gap-2 transition-all hover:scale-105"
                     >
                         <PlusCircle className="h-5 w-5" />
-                        Nouvelle Demande
+                        <span className="whitespace-nowrap">Nouvelle Demande</span>
                     </button>
                 </div>
             </header>
