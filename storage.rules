@@ -68,6 +68,12 @@ service firebase.storage {
         request.resource.size < 10 * 1024 * 1024;
     }
 
+    // 6. Project PDTs
+    // PATH: projects/{projectId}/pdt/...
+    match /projects/{projectId}/pdt/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
     // Default: Deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

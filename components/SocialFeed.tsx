@@ -471,7 +471,7 @@ export const SocialFeed: React.FC = () => {
                                                             className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-cinema-700 hover:text-white transition-colors flex items-center gap-3 border-b border-cinema-700/50 last:border-0"
                                                         >
                                                             <div className="bg-cinema-900 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border border-cinema-600">
-                                                                {p.firstName.charAt(0)}
+                                                                {(p.firstName || '?').charAt(0)}
                                                             </div>
                                                             <div>
                                                                 <div className="font-medium">{p.firstName} {p.lastName}</div>
@@ -501,7 +501,7 @@ export const SocialFeed: React.FC = () => {
                                 <textarea
                                     value={newPostContent}
                                     onChange={(e) => setNewPostContent(e.target.value)}
-                                    placeholder={t.placeholder.replace('{name}', user?.name.split(' ')[0] || '')}
+                                    placeholder={t.placeholder.replace('{name}', (user?.name || '').split(' ')[0])}
                                     className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-4 text-white focus:ring-2 focus:ring-pink-500 focus:outline-none resize-none min-h-[100px]"
                                 />
 
@@ -652,7 +652,7 @@ export const SocialFeed: React.FC = () => {
                                                         <Heart className="h-3 w-3 fill-current text-pink-500" /> {post.likes}
                                                     </span>
                                                 )}
-                                                {(isMe || user?.department === 'PRODUCTION') && (
+                                                {isMe && (
                                                     <button
                                                         onClick={() => {
                                                             if (window.confirm(t.deleteConfirm)) {

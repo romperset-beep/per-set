@@ -49,6 +49,9 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m =
 const MarketplacePage = lazy(() => import('./components/MarketplacePage').then(m => ({ default: m.MarketplacePage })));
 const DepartmentOrders = lazy(() => import('./components/DepartmentOrders').then(m => ({ default: m.DepartmentOrders })));
 const SuperAdminStats = lazy(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
+const PDTManager = lazy(() => import('./components/PDTManager').then(m => ({ default: m.PDTManager })));
+
+import { BetaTestBadge } from './components/BetaTestBadge';
 
 const AppContent: React.FC = () => {
 
@@ -219,7 +222,7 @@ const AppContent: React.FC = () => {
     if (profile && profile.firstName) return profile.firstName; // Use Profile First Name
 
     // Fallback: If user.name has space (e.g. "Romain Perset"), take first part
-    if (user.name.includes(' ')) return user.name.split(' ')[0];
+    if (user?.name?.includes(' ')) return user.name.split(' ')[0];
 
     return user.name; // Fallback to full string (e.g. "romperset")
   }, [user, userProfiles]);
@@ -345,6 +348,8 @@ const AppContent: React.FC = () => {
       switch (activeTab) {
         case 'dashboard':
           return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;
+        case 'pdt-manager':
+          return <PDTManager />;
         case 'inventory':
           return <InventoryManager />;
         case 'orders':
@@ -437,6 +442,10 @@ const AppContent: React.FC = () => {
             >
               <Menu className="h-6 w-6" />
             </button>
+
+            {/* Beta Badge */}
+            <BetaTestBadge />
+
             <div>
               <button
                 onClick={() => user?.department === 'PRODUCTION' && setIsConfigModalOpen(true)}

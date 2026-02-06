@@ -125,6 +125,10 @@ interface ProjectContextType {
   deleteAllData: () => Promise<void>;
   addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
   deleteLogisticsRequest: (requestId: string) => Promise<void>;
+
+  // RBAC
+  addMember: (email: string, role?: 'ADMIN' | 'USER') => Promise<void>;
+  removeMember: (userId: string) => Promise<void>;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -136,7 +140,9 @@ const DEFAULT_PROJECT: Project = {
   shootingEndDate: '2023-12-20',
   projectType: 'Long Métrage',
   status: 'Shooting',
-  items: []
+  status: 'Shooting',
+  items: [],
+  members: {} // Init empty
 };
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -327,6 +333,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log("[ProjectSync] Updated successfully:", safeUpdates);
     } catch (err: any) {
       console.error("[ProjectSync] Error updating project:", err);
+      throw err; // Re-throw to allow caller to handle error
     }
   };
 
@@ -1202,11 +1209,132 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     await updateProjectDetails({ logistics: newLogistics });
   };
 
-  const deleteLogisticsRequest = async (requestId: string) => {
+  const deleteLogisticsRequest = async (request: LogisticsRequest) => {
     const currentInfo = project.logistics || [];
-    const newLogistics = currentInfo.filter(r => r.id !== requestId);
+    // Best effort matching since no ID
+    const newLogistics = currentInfo.filter(item =>
+      item.date !== request.date ||
+      item.type !== request.type ||
+      item.department !== request.department
+    );
     await updateProjectDetails({ logistics: newLogistics });
   };
+
+
+
+  // --- MEMBER MANAGEMENT (RBAC) ---
+  const addMember = async (email: string, role: 'ADMIN' | 'USER' = 'USER') => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    // 1. Find User ID by Email
+    const q = query(collection(db, 'users'), where('email', '==', email));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      addNotification("Utilisateur introuvable avec cet email.", "ERROR");
+      return;
+    }
+
+    const targetUser = snap.docs[0].data() as User; // Assuming User type matches
+    const userId = snap.docs[0].id; // Use Doc ID as User ID
+
+    // 2. Add to Members with explicit ID
+    const newMemberEntry = {
+      role,
+      joinedAt: new Date().toISOString(),
+      email: targetUser.email,
+      name: targetUser.name
+    };
+
+    // Use specific dot notation to update just this key in the map
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, {
+      [`members.${userId}`]: newMemberEntry
+    });
+
+    addNotification(`${targetUser.name} ajouté au projet !`, "SUCCESS");
+  };
+
+  const removeMember = async (userId: string) => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    /* 
+      Firestore FieldValue.delete() is needed to remove a map key.
+      But we can't import it easily without modular SDK.
+      Alternative: Read, delete key, Write entire map? 
+      Or use updateDoc with deleteField()
+    */
+
+    // Dynamic import to avoid breaking changes if not available in current context?
+    // We already use modular SDK.
+    const { deleteField } = await import('firebase/firestore');
+
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, {
+      [`members.${userId}`]: deleteField()
+    });
+
+    addNotification("Membre retiré du projet.", "INFO");
+  };
+
+  // AUTO-MIGRATION / BACKFILL (Run by Admin)
+  useEffect(() => {
+    const runBackfill = async () => {
+      // Only run if:
+      // 1. User is Admin (Hardcoded or verified field)
+      // 2. Project is real
+      // 3. Project has NO members yet (Migration needed)
+
+      if (!user || user.email !== 'romperset@gmail.com') return;
+      if (!project.id || project.id === 'default-project') return;
+
+      // Check if members already exist
+      if (project.members && Object.keys(project.members).length > 0) return;
+
+      console.log("🔒 [Security] Starting Member Backfill for", project.id);
+      addNotification("Sécurisation du projet en cours...", "INFO");
+
+      try {
+        // 1. Find all users who claim to be on this project
+        const q = query(collection(db, 'users'), where('currentProjectId', '==', project.id));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          console.log("No users found to backfill.");
+          return;
+        }
+
+        const updates: Record<string, any> = {};
+
+        snap.forEach(docSnap => {
+          const uData = docSnap.data();
+          const role = (uData.email === 'romperset@gmail.com') ? 'ADMIN' : 'USER';
+
+          updates[`members.${docSnap.id}`] = {
+            role,
+            joinedAt: new Date().toISOString(),
+            email: uData.email,
+            name: uData.name
+          };
+        });
+
+        // 2. Commit to Project
+        const projectRef = doc(db, 'projects', project.id);
+        await updateDoc(projectRef, updates); // Merge updates
+
+        console.log(`🔒 [Security] Backfilled ${Object.keys(updates).length} members.`);
+        addNotification("Projet sécurisé : Membres importés.", "SUCCESS");
+
+      } catch (err) {
+        console.error("Backfill failed", err);
+      }
+    };
+
+    runBackfill();
+  }, [project.id, user?.email /* Re-run if user/project changes */]);
+
 
   const searchProjects = async (queryStr: string): Promise<Project[]> => {
     if (!queryStr || queryStr.length < 2) return [];
@@ -1303,6 +1431,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Logistics
     addLogisticsRequest,
     deleteLogisticsRequest,
+    addMember, // Added
+    removeMember, // Added
     searchProjects, // Added
     deleteUser, // Added
     deleteAllData, // Added Global Reset

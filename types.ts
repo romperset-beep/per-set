@@ -113,9 +113,22 @@ export interface Project {
   projectType?: string; // e.g., "Long Métrage", "Série", "Pub"
   convention?: string; // e.g., "Cinéma - Annexe 1", "USPA"
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
+  pdtUrl?: string; // Added: URL of the uploaded PDF
+  pdtName?: string; // Added: Original filename
   items: ConsumableItem[];
   callSheets?: CallSheet[]; // Added: Call sheets list
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
+
+  // Security / RBAC
+  members?: {
+    [userId: string]: {
+      role: 'ADMIN' | 'USER' | 'GUEST';
+      joinedAt: string;
+      email?: string;
+      name?: string;
+    }
+  };
+
   ecoprodProofs?: Record<string, string>; // ID -> Proof URL/Metadata
   rseCertification?: {
     auditorName: string;

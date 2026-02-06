@@ -13,7 +13,7 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
         if (!user) return '';
         const profile = userProfiles?.find(p => p.email === user.email);
         if (profile && profile.firstName) return profile.firstName;
-        if (user.name.includes(' ')) return user.name.split(' ')[0];
+        if (user.name && user.name.includes(' ')) return user.name.split(' ')[0];
         return user.name;
     }, [user, userProfiles]);
 

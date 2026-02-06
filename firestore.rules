@@ -24,19 +24,31 @@ service cloud.firestore {
     // 2. Projects & Subcollections (Items, Logs, etc.)
     match /projects/{projectId} {
       // Helper function to check if user is member of this project
-      // A user is a member if their email exists in the users collection for this project
+      // A user is a member if their ID exists in the members map
       function isMemberOfProject() {
-        return exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
-               get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.currentProjectId == projectId;
+        return resource.data.members[request.auth.uid] != null;
       }
       
       // Read: User must be authenticated AND (admin OR member of project)
       allow read: if isAuth() && (isAdmin() || isMemberOfProject());
       
-      // Write: User must be authenticated AND (admin OR member of project)
-      allow write: if isAuth() && (isAdmin() || isMemberOfProject());
+      // Create: Any authenticated user can create a project
+      allow create: if isAuth();
+
+      // Update/Delete: User must be authenticated AND (admin OR member of project)
+      allow update, delete: if isAuth() && (isAdmin() || isMemberOfProject());
       
       // Subcollections inherit parent permissions
+      // Explicit rule for Social Posts to restrict deletion to Author or Admin
+      match /socialPosts/{postId} {
+        allow read: if isAuth() && (isAdmin() || isMemberOfProject());
+        allow create: if isAuth() && (isAdmin() || isMemberOfProject());
+        allow update: if isAuth() && (isAdmin() || isMemberOfProject()) && resource.data.authorId == request.auth.uid;
+        // DELETE: Only Author OR Admin can delete
+        allow delete: if isAuth() && (isAdmin() || resource.data.authorId == request.auth.uid);
+      }
+
+      // Other Subcollections inherit parent permissions (broad)
       match /{document=**} {
         allow read, write: if isAuth() && (isAdmin() || isMemberOfProject());
       }

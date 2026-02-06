@@ -315,3 +315,75 @@ export const analyzeMarketplaceMatch = async (
     return results;
   }
 };
+
+export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
+  if (!genAI) {
+    throw new Error("API Key (VITE_GEMINI_API_KEY) is missing or invalid.");
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const contentPart = await fileToGenerativePart(file);
+
+    const prompt = `
+      Act as a 1st AD. Analyze this Plan de Travail (Call Sheet).
+      
+      GOAL: Extract ONLY valid shooting days (days with work) and accurate sequence count.
+      
+      RULES FOR DATES (Active Days Only):
+      1. A "Shooting Day" MUST have content (Sequence numbers OR Set names) in its column/row.
+      2. IGNORE days that are empty in the "Sequences" row.
+      3. IGNORE days marked "OFF", "VOYAGE", "TRAVEL", "PREP", "REPOS", "RTT".
+      4. IGNORE Weekends (Sat/Sun) *unless* they have specific sequence numbers listed.
+      5. VALIDATE: First and Last shooting days should define a realistic range (no unexplained gaps > 2 weeks).
+      6. YEAR DETECTION: If you detect "2021" anywhere in the document, ensure ALL dates use that year (not 2020 or 2022).
+      7. DATE FORMAT: Always return dates as DD/MM/YYYY.
+      8. LAST DAY DETECTION: Identify the ABSOLUTE LAST shooting day, even if followed by wrap/prep days. Look for the rightmost column with sequences.
+      9. DECEMBER ATTENTION: Pay special attention to December dates - ensure ALL shooting days through mid-December are included.
+      
+      RULES FOR SEQUENCES:
+      1. Count DISTINCT sequence numbers only (ignore duplicates if same sequence appears on multiple days).
+      2. Sequences may be formatted as: "1", "5A", "12-14" (count as 3: 12,13,14), "INT 3".
+      3. Look for rows labeled "SEQ", "SÉQUENCE", "SCENE", "N°", or similar.
+      4. If a cell contains multiple sequences (e.g., "1, 2, 5"), count each one separately.
+      5. IN YOUR REASONING: Explicitly state "I found X unique sequences: [list first 5 examples]".
+      
+      WEEKEND LOGIC REFINEMENT:
+      - Weekends (Saturday/Sunday) are OFF by default.
+      - ONLY include a weekend day if it has **specific sequence numbers** (not just "REPOS", "OFF", or empty).
+      - Example: "Samedi 06/11 - Seq 45A, 47" → INCLUDE. "Samedi 13/11 - REPOS" → EXCLUDE.
+      
+      OUTPUT JSON:
+      {
+        "dates": ["DD/MM/YYYY", ...],
+        "sequencesCount": number,
+        "startDayInfo": string | null,
+        "startDayOffset": number,
+        "reasoning": "Detailed explanation: 'Found 74 date columns. Identified 45 active shooting days after excluding 20 weekends (no sequences), 5 OFF days, 4 PREP days. Date range: 04/10/2021 to 17/12/2021. Counted 123 distinct sequences (examples: 1, 2, 5A, 12-14 counted as 3, 18, 22A).'"
+      }
+    `;
+
+    const result = await model.generateContent([prompt, contentPart]);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log("Raw Gemini Output:", text); // For debugging in browser console
+
+    // Robust JSON Extraction
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error("No JSON found in AI response");
+    }
+
+    const jsonStr = text.substring(jsonStart, jsonEnd + 1);
+    return JSON.parse(jsonStr);
+
+  } catch (error) {
+    console.error("Gemini PDT Analysis failed:", error);
+    // Return the error message inside an object so pdtService can display it
+    // instead of just returning null which leads to generic "invalid result"
+    throw error;
+  }
+};

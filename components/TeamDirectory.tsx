@@ -4,10 +4,12 @@ import { Department } from '../types';
 import { Search, FileText, Download, Mail, Phone } from 'lucide-react';
 
 export const TeamDirectory: React.FC = () => {
-    const { userProfiles, currentDept, project } = useProject();
+    const { userProfiles, currentDept, project, addMember, removeMember } = useProject();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
-    const [selectedProfile, setSelectedProfile] = useState<any>(null); // Added state
+    const [selectedProfile, setSelectedProfile] = useState<any>(null);
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [showInvite, setShowInvite] = useState(false); // UI State for Invite Box
 
 
 
@@ -42,6 +44,51 @@ export const TeamDirectory: React.FC = () => {
                     <p className="text-slate-400">
                         {userProfiles.length} fiches de renseignements enregistrées
                     </p>
+                    {currentDept === 'PRODUCTION' && (
+                        <div className="mt-2 flex gap-2">
+                            {!showInvite ? (
+                                <button
+                                    onClick={() => setShowInvite(true)}
+                                    className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition-colors"
+                                >
+                                    + Inviter un membre
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                    <input
+                                        type="email"
+                                        placeholder="email@exemple.com"
+                                        className="bg-cinema-900 border border-cinema-700 rounded px-2 py-1 text-sm text-white w-48"
+                                        value={inviteEmail}
+                                        onChange={e => setInviteEmail(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                addMember(inviteEmail);
+                                                setInviteEmail('');
+                                                setShowInvite(false);
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            addMember(inviteEmail);
+                                            setInviteEmail('');
+                                            setShowInvite(false);
+                                        }}
+                                        className="text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded"
+                                    >
+                                        Inviter
+                                    </button>
+                                    <button
+                                        onClick={() => setShowInvite(false)}
+                                        className="text-white hover:text-red-400"
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-4 w-full md:w-auto">
@@ -88,7 +135,24 @@ export const TeamDirectory: React.FC = () => {
                                 >
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <h4 className="font-bold text-white text-lg">{profile.firstName} {profile.lastName}</h4>
+                                            <h4 className="font-bold text-white text-lg flex items-center gap-2">
+                                                {profile.firstName} {profile.lastName}
+                                                {/* Kick Button */}
+                                                {currentDept === 'PRODUCTION' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm(`Voulez-vous vraiment retirer ${profile.firstName} du projet ?`)) {
+                                                                removeMember(profile.id);
+                                                            }
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-500 transition-all ml-2"
+                                                        title="Retirer du projet"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                )}
+                                            </h4>
                                             <p className="text-blue-400 text-sm">{profile.role}</p>
                                         </div>
                                         {/* Status Badges */}
@@ -134,12 +198,16 @@ export const TeamDirectory: React.FC = () => {
                     </div>
                 )}
             </div>
+            {/* Invite Modal */}
             {selectedProfile && (
                 <ProfileDetailModal profile={selectedProfile} onClose={() => setSelectedProfile(null)} />
             )}
         </div>
     );
 };
+
+// ... existing DocumentButton ...
+
 
 // ... existing DocumentButton ...
 const DocumentButton = ({ label, hasDoc, url }: { label: string, hasDoc: boolean, url?: string }) => {

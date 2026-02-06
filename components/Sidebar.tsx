@@ -18,7 +18,8 @@ import {
   Globe, // Added
   Zap, // Added
   ClipboardList, // Added
-  BarChart2 // Added
+  BarChart2, // Added
+  CalendarRange // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext'; // Restored
 import { useSocial } from '../context/SocialContext'; // Added
@@ -55,6 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     {
       title: 'Quotidien',
       items: [
+        { id: 'pdt-manager', label: 'Gestion des PDT', icon: CalendarRange, allowedDepts: ['PRODUCTION', 'Régie', 'Mise en Scène'] },
         { id: 'orders', label: 'Gestion Commandes', icon: ClipboardList, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
         { id: 'callsheets', label: 'Feuilles de Service', icon: FileText },
         { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
