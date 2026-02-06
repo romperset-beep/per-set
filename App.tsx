@@ -1,7 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
-import { ProjectProvider, useProject } from './context/ProjectContext';
+import { ProjectProvider, useProject } from '@/context/ProjectContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { useSocial } from './context/SocialContext';

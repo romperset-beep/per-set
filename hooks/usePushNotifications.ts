@@ -83,7 +83,10 @@ export const usePushNotifications = (userId?: string) => {
 
     // Save token to user profile
     useEffect(() => {
-        if (fcmToken && userId) {
+        // Validate userId is a proper UID (not an email)
+        const isValidUid = userId && !userId.includes('@');
+
+        if (fcmToken && userId && isValidUid) {
             const saveToken = async () => {
                 try {
                     const userRef = doc(db, 'users', userId);
@@ -102,12 +105,20 @@ export const usePushNotifications = (userId?: string) => {
                 }
             };
             saveToken();
+        } else if (userId && !isValidUid) {
+            console.warn('[Push] Skipping token save - userId appears to be email instead of UID:', userId);
         }
     }, [fcmToken, userId]);
 
     // Added: Disable notifications (remove token from server + wipe local state)
     const disableNotifications = async () => {
-        if (!fcmToken || !userId) return;
+        const isValidUid = userId && !userId.includes('@');
+
+        if (!fcmToken || !userId || !isValidUid) {
+            console.warn('[Push] Cannot disable - invalid userId or no token');
+            return;
+        }
+
         setLoading(true);
         try {
             const userRef = doc(db, 'users', userId);

@@ -34,21 +34,93 @@ async function analyzePdf() {
         const base64Data = fileBuffer.toString("base64");
 
         const prompt = `
-            Tu es un assistant de production expert.
-            ANALYSE cette Feuille de Service (Call Sheet).
+            Tu es un assistant de production expert (1er Assistant Réal).
+            ANALYSE cette Feuille de Service (Call Sheet) PDF.
             
-            OBJECTIF : Resumer les informations clés pour l'équipe.
+            OBJECTIF : Extraire les informations structurées pour l'application.
             
-            Informations à extraire :
-            - Date du tournage
-            - Heure de Prêt à Tourner (P.A.T)
-            - Heure de fin estimée (si indiquée)
-            - Lieux (Décors) avec adresses
-            - Lieu Cantine (si différent)
-            - Séquences à tourner (résumé rapide)
-            - Notes importantes (Météo, Sécurité, etc.)
+            Format de réponse attendu : JSON UNIQUEMENT (pas de markdown, pas de texte avant/après).
+            
+            Structure JSON :
+            {
+                "date": "YYYY-MM-DD",
+                "callTime": "HH:MM",
+                "endTime": "HH:MM",
+                "location1": "Nom du décor principal",
+                "location1Address": "Adresse complète du décor 1",
+                "location2": "Nom du décor secondaire (optionnel)",
+                "location2Address": "Adresse complète du décor 2 (optionnel)",
+                "cateringLocation": "Lieu cantine / Base Arrière",
+                "cateringAddress": "Adresse cantine",
+                "cateringTime": "Heure du repas / Coupure déjeuner (HH:MM)",
+                "hmcAddress": "Adresse HMC / Loges (si différent du décor)",
+                "nearestHospital": "Nom et adresse de l'hôpital",
+                "weather": {
+                    "condition": "ex: Ensoleillé, Pluvieux",
+                    "morningTemp": 12 (nombre, degres celsius),
+                    "afternoonTemp": 15
+                },
+                "cast": [
+                    { 
+                        "role": "TAMARA", 
+                        "actor": "Camille LOU",
+                        "pickupTime": "20:15",
+                        "hmcTime": "21:00",
+                        "mealTime": "22:30",
+                        "readyTime": "23:30" 
+                    }
+                ],
+                "extras": [
+                    { 
+                        "name": "Policiers (5)", 
+                        "hmcTime": "22:50", 
+                        "readyTime": "23:30"
+                    }
+                ],
+                "transports": [
+                    {
+                        "name": "Camille LOU",
+                        "pickupTime": "20h15",
+                        "pickupLocation": "Domicile",
+                        "driver": "Taxi",
+                        "destination": "HMC",
+                        "arrivalTime": "21h00"
+                    }
+                ],
+                "sequences": [
+                    {
+                        "sequenceNumber": "1/1A",
+                        "decor": "INT. CUISINE",
+                        "description": "Courte description de l'action",
+                        "characters": ["Jean", "Marie"]
+                    }
+                ],
+                "notes": ["Note importante 1", "Note importante 2"],
+                "departmentCallTimes": {
+                    "Mise en scène": "08:00",
+                    "Caméra": "08:00",
+                    "Régie": "07:00",
+                    "...": "..."
+                },
+                "departmentNotes": {
+                    "Mise en scène": ["Note 1", "Note 2"],
+                    "Image": ["Prévoir filtre pola", "Opv sur place"],
+                    "Costume": ["Raccord costume Paul..."]
+                }
+            }
 
-            Format de sortie : JSON pur.
+            Si une info est introuvable, laisse-la vide ou null.
+            Pour "departmentCallTimes", liste explicitement les horaires de convocation par département trouvés dans le tableau (souvent appelé "Tableau de Service" ou "Convocations").
+            
+            IMPORTANT POUR "departmentNotes" :
+            Trouve toutes les sections spécifiques à chaque département dans le corps de la feuille de service.
+            Cherche des titres en MAJUSCULES ou GRAS comme "IMAGE", "IMAG", "CAMÉRA", "MACHINERIE", "ÉLECTRICITÉ", "SON", "ACCESSOIRES", "M.E.S", "MISE EN SCÈNE", "HMC", etc.
+            Tout texte qui suit ces titres et qui donne des instructions techniques (ex: "Stead, Ronin 2", "Grue", "Prévoir...", "Attention à...") DOIT être ajouté dans "departmentNotes" sous le nom du département correspondant.
+            
+            IMPORTANT: Normalise les clés des départements dans "departmentCallTimes" et "departmentNotes". 
+            Exemple: Si tu trouves "M.E.S" ou "MES", utilise la clé "Mise en Scène". Si tu trouves "Imago" ou "Cam", utilise "Caméra".
+            
+            Pour la date, essaye de déduire l'année si elle n'est pas explicite (nous sommes probablement en ${new Date().getFullYear()}).
         `;
 
         const result = await model.generateContent([
@@ -61,7 +133,19 @@ async function analyzePdf() {
             },
         ]);
 
-        console.log(result.response.text());
+
+        const text = result.response.text();
+        const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(jsonString);
+
+        console.log("--- DEBUG EXTRACTION ---");
+        console.log("Date:", data.date);
+        console.log("Call Time (PAT):", data.callTime);
+        console.log("End Time (Fin Est):", data.endTime);
+        console.log("Location 1:", data.location1);
+        console.log("------------------------");
+        console.log(JSON.stringify(data, null, 2));
+
     } catch (error) {
         console.error("Error analyzing PDF:", error);
     }

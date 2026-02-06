@@ -95,6 +95,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
 
                 try {
+                    // MIGRATION: Check for legacy localStorage data
+                    const legacyUser = localStorage.getItem('cineStockUser');
+                    let legacyData: any = null;
+                    if (legacyUser) {
+                        try {
+                            legacyData = JSON.parse(legacyUser);
+                            console.log('[Auth] Found legacy cineStockUser data, will migrate if needed');
+                        } catch (e) {
+                            console.warn('[Auth] Failed to parse legacy user data');
+                        }
+                    }
+
                     const docRef = doc(db, 'users', firebaseUser.uid);
                     const docSnap = await getDoc(docRef);
 
@@ -103,9 +115,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         const fullUser = { ...userData, id: firebaseUser.uid };
                         setUser(fullUser);
                         localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
+
+                        // Clean up legacy storage after successful migration
+                        if (legacyData) {
+                            console.log('[Auth] Migrated to new storage, removing legacy data');
+                            localStorage.removeItem('cineStockUser');
+                        }
                     } else {
                         console.warn("User authenticated but no Firestore profile found.");
-                        // Handle edge case: create profile? Or wait for register?
+
+                        // Auto-create clean profile for authenticated users
+                        // Super admin (romperset@gmail.com) gets auto-approved status
+                        const isSuperAdmin = firebaseUser.email === 'romperset@gmail.com';
+
+                        console.log('[Auth] Creating clean Firestore profile');
+                        const newUser: User = {
+                            id: firebaseUser.uid,
+                            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                            email: firebaseUser.email || '',
+                            department: 'PRODUCTION',
+                            role: isSuperAdmin ? 'ADMIN' : 'USER',
+                            productionName: '', // Empty - user will fill this when joining a project
+                            filmTitle: '', // Empty - user will fill this when joining a project
+                            currentProjectId: null,
+                            status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve super admin
+                            hasAcceptedSaaSTerms: false,
+                            isAdmin: isSuperAdmin, // Set admin flag for super admin
+                        };
+
+                        await setDoc(docRef, newUser);
+                        setUser(newUser);
+                        localStorage.setItem('aBetterSetUser', JSON.stringify(newUser));
+
+                        // Clean up legacy data if it exists
+                        if (legacyData) {
+                            localStorage.removeItem('cineStockUser');
+                        }
+
+                        console.log('[Auth] Clean profile created:', isSuperAdmin ? 'Super Admin (auto-approved)' : 'Regular User (pending approval)');
                     }
                 } catch (err) {
                     console.error("Error fetching user profile:", err);
@@ -222,7 +269,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updateUser = async (data: Partial<User>) => {
         if (!auth.currentUser || !user) return;
         try {
-            await updateDoc(doc(db, 'users', auth.currentUser.uid), data);
+            // Use setDoc with merge instead of updateDoc to handle documents that may not exist yet
+            await setDoc(doc(db, 'users', auth.currentUser.uid), data, { merge: true });
 
             const updated = { ...user, ...data };
             setUser(updated);
@@ -236,10 +284,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Admin / Profile Management
     const updateUserProfile = async (profile: UserProfile) => {
         try {
-            await updateDoc(doc(db, 'users', profile.id), {
+            // Use setDoc with merge to handle documents that may not exist
+            await setDoc(doc(db, 'users', profile.id), {
                 role: profile.role,
                 department: profile.department
-            });
+            }, { merge: true });
             // Refresh list handled below or by caller?
             // For now, simple update.
         } catch (err: any) {

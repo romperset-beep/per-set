@@ -35,6 +35,10 @@ export const calculateCinemaGross = (params: CalculationParams): PayrollResult =
     let baseHours = 0;
 
     // Rates
+    // Rates
+    if (!cJob || !cJob.rates) {
+        return { grossAmount: 0, details: 'Tarif non défini' };
+    }
     const weeklyRate = cJob.rates.baseWeekly || (cJob.rates.baseDaily ? cJob.rates.baseDaily * 5 : 0);
     const dailyRate = cJob.rates.baseDaily || (weeklyRate / 5) || 0;
 

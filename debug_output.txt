@@ -1,0 +1,169 @@
+--- DEBUG EXTRACTION ---
+Date: 2026-10-19
+Call Time (PAT): 01:00
+End Time (Fin Est): 06:30
+Location 1: TOUR EIFFEL / Pilier Sud – Entrée du Personnel
+------------------------
+{
+  "date": "2026-10-19",
+  "callTime": "01:00",
+  "endTime": "06:30",
+  "location1": "TOUR EIFFEL / Pilier Sud – Entrée du Personnel",
+  "location1Address": null,
+  "location2": null,
+  "location2Address": null,
+  "cateringLocation": "CANTINE",
+  "cateringAddress": "rue Jean Rey 75015 Paris",
+  "cateringTime": "22:00",
+  "hmcAddress": "Hôtel Mercure : 20 rue Jean Rey 75015 Paris",
+  "nearestHospital": null,
+  "weather": {
+    "condition": "Pluvieux",
+    "morningTemp": 11,
+    "afternoonTemp": 15
+  },
+  "cast": [
+    {
+      "role": "TAMARA",
+      "actor": "Camille LOU",
+      "pickupTime": "20:15",
+      "hmcTime": "21:00",
+      "mealTime": "22:30",
+      "readyTime": "23:30"
+    },
+    {
+      "role": "QUENTIN CHAPUIS",
+      "actor": "MB14",
+      "pickupTime": "20:30",
+      "hmcTime": "21:00",
+      "mealTime": "22:30",
+      "readyTime": "23:30"
+    },
+    {
+      "role": "PRUDENCE",
+      "actor": "Élodie FONTAN",
+      "pickupTime": "20:35",
+      "hmcTime": "21:00",
+      "mealTime": "22:30",
+      "readyTime": "23:30"
+    }
+  ],
+  "extras": [
+    {
+      "name": "Policiers Uniformes (5)",
+      "hmcTime": "22:50",
+      "readyTime": "23:30"
+    },
+    {
+      "name": "Passants (10)",
+      "hmcTime": "22:50",
+      "readyTime": "23:30"
+    }
+  ],
+  "transports": [
+    {
+      "name": "Camille LOU",
+      "pickupTime": "20:15",
+      "pickupLocation": "Domicile",
+      "driver": "Taxi",
+      "destination": "HMC",
+      "arrivalTime": "21:00"
+    },
+    {
+      "name": "MB14",
+      "pickupTime": "20:30",
+      "pickupLocation": "Adagio: 43 rue de Caumartin 75009 Paris",
+      "driver": "Taxi",
+      "destination": "HMC",
+      "arrivalTime": "21:00"
+    },
+    {
+      "name": "Elodie FONTAN",
+      "pickupTime": "20:35",
+      "pickupLocation": "Domicile",
+      "driver": "Taxi",
+      "destination": "HMC",
+      "arrivalTime": "21:00"
+    }
+  ],
+  "sequences": [
+    {
+      "sequenceNumber": "155",
+      "decor": "EXT. NUIT TOUR EIFFEL - Pilier Est (Ext.)",
+      "description": "TAMARA saute d'un ascenseur et s'enfuit de la Tour Eiffel.",
+      "characters": [
+        "TAMARA",
+        "QUENTIN CHAPUIS"
+      ]
+    },
+    {
+      "sequenceNumber": "156",
+      "decor": "EXT. NUIT TOUR EIFFEL - Pilier Est / Palissade",
+      "description": "TAMARA sort de la Tour Eiffel et se retrouve nez à nez avec PRUDENCE qui vide son chargeur sur elle.",
+      "characters": [
+        "TAMARA",
+        "PRUDENCE"
+      ]
+    }
+  ],
+  "notes": [
+    "Merci à toutes et tous de nous avoir rejoints dans cette aventure qui a commencé pour nous il y a cinq ans déjà lors d'une rencontre à Rome entre Michel et Tsukasa Hôjô, le créateur des Cat's Eyes. Merci de rendre possible aujourd'hui ces rêves et ces envies que nous développons depuis tout ce temps. Désormais, Tam, Sylia, Alex, Quentin, Gwen et tous les autres ont des vrais visages et vont devenir des héroïnes et des héros de notre époque que tout le monde a hâte de découvrir. Soyons à la hauteur de nos ambitions et de nos rêves de (grands) enfants. Amusons-nous ! Alex, à toi de jouer ! Et n'oublions pas (en musique) : « Elles s'appellent Alexia, Tam et Sylia, trois ombres dans un œil de chat, tant de malice que la Police jamais ne les découvriraaaa ! » Bon tournage à toutes et tous ! Benji et Mehdi",
+    "Très heureux de retrouver tous ceux que je connais et d'accueillir les nouveaux membres de l'équipe. Le projet est de taille, sinon c'est pas drôle... Ambition, persévérance, respect et bienveillance nous permettrons d'y arriver ensemble. Sans oublier ce petit zeste d'improvisation qui donne des coups de chaud mais qui rend les choses magiques. J'vous kiff, on va tout déchirer ! Alex",
+    "Éco-responsabilité: Si vous possédez des gourdes ou tasses réutilisables d'un précédent tournage, merci de vous en munir. Cela nous permettra d'évaluer les besoins et de passer commande au plus juste.",
+    "Pensez à garder sur vous votre pièce d'identité !",
+    "L'accès à la Tour Eiffel (et son parvis) se fera uniquement sur présentation de celle-ci."
+  ],
+  "departmentCallTimes": {
+    "Mise en Scène": "22:00",
+    "Caméra": "22:00",
+    "Son": "22:00",
+    "Costume": "20:00",
+    "Maquillage": "20:30",
+    "Coiffure": "20:30",
+    "Électricité": "22:00",
+    "Machinerie": "22:00",
+    "Accessoires": "22:00",
+    "Cascades": "22:00"
+  },
+  "departmentNotes": {
+    "Régie": [
+      "Renforts : Jade UGNON-FLEURY (06 61 15 60 16 / jadeuf@gmail.com), Jim WIELAND (06 35 17 69 18 / jim.g.wieland@gmail.com)",
+      "Séq. 156: Faire enlever les fils à pigeon sur le dessus de la palissade pour la cascade"
+    ],
+    "Cascade / Câblage": [
+      "SUR PLACE 22H00 / Conseillers technique Cascades: Alexandre CAUDERLIER (06 72 95 69 43 / alexandre@cauderlier.com), Kevin CAUDERLIER (06 32 17 37 00 / kevin@cauderlier.com), Patrick CAUDERLIER (06 07 41 79 10 / patrick@cauderlier.com), Charles LECOQ (06 43 96 84 79 / charl.lecoq@gmail.com), Alexandre VU (06 23 17 68 04 / alexvu.fr@gmail.com) et Marion LEVAVASSEUR (06 17 31 36 11 / levavasseur.marion@gmail.com)",
+      "SEQ 156: PHYSIQUE ET CABLÉES: 156/1 - TAM saute du pilier pour quitter les lieux, 156/2 - PRUDENCE assène un gros coup de pied à TAM et la fait chuter, 156/3 - TAM escalade la paroi de verre de l'enceinte de la tour Eiffel"
+    ],
+    "Décoration": [
+      "SEQ 156: [Pratic] Palissade de verre + Structures pour prise d'appuis"
+    ],
+    "Accessoires": [
+      "Pour toutes les séquences, prévoir tube de transport Kakémono avec sangles, sac à dos, lampe torche et oreillette pour TAMARA.",
+      "SEQ 155: Lampes torches police, Passe Tour Eiffel (carte plastique) - [Fonct.] Radio/Talkie POLICE, Arme Quentin",
+      "SEQ 156: Lampes torches police, [Fonct.] Radio/Talkie POLICE, [Renouv.] Sable au sol à jeter à la figure de PRUDENCE, Arme Prudence + Tir"
+    ],
+    "Costume": [
+      "Prévoir combinaison Cat's Eyes (DB combinaison pour doublure) TAMARA pour toutes les séquences",
+      "SEQ 155: QUENTIN - Holster et Brassard, [Unif.] Police ceinture + Holster",
+      "SEQ 156: DB - Tenue PRUDENCE, [Unif.] Police ceinture + Holster pour figuration"
+    ],
+    "Maquillage / Coiffure": [
+      "SEQ 155: DB TAMARA - Perruque",
+      "SEQ 156: DB PRUDENCE – Perruque, DB TAMARA - Perruque"
+    ],
+    "Caméra": [
+      "SEQ 156: Stead, Ronin 2"
+    ],
+    "Machinerie": [
+      "SEQ 156: Grue (Bilight) Jean-Phi"
+    ],
+    "Armurier": [
+      "Présence de Arnaud PELETIER (06 14 72 04 85 / a.peltier@hotmail.fr) SUR PLACE 22H00 pour diner",
+      "SEQ 156: PRUDENCE tire sur TAMARA à travers la vitre"
+    ],
+    "VFX": [
+      "SÉQ 155: Effacer câbles",
+      "SÉQ 156: Effacer câbles / GUNFIGHT : Impact balles vitre et baies vitrées, Tir PRUDENCE"
+    ]
+  }
+}

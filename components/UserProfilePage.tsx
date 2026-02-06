@@ -13,6 +13,7 @@ export const UserProfilePage: React.FC = () => {
     const [formData, setFormData] = useState<Partial<UserProfile>>({});
     const [isEditing, setIsEditing] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     // Notification Logic
     const { permission, requestPermission, disableNotifications, fcmToken, loading } = usePushNotifications(user?.id);
@@ -240,6 +241,9 @@ export const UserProfilePage: React.FC = () => {
                     lastName: formData.lastName || user.name.split(' ').slice(1).join(' ')
                 }, { merge: true });
 
+                // Show success modal instead of alert
+                setShowSuccessModal(true);
+
                 // Update local context (optional as onSnapshot should catch it, but good for immediate feedback)
                 updateUserProfile({
                     ...formData,
@@ -247,7 +251,6 @@ export const UserProfilePage: React.FC = () => {
                 } as UserProfile);
 
                 setIsEditing(false);
-                alert("Fiche enregistrée avec succès !");
             } catch (err) {
                 console.error("Error saving profile:", err);
                 alert(`Erreur lors de l'enregistrement: ${(err as Error).message}`);
@@ -606,6 +609,27 @@ ${formData.firstName} ${formData.lastName}`;
                     Envoyer ma fiche par Email
                 </button>
             </div>
+
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-cinema-800 border-2 border-green-500 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-green-500/20 animate-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center space-y-6">
+                            <div className="bg-green-500/20 rounded-full p-4">
+                                <CheckCircle2 className="h-16 w-16 text-green-400" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white">Fiche enregistrée avec succès !</h3>
+                            <p className="text-slate-300">Vos informations ont été sauvegardées.</p>
+                            <button
+                                onClick={() => setShowSuccessModal(false)}
+                                className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold transition-all w-full shadow-lg"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

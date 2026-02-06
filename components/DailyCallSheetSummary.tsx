@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useProject } from '../context/ProjectContext';
+import { useProject } from '@/context/ProjectContext';
 import { Clock, MapPin, Utensils, AlertTriangle, CloudRain, FileText, ChevronDown, ChevronRight, Film } from 'lucide-react';
 
 export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = ({ overrideDepartment }) => {

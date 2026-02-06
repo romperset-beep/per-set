@@ -140,7 +140,6 @@ const DEFAULT_PROJECT: Project = {
   shootingEndDate: '2023-12-20',
   projectType: 'Long Métrage',
   status: 'Shooting',
-  status: 'Shooting',
   items: [],
   members: {} // Init empty
 };
@@ -1431,11 +1430,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Logistics
     addLogisticsRequest,
     deleteLogisticsRequest,
-    addMember, // Added
-    removeMember, // Added
-    searchProjects, // Added
-    deleteUser, // Added
-    deleteAllData, // Added Global Reset
+    addMember,
+    removeMember,
+    searchProjects,
+    deleteUser,
+    deleteAllData,
+    // Pagination
 
     userProfiles,
     updateUserProfile,
@@ -1451,7 +1451,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Templates
     saveUserTemplate,
     getUserTemplates,
-    deleteUserTemplate
+    deleteUserTemplate,
+    // Pagination
+    hasMoreItems,
+    loadMoreItems
   }), [
     project,
     currentDept,

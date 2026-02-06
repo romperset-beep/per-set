@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction } from '../types';
 import { DailyDashboard } from './DailyDashboard';
 import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap, ClipboardList } from 'lucide-react';
-import { useProject } from '../context/ProjectContext';
-import { useMarketplace } from '../context/MarketplaceContext'; // Added
-import { useSocial } from '../context/SocialContext'; // Added
+import { useProject } from '@/context/ProjectContext';
+import { useMarketplace } from '@/context/MarketplaceContext'; // Added
+import { useSocial } from '@/context/SocialContext'; // Added
 import { MyListsWidget } from './MyListsWidget';
 import { DndContext, closestCenter, TouchSensor, MouseSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';

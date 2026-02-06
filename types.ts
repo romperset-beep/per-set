@@ -143,6 +143,7 @@ export interface Project {
   reinforcements?: Reinforcement[];
   logistics?: LogisticsRequest[];
   energyLogs?: EnergyLog[];
+  weekMapping?: Record<string, string>; // Maps "W42-2023" -> "Week 1 (Shooting)"
 }
 
 export interface ReinforcementDetail {

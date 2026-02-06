@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProject } from '../context/ProjectContext';
+import { useProject } from '@/context/ProjectContext';
 import { Department, CallSheet, CallSheetSequence, CallSheetWeather } from '../types';
 import { Calendar, Clock, MapPin, Plus, Trash2, Save, FileText, Film, AlertTriangle, CloudRain, Shield } from 'lucide-react';
 

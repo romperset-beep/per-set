@@ -57,11 +57,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                     "morningTemp": 12 (nombre, degres celsius),
                     "afternoonTemp": 15
                 },
-                "weather": {
-                    "condition": "ex: Ensoleillé, Pluvieux",
-                    "morningTemp": 12 (nombre, degres celsius),
-                    "afternoonTemp": 15
-                },
+
                 "cast": [
                     { 
                         "role": "TAMARA", 
@@ -78,13 +74,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                         "hmcTime": "22:50", 
                         "readyTime": "23:30"
                     }
-                "extras": [
-                    { 
-                        "name": "Policiers (5)", 
-                        "hmcTime": "22:50", 
-                        "readyTime": "23:30"
-                    }
-                ],
+
                 "transports": [
                     {
                         "name": "Camille LOU",
@@ -128,7 +118,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             IMPORTANT: Normalise les clés des départements dans "departmentCallTimes" et "departmentNotes". 
             Exemple: Si tu trouves "M.E.S" ou "MES", utilise la clé "Mise en Scène". Si tu trouves "Imago" ou "Cam", utilise "Caméra".
             
-            Pour la date, essaye de déduire l'année si elle n'est pas explicite (nous sommes probalement en ${new Date().getFullYear()}).
+            Pour la date, essaye de déduire l'année si elle n'est pas explicite (nous sommes probablement en ${new Date().getFullYear()}).
         `;
 
         const imagePart = await fileToGenerativePart(file);
