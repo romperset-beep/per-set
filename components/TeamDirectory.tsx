@@ -13,12 +13,13 @@ export const TeamDirectory: React.FC = () => {
 
 
 
-    const filteredProfiles = userProfiles.filter(profile => {
-        // 1. Project Filter
+    // Filter profiles belonging to THIS project
+    const projectMembers = userProfiles.filter(profile => {
         const p = profile as any;
-        const isMember = p.currentProjectId === project.id || p.projectHistory?.some((h: any) => h.id === project.id);
-        if (!isMember) return false;
+        return p.currentProjectId === project.id || p.projectHistory?.some((h: any) => h.id === project.id);
+    });
 
+    const filteredProfiles = projectMembers.filter(profile => {
         const matchesSearch = (
             (profile.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (profile.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,7 +43,7 @@ export const TeamDirectory: React.FC = () => {
                 <div>
                     <h2 className="text-3xl font-bold text-white">Annuaire de l'Équipe</h2>
                     <p className="text-slate-400">
-                        {userProfiles.length} fiches de renseignements enregistrées
+                        {projectMembers.length} fiches de renseignements enregistrées
                     </p>
                     {currentDept === 'PRODUCTION' && (
                         <div className="mt-2 flex gap-2">
