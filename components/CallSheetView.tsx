@@ -24,7 +24,7 @@ export const CallSheetView: React.FC = () => {
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
-        return `${year} -${month} -${day} `;
+        return `${year}-${month}-${day}`;
     });
     const [uploadName, setUploadName] = useState('');
     const [callTime, setCallTime] = useState('');
@@ -53,7 +53,7 @@ export const CallSheetView: React.FC = () => {
 
     // Initialize Current Week as Expanded
     React.useEffect(() => {
-        const currentWeek = `W${getISOWeek(new Date())} -${new Date().getFullYear()} `;
+        const currentWeek = `W${getISOWeek(new Date())}-${new Date().getFullYear()}`;
         setExpandedWeeks(prev => new Set(prev).add(currentWeek));
     }, []);
 
