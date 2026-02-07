@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, isToday, parseISO
+    format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, isToday, parseISO, isWeekend
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, FileText, Upload, Calendar as CalendarIcon, MapPin, Clock } from 'lucide-react';
@@ -37,6 +37,9 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
         return startOfWeek(today, { locale: fr });
     });
 
+    const [isDragging, setIsDragging] = useState(false);
+    const navThrottleRef = useRef<number>(0);
+
     const [dragOverDate, setDragOverDate] = useState<string | null>(null);
     const [uploadingDate, setUploadingDate] = useState<string | null>(null);
 
@@ -51,6 +54,22 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
 
     const weekEnd = endOfWeek(currentWeekStart, { locale: fr });
     const weekDays = eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
+
+    const handleZoneDragOver = (e: React.DragEvent, direction: 'prev' | 'next') => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const now = Date.now();
+        if (now - navThrottleRef.current > 1000) { // Throttle navigation every 1 second
+            if (direction === 'prev') prevWeek();
+            else nextWeek();
+            navThrottleRef.current = now;
+        }
+    };
+
+    const handleDragEndGlobal = () => {
+        setIsDragging(false);
+    };
 
     // Handlers (Same as before)
     const handleDragOver = (e: React.DragEvent, dateStr: string) => {
@@ -69,6 +88,7 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
         e.preventDefault();
         e.stopPropagation();
         setDragOverDate(null);
+        setIsDragging(false);
 
         // 1. Handle Internal Sheet Move
         const draggedSheetId = e.dataTransfer.getData('text/plain');
@@ -104,13 +124,14 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
     const handleDragStart = (e: React.DragEvent, sheet: CallSheet) => {
         e.dataTransfer.setData('text/plain', sheet.id);
         e.dataTransfer.effectAllowed = 'move';
+        setIsDragging(true);
         // Optional: Set drag image
     };
 
     return (
-        <div className="bg-cinema-900 rounded-2xl border border-cinema-700 overflow-hidden shadow-xl flex flex-col h-[600px]">
+        <div className="bg-cinema-900 rounded-2xl border border-cinema-700 overflow-hidden shadow-xl flex flex-col h-[600px] relative">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-cinema-700 bg-cinema-800">
+            <div className="flex items-center justify-between p-4 border-b border-cinema-700 bg-cinema-800 relative z-20">
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-bold text-white capitalize flex items-center gap-2">
                         <CalendarIcon className="w-6 h-6 text-blue-500" />
@@ -140,7 +161,28 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
             </div>
 
             {/* Weekly Grid Columns */}
-            <div className="flex-1 grid grid-cols-7 divide-x divide-cinema-700 bg-cinema-800/50">
+            <div className="flex-1 grid grid-cols-7 divide-x divide-cinema-700 bg-cinema-800/50 relative">
+                {/* Navigation Zones */}
+                {isDragging && (
+                    <>
+                        {/* Previous Week Zone */}
+                        <div
+                            className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-blue-500/20 to-transparent z-50 flex items-center justify-start pl-2 transition-opacity opacity-0 hover:opacity-100"
+                            onDragOver={(e) => handleZoneDragOver(e, 'prev')}
+                        >
+                            <ChevronLeft className="w-8 h-8 text-blue-400 animate-pulse" />
+                        </div>
+
+                        {/* Next Week Zone */}
+                        <div
+                            className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-blue-500/20 to-transparent z-50 flex items-center justify-end pr-2 transition-opacity opacity-0 hover:opacity-100"
+                            onDragOver={(e) => handleZoneDragOver(e, 'next')}
+                        >
+                            <ChevronRight className="w-8 h-8 text-blue-400 animate-pulse" />
+                        </div>
+                    </>
+                )}
+
                 {weekDays.map(day => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const isTodayDate = isToday(day);
@@ -150,6 +192,8 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
                     const isOver = dragOverDate === dateStr;
                     const isUploadingThisDay = uploadingDate === dateStr;
 
+                    const isWknd = isWeekend(day);
+
                     return (
                         <div
                             key={dateStr}
@@ -157,8 +201,8 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, dateStr)}
                             className={`flex flex-col relative group transition-colors min-w-0
-                ${isOver ? 'bg-eco-500/10 ring-2 ring-inset ring-eco-500 z-10' : 'hover:bg-cinema-800'}
-                ${isTodayDate ? 'bg-blue-900/10' : ''}
+                ${isOver ? 'bg-eco-500/10 ring-2 ring-inset ring-eco-500 z-10' : isWknd ? 'bg-black/40 hover:bg-black/30' : 'bg-cinema-800/30 hover:bg-cinema-800/50'}
+                ${isTodayDate ? 'bg-blue-900/20' : ''}
               `}
                         >
                             {/* Day Header */}
@@ -200,6 +244,7 @@ export const CallSheetCalendar: React.FC<CallSheetCalendarProps> = ({
                                         key={sheet.id}
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, sheet)}
+                                        onDragEnd={handleDragEndGlobal}
                                         onClick={() => onViewSheet(sheet)}
                                         className="w-full text-left bg-cinema-700 p-2 rounded-lg border border-cinema-600 shadow-sm hover:border-blue-500 hover:shadow-md transition-all group/card cursor-grab active:cursor-grabbing"
                                     >

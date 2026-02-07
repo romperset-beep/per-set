@@ -25,6 +25,10 @@ export const LogisticsWidget: React.FC = () => {
     // If Production wants to manage their own requests, they also need viewMode
     const [viewMode, setViewMode] = useState<'OVERVIEW' | 'MY_REQUESTS'>('OVERVIEW');
 
+    // --- DRAG AND DROP STATE ---
+    const [isDragging, setIsDragging] = useState(false);
+    const navThrottleRef = React.useRef<number>(0);
+
     // Helper: Get Week Info (Relative to Shooting Start or ISO)
     const getWeekInfo = (d: Date) => {
         // 1. Try Relative to Shooting Start
@@ -168,6 +172,71 @@ export const LogisticsWidget: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('Supprimer cette demande ?')) return;
         await deleteLogisticsRequest(id);
+    };
+
+    // --- DRAG AND DROP LOGIC ---
+    const handleZoneDragOver = (e: React.DragEvent, direction: 'prev' | 'next') => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const now = Date.now();
+        if (now - navThrottleRef.current > 1000) { // Throttle navigation every 1 second
+            changeWeek(direction);
+            navThrottleRef.current = now;
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent, req: LogisticsRequest) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+            requestId: req.id,
+            sourceDate: req.date
+        }));
+        e.dataTransfer.effectAllowed = 'move';
+        setIsDragging(true);
+    };
+
+    const handleDragEndGlobal = () => {
+        setIsDragging(false);
+    };
+
+    const handleDayDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDropOnDay = async (e: React.DragEvent, targetDateStr: string) => {
+        e.preventDefault();
+        setIsDragging(false);
+
+        const dataStr = e.dataTransfer.getData('application/json');
+        if (!dataStr) return;
+
+        try {
+            const { requestId, sourceDate } = JSON.parse(dataStr);
+            if (sourceDate === targetDateStr) return; // No change
+
+            // Find the request
+            const allRequests = project.logistics || [];
+            const reqToMove = allRequests.find(r => r.id === requestId);
+
+            if (!reqToMove) return;
+
+            // Update the request with the new date
+            const updatedReq = { ...reqToMove, date: targetDateStr };
+
+            // We need to update the whole logistics array
+            // Since we don't have a direct 'updateLogisticsRequest' method exposed in the context hook usage above (only add/delete),
+            // we might need to use updateProjectDetails directly or assume addLogisticsRequest handles upsert?
+            // Checking Context usage: addLogisticsRequest usually appends. delete removes.
+            // Let's check if we can update. 
+            // Actually, updateProjectDetails takes partial project. So we can update the logistics array directly.
+
+            const newLogistics = allRequests.map(r => r.id === requestId ? updatedReq : r);
+            await updateProjectDetails({ logistics: newLogistics });
+
+        } catch (error) {
+            console.error("Error moving logistics request", error);
+        }
     };
 
     // --- RENDER ---
@@ -346,83 +415,120 @@ export const LogisticsWidget: React.FC = () => {
             </div>
 
             {/* Matrix */}
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-                {days.map((day) => {
-                    const dateStr = day.toISOString().split('T')[0];
-                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                    const requests = getRequests(dateStr, (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? currentDept : user?.department || '');
+            <div className="relative">
+                {/* Navigation Zones */}
+                {isDragging && (
+                    <>
+                        <div
+                            className="absolute -left-4 top-0 bottom-0 w-20 bg-gradient-to-r from-amber-500/20 to-transparent z-50 flex items-center justify-start pl-2 transition-opacity opacity-0 hover:opacity-100 rounded-l-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'prev')}
+                        >
+                            <ChevronLeft className="w-8 h-8 text-amber-400 animate-pulse" />
+                        </div>
 
-                    return (
-                        <div key={dateStr} className={`bg-cinema-800 rounded-xl border ${isToday ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-cinema-700'} flex flex-col h-full min-h-[300px]`}>
-                            <div className={`p-3 text-center border-b ${isToday ? 'bg-amber-500/10 border-amber-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
-                                <div className={`text-sm font-bold uppercase ${isToday ? 'text-amber-400' : 'text-slate-400'}`}>
-                                    {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
+                        <div
+                            className="absolute -right-4 top-0 bottom-0 w-20 bg-gradient-to-l from-amber-500/20 to-transparent z-50 flex items-center justify-end pr-2 transition-opacity opacity-0 hover:opacity-100 rounded-r-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'next')}
+                        >
+                            <ChevronRightIcon className="w-8 h-8 text-amber-400 animate-pulse" />
+                        </div>
+                    </>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+                    {days.map((day) => {
+                        const dateStr = day.toISOString().split('T')[0];
+                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                        const requests = getRequests(dateStr, (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? currentDept : user?.department || '');
+
+                        return (
+                            <div
+                                key={dateStr}
+                                onDragOver={handleDayDragOver}
+                                onDrop={(e) => handleDropOnDay(e, dateStr)}
+                                className={`rounded-xl border flex flex-col h-full min-h-[300px] transition-colors
+                                    ${isToday ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-cinema-700'}
+                                    ${isDragging ? 'hover:bg-cinema-700/50' : ''}
+                                    ${isWeekend && !isToday ? 'bg-black/40' : 'bg-cinema-800'}
+                                `}
+                            >
+                                <div className={`p-3 text-center border-b ${isToday ? 'bg-amber-500/10 border-amber-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
+                                    <div className={`text-sm font-bold uppercase ${isToday ? 'text-amber-400' : 'text-slate-400'}`}>
+                                        {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
+                                    </div>
+                                    <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                                        {day.getDate()}
+                                    </div>
                                 </div>
-                                <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
-                                    {day.getDate()}
-                                </div>
-                            </div>
 
-                            <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                                <div className="h-full flex flex-col">
-                                    <div className="flex-1 space-y-2">
-                                        {requests.length > 0 ? requests.map(req => (
-                                            <div key={req.id} className="bg-slate-700/30 p-2 rounded-lg border border-transparent hover:border-slate-600 transition-colors group relative">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${req.type === 'pickup' ? 'bg-green-500/20 text-green-400' :
-                                                        req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
-                                                            req.type === 'pickup_set' ? 'bg-lime-500/20 text-lime-400' :
-                                                                req.type === 'dropoff_set' ? 'bg-cyan-500/20 text-cyan-400' :
-                                                                    'bg-purple-500/20 text-purple-400'
-                                                        }`}>
-                                                        {req.type === 'pickup' ? 'Enlèv.' :
-                                                            req.type === 'dropoff' ? 'Retour' :
-                                                                req.type === 'pickup_set' ? 'Enl. Plat.' :
-                                                                    req.type === 'dropoff_set' ? 'Ret. Plat.' :
-                                                                        'A/R'}
-                                                    </span>
-                                                    <span className="text-xs text-slate-300 font-mono">{req.time}</span>
-                                                </div>
-                                                <div className="text-xs font-medium text-white truncate mb-0.5" title={req.location}>
-                                                    {req.location}
-                                                </div>
-                                                {req.description && (
-                                                    <div className="text-[10px] text-slate-400 truncate italic">
-                                                        {req.description}
-                                                    </div>
-                                                )}
-
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(req.id); }}
-                                                    className="absolute top-1 right-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+                                    <div className="h-full flex flex-col">
+                                        <div className="flex-1 space-y-2">
+                                            {requests.length > 0 ? requests.map(req => (
+                                                <div
+                                                    key={req.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, req)}
+                                                    onDragEnd={handleDragEndGlobal}
+                                                    className="bg-slate-700/30 p-2 rounded-lg border border-transparent hover:border-slate-600 transition-colors group relative cursor-grab active:cursor-grabbing"
                                                 >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        )) : (
-                                            !addingToDate && (
-                                                <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-amber-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-amber-500/50 rounded-lg p-4 min-h-[100px]">
-                                                    <Plus className="h-6 w-6 mb-2" />
-                                                    <span className="text-xs font-medium">Demander</span>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${req.type === 'pickup' ? 'bg-green-500/20 text-green-400' :
+                                                            req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
+                                                                req.type === 'pickup_set' ? 'bg-lime-500/20 text-lime-400' :
+                                                                    req.type === 'dropoff_set' ? 'bg-cyan-500/20 text-cyan-400' :
+                                                                        'bg-purple-500/20 text-purple-400'
+                                                            }`}>
+                                                            {req.type === 'pickup' ? 'Enlèv.' :
+                                                                req.type === 'dropoff' ? 'Retour' :
+                                                                    req.type === 'pickup_set' ? 'Enl. Plat.' :
+                                                                        req.type === 'dropoff_set' ? 'Ret. Plat.' :
+                                                                            'A/R'}
+                                                        </span>
+                                                        <span className="text-xs text-slate-300 font-mono">{req.time}</span>
+                                                    </div>
+                                                    <div className="text-xs font-medium text-white truncate mb-0.5" title={req.location}>
+                                                        {req.location}
+                                                    </div>
+                                                    {req.description && (
+                                                        <div className="text-[10px] text-slate-400 truncate italic">
+                                                            {req.description}
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(req.id); }}
+                                                        className="absolute top-1 right-1 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
                                                 </div>
-                                            )
+                                            )) : (
+                                                !addingToDate && (
+                                                    <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-amber-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-amber-500/50 rounded-lg p-4 min-h-[100px]">
+                                                        <Plus className="h-6 w-6 mb-2" />
+                                                        <span className="text-xs font-medium">Demander</span>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+
+                                        {addingToDate !== dateStr && requests.length > 0 && (
+                                            <button
+                                                onClick={() => setAddingToDate(dateStr)}
+                                                className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-amber-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                                Ajouter
+                                            </button>
                                         )}
                                     </div>
-
-                                    {addingToDate !== dateStr && requests.length > 0 && (
-                                        <button
-                                            onClick={() => setAddingToDate(dateStr)}
-                                            className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-amber-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                            Ajouter
-                                        </button>
-                                    )}
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ADD MODAL */}

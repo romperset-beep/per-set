@@ -43,6 +43,10 @@ export const RenfortsWidget: React.FC = () => {
     const [prodExpandedDepts, setProdExpandedDepts] = useState<string[]>([]); // 'YYYY-MM-DD_DEPT'
     const [viewMode, setViewMode] = useState<'OVERVIEW' | 'MY_TEAM'>('OVERVIEW');
 
+    // --- DRAG AND DROP STATE (Moved to top level) ---
+    const [isDragging, setIsDragging] = useState(false);
+    const navThrottleRef = React.useRef<number>(0);
+
     // Helper: Get Week Info (Relative to Shooting Start or ISO)
     const getWeekInfo = (d: Date) => {
         // 1. Try Relative to Shooting Start
@@ -547,6 +551,114 @@ export const RenfortsWidget: React.FC = () => {
         );
     }
 
+    // --- DRAG AND DROP LOGIC ---
+
+
+    const handleZoneDragOver = (e: React.DragEvent, direction: 'prev' | 'next') => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const now = Date.now();
+        if (now - navThrottleRef.current > 1000) { // Throttle navigation every 1 second
+            changeWeek(direction);
+            navThrottleRef.current = now;
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent, staff: ReinforcementDetail, dateStr: string, dept: string) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+            staffId: staff.id,
+            sourceDate: dateStr,
+            sourceDept: dept
+        }));
+        e.dataTransfer.effectAllowed = 'move';
+        setIsDragging(true);
+    };
+
+    const handleDragEndGlobal = () => {
+        setIsDragging(false);
+    };
+
+    const handleDayDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDropOnDay = async (e: React.DragEvent, targetDateStr: string) => {
+        e.preventDefault();
+        setIsDragging(false);
+
+        const dataStr = e.dataTransfer.getData('application/json');
+        if (!dataStr) return;
+
+        try {
+            const { staffId, sourceDate, sourceDept } = JSON.parse(dataStr);
+            if (sourceDate === targetDateStr) return; // No change
+
+            // Logique de déplacement
+            // 1. Trouver le renfort source
+            const sourceReinforcement = (project.reinforcements || []).find(r => r.date === sourceDate && r.department === sourceDept);
+            if (!sourceReinforcement) return;
+
+            // 2. Retirer le staff de la source
+            const sourceStaffList = getStaffList(sourceReinforcement);
+            const staffToMove = sourceStaffList.find(s => s.id === staffId);
+            if (!staffToMove) return;
+
+            const newSourceStaffList = sourceStaffList.filter(s => s.id !== staffId);
+
+            // 3. Ajouter à la cible
+            // La cible doit être du même département que la source (ou l'utilisateur actuel ?)
+            // Ici on garde le même département que la source (logique de replanification au sein du même dept)
+            const targetDept = sourceDept;
+
+            const targetReinforcement = (project.reinforcements || []).find(r => r.date === targetDateStr && r.department === targetDept);
+
+            let newReinforcements = [...(project.reinforcements || [])];
+
+            // Update Source
+            if (newSourceStaffList.length === 0) {
+                // Si plus de staff, on supprime carrément l'entrée de renfort ? 
+                // Ou on garde une entrée vide ?
+                // Pour éviter les "ghosts", si vide on supprime.
+                newReinforcements = newReinforcements.filter(r => r.id !== sourceReinforcement.id);
+            } else {
+                const updatedSource = { ...sourceReinforcement, staff: newSourceStaffList };
+                if (updatedSource.names) delete (updatedSource as any).names;
+                newReinforcements = newReinforcements.map(r => r.id === sourceReinforcement.id ? updatedSource : r);
+            }
+
+            // Update/Create Target
+            if (targetReinforcement) {
+                // Update existing target
+                // Il faut re-fetcher target dans newReinforcements car on vient peut-être de le modifier (si source == target, impossible ici car date diff)
+                // Mais safe d'utiliser id
+                const currentTargetStaff = getStaffList(targetReinforcement);
+                const updatedTarget = { ...targetReinforcement, staff: [...currentTargetStaff, staffToMove] };
+                if (updatedTarget.names) delete (updatedTarget as any).names;
+
+                // Attention: si target existait déjà dans newReinforcements (cas normal), on le map
+                // Si on l'a supprimé car source vide et source == target (impossible dates diff)..
+                newReinforcements = newReinforcements.map(r => r.id === targetReinforcement.id ? updatedTarget : r);
+            } else {
+                // Create new target
+                const newTarget: Reinforcement = {
+                    id: `${targetDateStr}_${targetDept} `,
+                    date: targetDateStr,
+                    department: targetDept as any,
+                    staff: [staffToMove]
+                };
+                newReinforcements.push(newTarget);
+            }
+
+            await updateProjectDetails({ reinforcements: newReinforcements });
+
+        } catch (error) {
+            console.error("Error moving reinforcement", error);
+        }
+    };
+
+
     // 2. DEPARTMENT VIEW (Original Matrix) - UPDATED
     return (
         <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
@@ -589,79 +701,113 @@ export const RenfortsWidget: React.FC = () => {
             </div>
 
             {/* Matrix View */}
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-                {days.map((day) => {
-                    const dateStr = day.toISOString().split('T')[0];
-                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
-
-                    return (
-                        <div key={dateStr} className={`bg-cinema-800 rounded-xl border ${isToday ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-cinema-700'} flex flex-col h-full min-h-[300px]`}>
-                            {/* Day Header */}
-                            <div className={`p-3 text-center border-b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
-                                <div className={`text-sm font-bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
-                                    {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
-                                </div>
-                                <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
-                                    {day.getDate()}
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                                <div className="h-full flex flex-col">
-                                    <div className="flex-1 space-y-2">
-                                        {(() => {
-                                            const targetDept = user?.department === 'PRODUCTION' ? currentDept : user?.department;
-                                            const items = getReinforcements(dateStr, targetDept as string);
-                                            const staffList = items.length ? getStaffList(items[0]) : [];
-
-                                            return staffList.length > 0 ? (
-                                                staffList.map((s) => (
-                                                    <div
-                                                        key={s.id}
-                                                        onClick={() => setViewingStaff(s)}
-                                                        className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group"
-                                                    >
-                                                        <div className="flex flex-col min-w-0 pr-2">
-                                                            <div className="text-sm text-white font-bold truncate">{s.name}</div>
-                                                            {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
-                                                        </div>
-
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
-                                                            className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                !addingToDate && (
-                                                    <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-indigo-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-indigo-500/50 rounded-lg p-4 min-h-[100px]">
-                                                        <UserPlus className="h-6 w-6 mb-2" />
-                                                        <span className="text-xs font-medium">Ajouter</span>
-                                                    </div>
-                                                )
-                                            );
-                                        })()}
-                                    </div>
-
-
-                                    {/* Mini Add Button */}
-                                    {addingToDate !== dateStr && getReinforcements(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '').length > 0 && (
-                                        <button
-                                            onClick={() => setAddingToDate(dateStr)}
-                                            className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
-                                        >
-                                            <UserPlus className="h-3 w-3" />
-                                            Ajouter
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+            <div className="relative">
+                {/* Navigation Zones */}
+                {isDragging && (
+                    <>
+                        <div
+                            className="absolute -left-4 top-0 bottom-0 w-20 bg-gradient-to-r from-indigo-500/20 to-transparent z-50 flex items-center justify-start pl-2 transition-opacity opacity-0 hover:opacity-100 rounded-l-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'prev')}
+                        >
+                            <ChevronLeft className="w-8 h-8 text-indigo-400 animate-pulse" />
                         </div>
-                    );
-                })}
+
+                        <div
+                            className="absolute -right-4 top-0 bottom-0 w-20 bg-gradient-to-l from-indigo-500/20 to-transparent z-50 flex items-center justify-end pr-2 transition-opacity opacity-0 hover:opacity-100 rounded-r-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'next')}
+                        >
+                            <ChevronRight className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        </div>
+                    </>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+                    {days.map((day) => {
+                        const dateStr = day.toISOString().split('T')[0];
+                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+
+                        return (
+                            <div
+                                key={dateStr}
+                                onDragOver={handleDayDragOver}
+                                onDrop={(e) => handleDropOnDay(e, dateStr)}
+                                className={`rounded-xl border flex flex-col h-full min-h-[300px] transition-colors
+                                    ${isToday ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-cinema-700'}
+                                    ${isDragging ? 'hover:bg-cinema-700/50' : ''}
+                                    ${isWeekend && !isToday ? 'bg-black/40' : 'bg-cinema-800'}
+                                `}
+                            >
+                                {/* Day Header */}
+                                <div className={`p-3 text-center border-b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
+                                    <div className={`text-sm font-bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                        {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
+                                    </div>
+                                    <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                                        {day.getDate()}
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+                                    <div className="h-full flex flex-col">
+                                        <div className="flex-1 space-y-2">
+                                            {(() => {
+                                                const targetDept = user?.department === 'PRODUCTION' ? currentDept : user?.department;
+                                                const items = getReinforcements(dateStr, targetDept as string);
+                                                const staffList = items.length ? getStaffList(items[0]) : [];
+
+                                                return staffList.length > 0 ? (
+                                                    staffList.map((s) => (
+                                                        <div
+                                                            key={s.id}
+                                                            draggable
+                                                            onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
+                                                            onDragEnd={handleDragEndGlobal}
+                                                            onClick={() => setViewingStaff(s)}
+                                                            className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                        >
+                                                            <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
+                                                                <div className="text-sm text-white font-bold truncate">{s.name}</div>
+                                                                {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
+                                                            </div>
+
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                                className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    !addingToDate && (
+                                                        <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-indigo-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-indigo-500/50 rounded-lg p-4 min-h-[100px]">
+                                                            <UserPlus className="h-6 w-6 mb-2" />
+                                                            <span className="text-xs font-medium">Ajouter</span>
+                                                        </div>
+                                                    )
+                                                );
+                                            })()}
+                                        </div>
+
+
+                                        {/* Mini Add Button */}
+                                        {addingToDate !== dateStr && getReinforcements(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '').length > 0 && (
+                                            <button
+                                                onClick={() => setAddingToDate(dateStr)}
+                                                className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
+                                            >
+                                                <UserPlus className="h-3 w-3" />
+                                                Ajouter
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* DETAILS MODAL FOR STANDARD VIEW */}
