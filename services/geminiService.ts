@@ -323,35 +323,80 @@ export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
 
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const contentPart = await fileToGenerativePart(file);
+    let contentPart: Part;
+    let isExcel = false;
+
+    // Check if file is Excel
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      isExcel = true;
+      console.log("Analyzing Excel file...");
+
+      // Dynamic import to avoid loading xlsx if not needed
+      const XLSX = await import("xlsx");
+
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer);
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+
+      // Convert to CSV with safety limits
+      // 1. Check range
+      if (worksheet['!ref']) {
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const MAX_ROWS = 1000;
+        const MAX_COLS = 50; // AZ roughly
+
+        if (range.e.r > MAX_ROWS) range.e.r = MAX_ROWS;
+        if (range.e.c > MAX_COLS) range.e.c = MAX_COLS;
+
+        worksheet['!ref'] = XLSX.utils.encode_range(range);
+      }
+
+      const csvContent = XLSX.utils.sheet_to_csv(worksheet, { blankrows: false });
+      contentPart = { text: `Here is the content of the Excel file (converted to CSV):\n\n${csvContent}` };
+    } else {
+      contentPart = await fileToGenerativePart(file);
+    }
 
     const prompt = `
-      Act as a 1st AD. Analyze this Plan de Travail (Call Sheet).
+      Act as a 1st AD. Analyze this Plan de Travail (Shooting Schedule).
+      The input is provided as ${isExcel ? 'CSV text extracted from an Excel file' : 'an image or PDF document'}.
       
       GOAL: Extract ONLY valid shooting days (days with work) and accurate sequence count.
       
-      RULES FOR DATES (Active Days Only):
-      1. A "Shooting Day" MUST have content (Sequence numbers OR Set names) in its column/row.
-      2. IGNORE days that are empty in the "Sequences" row.
-      3. IGNORE days marked "OFF", "VOYAGE", "TRAVEL", "PREP", "REPOS", "RTT".
-      4. IGNORE Weekends (Sat/Sun) *unless* they have specific sequence numbers listed.
-      5. VALIDATE: First and Last shooting days should define a realistic range (no unexplained gaps > 2 weeks).
-      6. YEAR DETECTION: If you detect "2021" anywhere in the document, ensure ALL dates use that year (not 2020 or 2022).
-      7. DATE FORMAT: Always return dates as DD/MM/YYYY.
-      8. LAST DAY DETECTION: Identify the ABSOLUTE LAST shooting day, even if followed by wrap/prep days. Look for the rightmost column with sequences.
-      9. DECEMBER ATTENTION: Pay special attention to December dates - ensure ALL shooting days through mid-December are included.
       
-      RULES FOR SEQUENCES:
-      1. Count DISTINCT sequence numbers only (ignore duplicates if same sequence appears on multiple days).
-      2. Sequences may be formatted as: "1", "5A", "12-14" (count as 3: 12,13,14), "INT 3".
-      3. Look for rows labeled "SEQ", "SÉQUENCE", "SCENE", "N°", or similar.
-      4. If a cell contains multiple sequences (e.g., "1, 2, 5"), count each one separately.
-      5. IN YOUR REASONING: Explicitly state "I found X unique sequences: [list first 5 examples]".
+      GRID LAYOUT DETECTION (Common in French PDTs):
+      - Look for a "Calendar Grid" structure where columns represent days.
+      - Row 1: "SEMAINE" (Week Number)
+      - Row 2: "MOIS" (Month Name, e.g., "NOVEMBRE")
+      - Row 3: "JOUR" (Day Name, e.g., "Lu", "Ma", "Me")
+      - Row 4: "DATE" (Day Number, e.g., "11", "12")
+      - Content Rows: Sequences are listed in the cells BENEATH these date columns.
       
-      WEEKEND LOGIC REFINEMENT:
-      - Weekends (Saturday/Sunday) are OFF by default.
-      - ONLY include a weekend day if it has **specific sequence numbers** (not just "REPOS", "OFF", or empty).
-      - Example: "Samedi 06/11 - Seq 45A, 47" → INCLUDE. "Samedi 13/11 - REPOS" → EXCLUDE.
+      CRITICAL YEAR RULES:
+      1. IGNORE the current real-world year (${new Date().getFullYear()}). 
+      2. TRUST THE DOCUMENT YEAR. Look for "24", "2024", "25", "2025" in the Title or Header (e.g., "11/17/24").
+      3. If the document says "NOV 24", it means November 2024.
+      4. DEC/JAN SPLIT: If dates go from December to January, INCREMENT the year (e.g. Dec 2024 -> Jan 2025).
+      5. DO NOT assume January is "already done" just because it's in the past relative to today. Analyze the schedule as a standalone plan.
+      
+      SEQUENCE EXTRACTION RULES:
+      1. Sequences are found in the grid cells corresponding to active dates.
+      2. They can be:
+         - Simple numbers: "1", "2", "30"
+         - Alphanumeric: "1A", "36B", "11/12"
+         - Lists: "1, 2, 3" (Count as 3)
+         - Ranges: "1-3" (Count as 3)
+      3. IGNORE: "Décor", "Lieu", "Page" numbers.
+      4. STRICT EXCLUSION RULES (CRITICAL):
+         - DO NOT COUNT a day as a shooting day if the sequence cell is EMPTY or BLANK.
+         - DO NOT COUNT a day if the cell contains terms like: "OFF", "VACANCES", "VOYAGE", "TRAVEL", "PREP", "REPOS", "FERIÉ", "RTT".
+         - A day is ONLY a shooting day if it has specific SCENE/SEQUENCE NUMBERS or a SET NAME declared.
+      
+      TOTAL COUNT CHECK:
+      - Look for a header saying "JOUR DE TOURNAGE" or a cumulative count row (e.g. "1, 2, 3... 52").
+      - Use this to cross-reference your count.
+      - If your count is 32 and the document says 31, YOU ARE WRONG. Find the non-shooting day you included and remove it.
       
       OUTPUT JSON:
       {
@@ -359,7 +404,7 @@ export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
         "sequencesCount": number,
         "startDayInfo": string | null,
         "startDayOffset": number,
-        "reasoning": "Detailed explanation: 'Found 74 date columns. Identified 45 active shooting days after excluding 20 weekends (no sequences), 5 OFF days, 4 PREP days. Date range: 04/10/2021 to 17/12/2021. Counted 123 distinct sequences (examples: 1, 2, 5A, 12-14 counted as 3, 18, 22A).'"
+        "reasoning": "Detailed explanation: 'Found 74 date columns. Identified 45 active shooting days after excluding 20 weekends (no sequences), 5 OFF days, 4 PREP days. Date range: 04/10/2024 to 17/12/2024. Counted 123 distinct sequences (examples: 1, 2, 5A, 12-14 counted as 3, 18, 22A).'"
       }
     `;
 

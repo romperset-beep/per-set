@@ -76,65 +76,82 @@ export const parsePDT = async (file: File): Promise<PDTAnalysisResult> => {
 
         // 2. Fallback to Local Regex Parser
         const arrayBuffer = await file.arrayBuffer();
-
-        // Set worker source to local file bundled by Vite
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        const doc = await loadingTask.promise;
-
         let fullText = '';
-        let pageCount = doc.numPages;
 
-        for (let i = 1; i <= pageCount; i++) {
-            const page = await doc.getPage(i);
-            const textContent = await page.getTextContent();
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            console.log("Falling back to local Excel parsing...");
+            const XLSX = await import("xlsx");
+            const workbook = XLSX.read(arrayBuffer);
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            if (worksheet['!ref']) {
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                // Safety Cap
+                if (range.e.r > 2000) range.e.r = 2000;
+                if (range.e.c > 100) range.e.c = 100;
+                worksheet['!ref'] = XLSX.utils.encode_range(range);
+            }
+            // Convert to CSV or Space-separated text to mimic PDF layout for regex
+            fullText = XLSX.utils.sheet_to_csv(worksheet, { FS: " ", blankrows: false });
+        } else {
+            // PDF Parsing
+            // Set worker source to local file bundled by Vite
+            pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-            // Advanced Line Reconstruction (Group by Y)
-            const linesMap = new Map<number, { x: number, text: string }[]>();
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const doc = await loadingTask.promise;
 
-            for (const item of textContent.items) {
-                // Check if item has 'str' (TextItem vs TextMarkedContent)
-                if ('str' in item && 'transform' in item) {
-                    const textItem = item as any; // Cast to access transform
-                    const y = textItem.transform[5]; // Y position
-                    const x = textItem.transform[4]; // X position
-                    const text = textItem.str;
+            let pageCount = doc.numPages;
 
-                    if (!text.trim()) continue; // Skip pure whitespace items to allow better merging? No, keep for spacing if needed.
+            for (let i = 1; i <= pageCount; i++) {
+                const page = await doc.getPage(i);
+                const textContent = await page.getTextContent();
 
-                    // Find existing line with close Y (tolerance)
-                    let foundY = -1;
-                    for (const key of linesMap.keys()) {
-                        if (Math.abs(key - y) < 4) { // Tolerance of 4 units
-                            foundY = key;
-                            break;
+                // Advanced Line Reconstruction (Group by Y)
+                const linesMap = new Map<number, { x: number, text: string }[]>();
+
+                for (const item of textContent.items) {
+                    // Check if item has 'str' (TextItem vs TextMarkedContent)
+                    if ('str' in item && 'transform' in item) {
+                        const textItem = item as any; // Cast to access transform
+                        const y = textItem.transform[5]; // Y position
+                        const x = textItem.transform[4]; // X position
+                        const text = textItem.str;
+
+                        if (!text.trim()) continue; // Skip pure whitespace items
+
+                        // Find existing line with close Y (tolerance)
+                        let foundY = -1;
+                        for (const key of linesMap.keys()) {
+                            if (Math.abs(key - y) < 4) { // Tolerance of 4 units
+                                foundY = key;
+                                break;
+                            }
+                        }
+
+                        if (foundY !== -1) {
+                            linesMap.get(foundY)?.push({ x, text });
+                        } else {
+                            linesMap.set(y, [{ x, text }]);
                         }
                     }
-
-                    if (foundY !== -1) {
-                        linesMap.get(foundY)?.push({ x, text });
-                    } else {
-                        linesMap.set(y, [{ x, text }]);
-                    }
                 }
+
+                // Sort lines from Top to Bottom (Y Descending)
+                const sortedY = [...linesMap.keys()].sort((a, b) => b - a);
+
+                let pageText = "";
+                for (const y of sortedY) {
+                    const lineItems = linesMap.get(y)!;
+                    // Sort items Left to Right (X Ascending)
+                    lineItems.sort((a, b) => a.x - b.x);
+                    // Join with space
+                    const lineStr = lineItems.map(it => it.text).join(' ');
+                    pageText += lineStr + '\n';
+                }
+
+                fullText += pageText + '\n\n';
             }
-
-            // Sort lines from Top to Bottom (Y Descending)
-            const sortedY = [...linesMap.keys()].sort((a, b) => b - a);
-
-            let pageText = "";
-            for (const y of sortedY) {
-                const lineItems = linesMap.get(y)!;
-                // Sort items Left to Right (X Ascending)
-                lineItems.sort((a, b) => a.x - b.x);
-                // Join with space
-                const lineStr = lineItems.map(it => it.text).join(' ');
-                pageText += lineStr + '\n';
-            }
-
-            // ... existing regex logic ...
-            fullText += pageText + '\n\n';
         }
 
         const regexResult = analyzePDTText(fullText);
@@ -144,7 +161,7 @@ export const parsePDT = async (file: File): Promise<PDTAnalysisResult> => {
         return regexResult;
 
     } catch (error) {
-        console.error("Error parsing PDF:", error);
-        throw new Error("Failed to parse PDF document.");
+        console.error("Error parsing document:", error);
+        throw new Error("Failed to parse document (PDF or Excel).");
     }
 };
