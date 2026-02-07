@@ -876,9 +876,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       await updateUser({
         productionName: '',
         filmTitle: '',
-        startDate: undefined,
-        endDate: undefined,
-        currentProjectId: undefined,
+        startDate: null as any,
+        endDate: null as any,
+        currentProjectId: null as any,
         projectHistory: []
       });
 
