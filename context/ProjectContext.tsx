@@ -19,7 +19,8 @@ import {
   CallSheet,
   CatalogItem,
   LogisticsRequest, // Added
-  UserTemplate // Added
+  UserTemplate, // Added
+  OfflineMember // Added
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db } from '../services/firebase';
@@ -89,6 +90,7 @@ interface ProjectContextType {
   markNotificationAsReadByItemId: (itemId: string) => Promise<void>;
   clearAllNotifications: () => Promise<void>; // Added
   unreadCount: number;
+  itemsToReceiveCount: number; // Added
   unreadNotificationCount: number;
 
   // Expense Reports
@@ -129,6 +131,12 @@ interface ProjectContextType {
   // RBAC
   addMember: (email: string, role?: 'ADMIN' | 'USER') => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
+
+  // Offline Members
+  offlineMembers: OfflineMember[];
+  addOfflineMember: (member: Omit<OfflineMember, 'id' | 'createdAt'>) => Promise<void>;
+  updateOfflineMember: (id: string, updates: Partial<OfflineMember>) => Promise<void>;
+  deleteOfflineMember: (memberId: string) => Promise<void>;
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -177,6 +185,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // buyBackItems and catalogItems moved to MarketplaceContext
   const [callSheets, setCallSheets] = useState<CallSheet[]>([]);
   // userProfiles state removed (handled by AuthContext)
+  const [offlineMembers, setOfflineMembers] = useState<OfflineMember[]>([]); // Added
 
   // Social View State REMOVED (Moved to SocialContext)
 
@@ -552,6 +561,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Default surplusAction
       if (!itemData.surplusAction) {
         itemData.surplusAction = SurplusAction.NONE;
+      }
+
+      // Validation Logic
+      // If purchased (stock) -> validated by default
+      // If request -> check settings. If validation required -> false, else true
+      if (itemData.purchased) {
+        itemData.isValidated = true;
+      } else {
+        const requireValidation = project.settings?.requireOrderValidation ?? false;
+        itemData.isValidated = !requireValidation;
       }
 
       // Sanitize undefined values just in case
@@ -1208,14 +1227,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     await updateProjectDetails({ logistics: newLogistics });
   };
 
-  const deleteLogisticsRequest = async (request: LogisticsRequest) => {
+  const deleteLogisticsRequest = async (requestId: string) => {
     const currentInfo = project.logistics || [];
-    // Best effort matching since no ID
-    const newLogistics = currentInfo.filter(item =>
-      item.date !== request.date ||
-      item.type !== request.type ||
-      item.department !== request.department
-    );
+    const newLogistics = currentInfo.filter(item => item.id !== requestId);
     await updateProjectDetails({ logistics: newLogistics });
   };
 
@@ -1276,6 +1290,54 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
 
     addNotification("Membre retiré du projet.", "INFO");
+  };
+
+  // AUTO-MIGRATION / BACKFILL (Run by Admin)
+  useEffect(() => {
+    // ... existing sync ...
+  }, [project.id]); // Placeholder to keep structure valid if needed, but actually I'm appending BEFORE auto-migration.
+
+  // --- OFFLINE MEMBERS ---
+  useEffect(() => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    const q = query(collection(db, 'projects', projectId, 'offlineMembers'), orderBy('firstName'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const members = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as OfflineMember[];
+      setOfflineMembers(members);
+    });
+    return () => unsubscribe();
+  }, [project.id]);
+
+  const addOfflineMember = async (member: Omit<OfflineMember, 'id' | 'createdAt'>) => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    await addDoc(collection(db, 'projects', projectId, 'offlineMembers'), {
+      ...member,
+      createdAt: new Date().toISOString()
+    });
+    addNotification(`${member.firstName} ajouté (Hors Ligne)`, "SUCCESS");
+  };
+
+  const updateOfflineMember = async (id: string, updates: Partial<OfflineMember>) => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    await updateDoc(doc(db, 'projects', projectId, 'offlineMembers', id), updates);
+    addNotification("Fiche membre mise à jour", "SUCCESS");
+  };
+
+  const deleteOfflineMember = async (memberId: string) => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    await deleteDoc(doc(db, 'projects', projectId, 'offlineMembers', memberId));
+    addNotification("Membre supprimé", "INFO");
   };
 
   // AUTO-MIGRATION / BACKFILL (Run by Admin)
@@ -1380,6 +1442,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     )
   ).length;
 
+  const itemsToReceiveCount = project.items.filter(i =>
+    i.isBought && i.department === currentDept
+  ).length;
+
   const value = React.useMemo(() => ({
     project,
     setProject,
@@ -1392,6 +1458,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     addItem,
     // getGlobalMarketplaceItems moved to MarketplaceContext
     updateItem,
+    itemsToReceiveCount, // Added
     deleteItem,
     currentDept,
     setCurrentDept,
@@ -1432,6 +1499,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     deleteLogisticsRequest,
     addMember,
     removeMember,
+    offlineMembers,
+    addOfflineMember,
+    updateOfflineMember,
+    deleteOfflineMember,
     searchProjects,
     deleteUser,
     deleteAllData,
@@ -1461,7 +1532,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     circularView,
     user,
     callSheets, // Include in dependency array
+    offlineMembers, // Added
     unreadCount,
+    itemsToReceiveCount, // Added
     unreadSocialCount,
     expenseReports,
     // Pagination

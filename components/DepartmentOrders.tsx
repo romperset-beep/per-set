@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction, Transaction } from '../types';
-import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, ArrowRight } from 'lucide-react';
+import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, ArrowRight, Clock } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { db } from '../services/firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
@@ -54,23 +54,21 @@ export const DepartmentOrders: React.FC = () => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
-            const changes = { isBought: true };
-            const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
-            const updatedItem = { ...item, ...changes, ...priceUpdate };
+        // DIRECT UPDATE (No Price Prompt) - User requested speed
+        const changes = { isBought: true };
+        const updatedItem = { ...item, ...changes };
 
-            setProject(prev => ({
-                ...prev,
-                items: prev.items.map(i => i.id === id ? updatedItem : i)
-            }));
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
 
-            if (updateItem) await updateItem({ id, ...changes, ...priceUpdate });
-            markNotificationAsReadByItemId(id);
+        if (updateItem) await updateItem({ id, ...changes });
+        markNotificationAsReadByItemId(id);
 
-            if (item.department) {
-                addNotification(`Commande achetée : ${item.name}`, 'SUCCESS', item.department);
-            }
-        });
+        if (item.department) {
+            addNotification(`Commande achetée : ${item.name}`, 'SUCCESS', item.department);
+        }
     };
 
     const markAsPurchased = async (id: string) => {
@@ -95,12 +93,8 @@ export const DepartmentOrders: React.FC = () => {
             }
         };
 
-        // Skip prompt if price exists (Marketplace or previously set)
-        if (item.price && item.price > 0) {
-            await performUpdate(item.price);
-        } else {
-            promptForMarketplacePrice(item, SurplusAction.NONE, performUpdate);
-        }
+        // DIRECT UPDATE (No Price Prompt) - User requested speed
+        await performUpdate(item.price || 0);
     };
 
     const handleSendEmail = () => {
@@ -129,11 +123,37 @@ export const DepartmentOrders: React.FC = () => {
         fetchMarketplace();
     }, [getGlobalMarketplaceItems]);
 
+    // --- Validation Logic ---
+    const validateItem = async (id: string) => {
+        if (!user || (!user.isAdmin && user.department !== 'PRODUCTION')) return;
+        if (updateItem) await updateItem({ id, isValidated: true });
+        addNotification(`Demande validée`, 'SUCCESS', Department.REGIE);
+    };
+
+    const validateAll = async () => {
+        if (!user || (!user.isAdmin && user.department !== 'PRODUCTION')) return;
+        const itemsToValidate = project.items.filter(i => !i.isValidated && !i.purchased);
+        const updates = itemsToValidate.map(i => updateItem({ id: i.id, isValidated: true }));
+        await Promise.all(updates);
+        addNotification(`${itemsToValidate.length} demandes validées`, 'SUCCESS', Department.REGIE);
+    };
+
     // --- Filtering ---
-    const requestedItems = project.items.filter(item => !item.purchased);
+    // 1. Items needing validation (Only visible to Admin/Prod if setting enabled)
+    const requireValidation = project.settings?.requireOrderValidation;
+    const itemsPendingValidation = project.items.filter(i => !i.purchased && !i.isValidated);
+
+    // 2. Items approved for purchase (Ready to buy)
+    // If validation required: must be isValidated=true
+    // If validation NOT required: isValidated might be undefined/true/false, basically !purchased
+    const requestedItems = project.items.filter(item => {
+        if (item.purchased) return false;
+        if (requireValidation) return item.isValidated;
+        return true;
+    });
 
     // Only show valid departments requests based on View (Production/Regie see everything, others see theirs but this page is restricted anyway)
-    const visibleRequests = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
+    const visibleRequests = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE || currentDept === 'REGIE' || currentDept === 'Régie')
         ? requestedItems
         : requestedItems.filter(i => i.department === currentDept);
 
@@ -143,6 +163,7 @@ export const DepartmentOrders: React.FC = () => {
         acc[dept].push(item);
         return acc;
     }, {} as Record<string, typeof project.items>);
+
 
     // --- Marketplace Matching Logic ---
     const opportunities = React.useMemo(() => {
@@ -325,6 +346,70 @@ export const DepartmentOrders: React.FC = () => {
                 </div>
             </header>
 
+            {/* SECTION: VALIDATION REQUESTS (Admin/Prod Only, AND currentDept must be Production) */}
+            {requireValidation && (currentDept === 'PRODUCTION') && itemsPendingValidation.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-900/50 to-orange-900/50 rounded-xl border border-amber-500/30 overflow-hidden mb-8 animate-in slide-in-from-top-4 shadow-2xl shadow-amber-900/20">
+                    <div className="px-6 py-4 border-b border-amber-500/30 flex flex-col md:flex-row justify-between items-center bg-amber-900/20 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-500/20 rounded-lg text-amber-400 animate-pulse">
+                                <CheckCircle2 className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">À Valider</h3>
+                                <p className="text-xs text-amber-200/70">
+                                    {itemsPendingValidation.length} demandes nécessitent votre approbation avant achat.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={validateAll}
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all"
+                        >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Tout Valider
+                        </button>
+                    </div>
+                    <div className="divide-y divide-amber-500/10 max-h-96 overflow-y-auto">
+                        {itemsPendingValidation.map(item => (
+                            <div key={item.id} className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-amber-900/10 hover:bg-amber-900/20 transition-colors">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white">{item.name}</span>
+                                        <span className="text-xs bg-cinema-900 text-slate-400 px-2 py-0.5 rounded">
+                                            {item.department}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-amber-200/60">
+                                        Quantité: {item.quantityInitial} {item.unit}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => validateItem(item.id)}
+                                    className="px-4 py-2 bg-amber-600/20 hover:bg-amber-600 hover:text-white text-amber-500 border border-amber-600/50 rounded-lg text-sm font-bold transition-all"
+                                >
+                                    Valider
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* If Validation is enabled but user is not Prod/Admin, show status */}
+            {requireValidation && itemsPendingValidation.length > 0 && user?.department !== 'PRODUCTION' && !user?.isAdmin && (
+                <div className="bg-cinema-800/50 rounded-xl border border-cinema-700 p-4 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500/10 rounded text-amber-500">
+                            <Clock className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold">En attente de validation</h4>
+                            <p className="text-slate-400 text-sm">{itemsPendingValidation.length} de vos demandes sont en attente de validation par la Production.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* SECTION: MARKETPLACE OPPORTUNITIES */}
             {opportunities.length > 0 && (
                 <div className="bg-gradient-to-r from-emerald-900/50 to-teal-900/50 rounded-xl border border-emerald-500/30 overflow-hidden mb-8 animate-in slide-in-from-top-4 shadow-2xl shadow-emerald-900/20">
@@ -453,7 +538,7 @@ export const DepartmentOrders: React.FC = () => {
                             <ShoppingCart className="h-6 w-6" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold text-white">Liste des Demandes</h3>
+                            <h3 className="text-xl font-bold text-white">Liste des Demandes {requireValidation && "(Validées)"}</h3>
                             <p className="text-xs text-slate-400">
                                 {visibleRequests.filter(i => selectedRequestDept === 'ALL' || i.department === selectedRequestDept).length} articles affichés
                             </p>
@@ -473,7 +558,7 @@ export const DepartmentOrders: React.FC = () => {
                 <div className="divide-y divide-cinema-700/50">
                     {visibleRequests.length === 0 ? (
                         <div className="p-8 text-center text-slate-500 italic">
-                            Aucune demande en attente.
+                            Aucune demande {requireValidation ? "validée" : ""} en attente.
                         </div>
                     ) : (
                         Object.entries(requestsByDept)
@@ -527,21 +612,33 @@ export const DepartmentOrders: React.FC = () => {
 
                                                         {/* Actions */}
                                                         {item.isBought ? (
-                                                            <button
-                                                                onClick={() => markAsPurchased(item.id)}
-                                                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-green-900/20"
-                                                            >
-                                                                <PackageCheck className="h-4 w-4" />
-                                                                Valider Réception
-                                                            </button>
+                                                            item.department === currentDept ? (
+                                                                <button
+                                                                    onClick={() => markAsPurchased(item.id)}
+                                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-green-900/20"
+                                                                >
+                                                                    <PackageCheck className="h-4 w-4" />
+                                                                    Valider Réception
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-500 italic px-2">
+                                                                    En attente de réception par {item.department}
+                                                                </span>
+                                                            )
                                                         ) : (
-                                                            <button
-                                                                onClick={() => markAsBought(item.id)}
-                                                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-900/20"
-                                                            >
-                                                                <CheckCircle2 className="h-4 w-4" />
-                                                                À acheter
-                                                            </button>
+                                                            (currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE' || user?.isAdmin) ? (
+                                                                <button
+                                                                    onClick={() => markAsBought(item.id)}
+                                                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-900/20"
+                                                                >
+                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                    À acheter
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-xs text-orange-400 italic px-2 bg-orange-900/20 py-1 rounded border border-orange-500/20">
+                                                                    En attente d'achat
+                                                                </span>
+                                                            )
                                                         )}
                                                     </div>
                                                 ))}
@@ -578,6 +675,12 @@ export const DepartmentOrders: React.FC = () => {
                                 className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
                             >
                                 Annuler
+                            </button>
+                            <button
+                                onClick={() => handlePriceConfirm(0)}
+                                className="px-4 py-2 rounded-lg font-medium transition-colors text-white bg-slate-600 hover:bg-slate-500"
+                            >
+                                Passer
                             </button>
                             <button
                                 onClick={() => {

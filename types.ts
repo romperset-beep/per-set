@@ -25,6 +25,18 @@ export interface Notification {
   itemId?: string;
 }
 
+export interface OfflineMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  department: Department | 'PRODUCTION';
+  phone?: string;
+  email?: string;
+  notes?: string;
+  createdAt: string; // ISO Date
+}
+
 export interface UserTemplate {
   id: string;
   userId: string;
@@ -70,6 +82,7 @@ export interface ConsumableItem {
   surplusAction?: SurplusAction;
   ecoScore?: number; // 1-10
   purchased: boolean; // true if in stock, false if just a request/need
+  isValidated?: boolean; // true if validated by Production (if required)
   isBought?: boolean; // true if purchased by production but not yet received by department
   price?: number; // Estimated cost in euros
   originalPrice?: number; // Purchase price (for resale calculation)
@@ -120,6 +133,9 @@ export interface Project {
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
 
   // Security / RBAC
+  settings?: {
+    requireOrderValidation: boolean;
+  };
   members?: {
     [userId: string]: {
       role: 'ADMIN' | 'USER' | 'GUEST';

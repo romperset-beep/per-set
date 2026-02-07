@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { ExpenseLine } from '../types';
-import { X, Upload, Plus, Trash2, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
+import { ExpenseLine, ConsumableItem } from '../types';
+import { X, Upload, Plus, Trash2, AlertCircle, Sparkles, Loader2, Link2, DollarSign } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
 import { validateFile } from '../src/utils/validation';
 
@@ -10,8 +10,15 @@ interface ExpenseReportModalProps {
     onClose: () => void;
 }
 
+interface PriceMatch {
+    expenseLine: ExpenseLine;
+    matchedItem: ConsumableItem | null;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+    selectedItemId?: string; // Allow user override
+}
+
 export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, onClose }) => {
-    const { addExpenseReport, user, project } = useProject();
+    const { addExpenseReport, updateItem, user, project } = useProject();
 
     // Mode Toggle
     const [mode, setMode] = useState<'SIMPLE' | 'ADVANCED'>('SIMPLE');
@@ -31,6 +38,10 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
 
     // ADVANCED Mode State
     const [lines, setLines] = useState<ExpenseLine[]>([]);
+
+    // Price Matching State
+    const [priceMatches, setPriceMatches] = useState<PriceMatch[]>([]);
+    const [showMatching, setShowMatching] = useState(false);
 
     // New Line State (Advanced)
     const [newLine, setNewLine] = useState<Partial<ExpenseLine>>({
@@ -128,12 +139,115 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                             description: data.items ? data.items.join(', ') : ''
                         }));
                     }
+                    // PRICE MATCHING: Find items without prices and try to match with expense lines
+                    if (data.items && data.items.length > 0) {
+                        performPriceMatching(data.items, data);
+                    }
                 }
             } catch (err) {
                 console.error("AI Analysis failed:", err);
             } finally {
                 setIsScanning(false);
             }
+        }
+    };
+
+    // Price Matching Algorithm
+    const performPriceMatching = (aiItems: string[], aiData: any) => {
+        // Get items that need pricing (bought but no price)
+        const itemsWithoutPrice = project.items.filter(i =>
+            i.isBought && (!i.price || i.price === 0)
+        );
+
+        if (itemsWithoutPrice.length === 0) {
+            console.log("No items need pricing");
+            return;
+        }
+
+        const matches: PriceMatch[] = [];
+
+        // For each AI-detected item, try to find a match
+        aiItems.forEach((aiItemName, index) => {
+            const description = aiItemName.toLowerCase();
+
+            let bestMatch: ConsumableItem | null = null;
+            let bestConfidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE' = 'NONE';
+
+            for (const item of itemsWithoutPrice) {
+                const itemName = item.name.toLowerCase();
+
+                // Exact match
+                if (description === itemName || description.includes(itemName) || itemName.includes(description)) {
+                    bestMatch = item;
+                    bestConfidence = 'HIGH';
+                    break;
+                }
+
+                // Keyword match (more than 3 chars)
+                const keywords = itemName.split(' ').filter(w => w.length > 3);
+                const hasKeywordMatch = keywords.some(k => description.includes(k.toLowerCase()));
+
+                if (hasKeywordMatch && !bestMatch) {
+                    bestMatch = item;
+                    bestConfidence = 'MEDIUM';
+                }
+            }
+
+            // Create an expense line for this item
+            const expenseLine: ExpenseLine = {
+                id: crypto.randomUUID(),
+                date: aiData.date || date,
+                description: aiItemName,
+                merchant: aiData.merchantName || 'Divers',
+                category: 'REGIE',
+                amountTTC: index === 0 && aiData.amountTTC ? aiData.amountTTC : 0,
+                amountHT: index === 0 && aiData.amountHT ? aiData.amountHT : 0,
+                vatRate: 20,
+                vatAmount: 0,
+                isVatRecoverable: true
+            };
+
+            matches.push({
+                expenseLine,
+                matchedItem: bestMatch,
+                confidence: bestConfidence,
+                selectedItemId: bestMatch?.id
+            });
+        });
+
+        // Filter to only show matches
+        const validMatches = matches.filter(m => m.matchedItem !== null);
+
+        if (validMatches.length > 0) {
+            setPriceMatches(validMatches);
+            setShowMatching(true);
+            console.log(`Found ${validMatches.length} price matches`);
+        }
+    };
+
+    const confirmMatch = async (index: number) => {
+        const match = priceMatches[index];
+        if (!match.matchedItem || !updateItem) return;
+
+        try {
+            // Update the item price
+            await updateItem({
+                id: match.matchedItem.id,
+                price: match.expenseLine.amountTTC,
+                originalPrice: match.expenseLine.amountTTC
+            });
+
+            // Remove from matches list
+            const newMatches = [...priceMatches];
+            newMatches.splice(index, 1);
+            setPriceMatches(newMatches);
+
+            if (newMatches.length === 0) {
+                setShowMatching(false);
+            }
+        } catch (error) {
+            console.error("Error updating price:", error);
+            alert("Erreur lors de la mise à jour du prix");
         }
     };
 
@@ -367,6 +481,52 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                             )}
                         </div>
                     </div>
+
+                    {/* --- PRICE MATCHING UI --- */}
+                    {showMatching && priceMatches.length > 0 && (
+                        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-4 animate-in slide-in-from-top-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Sparkles className="h-5 w-5 text-emerald-400" />
+                                <h3 className="font-bold text-emerald-100">Articles détectés sans prix</h3>
+                            </div>
+                            <div className="space-y-2">
+                                {priceMatches.map((match, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-cinema-800/50 p-3 rounded-lg border border-cinema-700">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-emerald-500/10 p-2 rounded-full">
+                                                <Link2 className="h-4 w-4 text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-white">
+                                                    {match.matchedItem?.name}
+                                                </div>
+                                                <div className="text-xs text-slate-400">
+                                                    Match avec : <span className="text-slate-300">"{match.expenseLine.description}"</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-right">
+                                                <div className="font-bold text-white">{match.expenseLine.amountTTC} €</div>
+                                                <div className="text-[10px] text-emerald-400">Confiance: {match.confidence}</div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => confirmMatch(idx)}
+                                                className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-lg transition-colors"
+                                                title="Confirmer et mettre à jour le prix"
+                                            >
+                                                <DollarSign className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 text-xs text-center text-slate-500">
+                                Validez les associations pour mettre à jour automatiquement les prix dans l'inventaire.
+                            </div>
+                        </div>
+                    )}
 
                     {/* --- SIMPLE MODE FORM --- */}
                     {mode === 'SIMPLE' && (
@@ -658,7 +818,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                     </div>
 
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };

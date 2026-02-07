@@ -104,7 +104,7 @@ export const InventoryManager: React.FC = () => {
                     const newItem = {
                         ...item,
                         id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                        status: item.status || ItemStatus.REQUESTED,
+                        status: item.status || ItemStatus.NEW,
                         purchased: false,
                         isBought: false,
                         quantityCurrent: 0,
@@ -125,7 +125,7 @@ export const InventoryManager: React.FC = () => {
                 addNotification(
                     `✓ ${orderData.items.length} articles de "${orderData.templateName}" ajoutés à la liste d'achats`,
                     'SUCCESS',
-                    currentDept
+                    currentDept as Department | 'PRODUCTION'
                 );
             }
         } catch (error) {
@@ -242,33 +242,26 @@ export const InventoryManager: React.FC = () => {
         const item = project.items.find(i => i.id === id);
         if (!item) return;
 
-        // Prompt for Price (using the modal logic)
-        promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
-            const changes = { isBought: true };
-            // If price is provided (and > 0), update it.
-            // If user leaves 0, we assume 0 or keep existing?
-            // Logic: If user enters a price, we save it.
-            const priceUpdate = price > 0 ? { price: price, originalPrice: item.originalPrice || price } : {};
+        // DIRECT UPDATE (No Price Prompt) - User requested speed
+        const changes = { isBought: true };
+        const updatedItem = { ...item, ...changes };
 
-            const updatedItem = { ...item, ...changes, ...priceUpdate };
+        setProject(prev => ({
+            ...prev,
+            items: prev.items.map(i => i.id === id ? updatedItem : i)
+        }));
 
-            setProject(prev => ({
-                ...prev,
-                items: prev.items.map(i => i.id === id ? updatedItem : i)
-            }));
+        if (updateItem) await updateItem({ id, ...changes });
+        markNotificationAsReadByItemId(id);
 
-            if (updateItem) await updateItem({ id, ...changes, ...priceUpdate });
-            markNotificationAsReadByItemId(id);
-
-            // Notify Requester
-            if (item.department) {
-                addNotification(
-                    `Commande achetée : ${item.name}`,
-                    'SUCCESS',
-                    item.department
-                );
-            }
-        });
+        // Notify Requester
+        if (item.department) {
+            addNotification(
+                `Commande achetée : ${item.name}`,
+                'SUCCESS',
+                item.department
+            );
+        }
     };
 
     const markAsPurchased = async (id: string) => {
@@ -299,14 +292,8 @@ export const InventoryManager: React.FC = () => {
             }
         };
 
-        // If price is already set (from markAsBought), skip prompt
-        if (item.price && item.price > 0) {
-            await executeMarkAsPurchased();
-        } else {
-            promptForMarketplacePrice(item, SurplusAction.NONE, async (price) => {
-                await executeMarkAsPurchased(price);
-            });
-        }
+        // DIRECT UPDATE (No Price Prompt) - User requested speed
+        await executeMarkAsPurchased(item.price || 0);
     };
 
     const incrementStarted = async (id: string) => {
@@ -705,6 +692,8 @@ export const InventoryManager: React.FC = () => {
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
 
+    const [showMissingPrices, setShowMissingPrices] = useState(false);
+
     // Filter items based on Purchase Status and Current Department view
     const requestedItems = project.items.filter(item => !item.purchased);
     const stockItems = project.items.filter(item => item.purchased && (!item.surplusAction || item.surplusAction === SurplusAction.NONE) && item.quantityCurrent > 0);
@@ -717,9 +706,13 @@ export const InventoryManager: React.FC = () => {
     // Validation Queue for Production (Items released by Depts)
 
 
-    const visibleStock = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
+    const visibleStockRaw = (currentDept === 'PRODUCTION' || currentDept === Department.REGIE)
         ? stockItems
         : stockItems.filter(i => i.department === currentDept);
+
+    const visibleStock = showMissingPrices
+        ? visibleStockRaw.filter(i => !i.price || i.price === 0)
+        : visibleStockRaw;
 
     // Group by department for clearer view
     const stockByDept = visibleStock.reduce((acc, item) => {
@@ -858,6 +851,17 @@ export const InventoryManager: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button
+                        onClick={() => setShowMissingPrices(!showMissingPrices)}
+                        className={`px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-medium ${showMissingPrices
+                            ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                            : 'bg-cinema-800 text-slate-400 border-cinema-600 hover:bg-cinema-700 hover:text-slate-200'}`}
+                        title={showMissingPrices ? "Afficher tout l'inventaire" : "Voir les articles sans prix"}
+                    >
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="hidden sm:inline">Prix Manquants</span>
+                    </button>
+
                     {selectedForExpense.size > 0 && (
                         <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2 w-full md:w-auto">
                             <button
@@ -1019,6 +1023,14 @@ export const InventoryManager: React.FC = () => {
                             >
                                 Annuler
                             </button>
+                            {priceModal.action === SurplusAction.NONE && (
+                                <button
+                                    onClick={() => handlePriceConfirm(0)}
+                                    className="px-4 py-2 rounded-lg font-medium transition-colors text-white bg-slate-600 hover:bg-slate-500"
+                                >
+                                    Passer
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     const input = document.getElementById('resalePriceInput') as HTMLInputElement;
@@ -1222,16 +1234,15 @@ export const InventoryManager: React.FC = () => {
                                                                     <span className="text-sm text-slate-300 font-medium">Acheté soi-même</span>
                                                                 </div>
 
-                                                                <button
-                                                                    onClick={() => markAsPurchased(item.id)}
-                                                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${item.isBought
-                                                                        ? 'bg-green-600 hover:bg-green-500 text-white animate-pulse'
-                                                                        : 'bg-eco-600 hover:bg-eco-500 text-white'
-                                                                        }`}
-                                                                >
-                                                                    <PackageCheck className="h-4 w-4" />
-                                                                    {item.isBought ? 'Valider Réception' : 'Marquer reçu'}
-                                                                </button>
+                                                                {item.isBought && (
+                                                                    <button
+                                                                        onClick={() => markAsPurchased(item.id)}
+                                                                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-green-600 hover:bg-green-500 text-white animate-pulse shadow-lg shadow-green-900/20"
+                                                                    >
+                                                                        <PackageCheck className="h-4 w-4" />
+                                                                        Valider Réception
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1305,9 +1316,43 @@ export const InventoryManager: React.FC = () => {
                                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${isStarted ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
                                                                 {isStarted ? 'Entamé' : 'Neuf'}
                                                             </span>
-                                                            <span className="text-xs font-mono text-slate-400 border border-cinema-700 px-2 py-0.5 rounded bg-cinema-900/50">
-                                                                {item.price !== undefined ? `${item.price} €` : '- €'}
-                                                            </span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const targetItem = item.items[0];
+                                                                    promptForMarketplacePrice(targetItem, SurplusAction.NONE, async (price) => {
+                                                                        // Update all items in this group
+                                                                        const updates = item.items.map((subItem: any) => ({
+                                                                            id: subItem.id,
+                                                                            price,
+                                                                            originalPrice: subItem.originalPrice || price
+                                                                        }));
+
+                                                                        // Optimistic update
+                                                                        setProject(prev => ({
+                                                                            ...prev,
+                                                                            items: prev.items.map(i => {
+                                                                                const update = updates.find((u: any) => u.id === i.id);
+                                                                                return update ? { ...i, ...update } : i;
+                                                                            })
+                                                                        }));
+
+                                                                        // Backend update
+                                                                        if (updateItem) {
+                                                                            for (const update of updates) {
+                                                                                await updateItem(update);
+                                                                            }
+                                                                        }
+                                                                        addNotification("Prix mis à jour", "SUCCESS");
+                                                                    });
+                                                                }}
+                                                                className={`text-xs font-mono border px-2 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1 ${(!item.price || item.price === 0)
+                                                                    ? 'border-orange-500/50 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20'
+                                                                    : 'border-cinema-700 text-slate-400 bg-cinema-900/50 hover:bg-cinema-800 hover:text-white'}`}
+                                                                title="Modifier le prix"
+                                                            >
+                                                                {item.price !== undefined && item.price > 0 ? `${item.price} €` : 'Definir Prix'}
+                                                                {(!item.price || item.price === 0) && <AlertTriangle className="h-3 w-3" />}
+                                                            </button>
                                                             {isSurplus && (
                                                                 <span className={`text-xs px-2 py-0.5 rounded border ${item.surplusAction === SurplusAction.MARKETPLACE
                                                                     ? 'bg-blue-900/50 text-blue-400 border-blue-500/30'

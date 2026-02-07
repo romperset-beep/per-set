@@ -82,6 +82,28 @@ export const ProjectConfigurationModal: React.FC<ProjectConfigurationModalProps>
                     )}
                 </div>
 
+                {/* Advanced Settings */}
+                <div className="pt-4 border-t border-cinema-700">
+                    <h4 className="text-sm font-bold text-slate-300 mb-4">Paramètres Avancés</h4>
+                    <div className="flex items-center justify-between bg-cinema-900/50 p-4 rounded-lg border border-cinema-700">
+                        <div>
+                            <span className="block text-white font-medium">Validation des commandes</span>
+                            <span className="text-xs text-slate-400">Le Directeur de Prod doit valider les demandes avant achat.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={project.settings?.requireOrderValidation || false}
+                                onChange={(e) => updateProjectDetails({
+                                    settings: { ...project.settings, requireOrderValidation: e.target.checked }
+                                })}
+                            />
+                            <div className="w-11 h-6 bg-cinema-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+
                 <div className="pt-4 flex justify-end">
                     <button
                         onClick={onClose}

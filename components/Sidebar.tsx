@@ -34,7 +34,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { currentDept, logout, leaveProject, unreadCount, user, t } = useProject();
+  const { currentDept, logout, leaveProject, unreadCount, user, t, itemsToReceiveCount } = useProject();
   const { unreadSocialCount, markSocialAsRead } = useSocial(); // Added
   const { unreadMarketplaceCount, markMarketplaceAsRead } = useMarketplace(); // Added
   const isMobile = useIsMobile();
@@ -175,7 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
 
                     let badgeCount = 0;
                     if (item.id === 'orders') badgeCount = unreadCount; // Moved from inventory
-                    // if (item.id === 'inventory') badgeCount = unreadCount; // Removed
+                    if (item.id === 'inventory') badgeCount = itemsToReceiveCount; // Added for reception validation
                     if (item.id === 'inter_marketplace') badgeCount = unreadMarketplaceCount; // Assume global badges go here? 
                     // Or split? For now assign to global checks.
                     if (item.id === 'social') badgeCount = unreadSocialCount;

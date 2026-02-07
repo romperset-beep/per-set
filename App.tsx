@@ -448,10 +448,10 @@ const AppContent: React.FC = () => {
 
             <div>
               <button
-                onClick={() => user?.department === 'PRODUCTION' && setIsConfigModalOpen(true)}
-                className={`flex items-center gap-3 text-left group ${user?.department === 'PRODUCTION' ? 'cursor-pointer' : 'cursor-default'}`}
+                onClick={() => (user?.department === 'PRODUCTION' || user?.isAdmin) && setIsConfigModalOpen(true)}
+                className={`flex items-center gap-3 text-left group ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'cursor-pointer' : 'cursor-default'}`}
               >
-                <h2 className={`text-white font-bold text-lg ${user?.department === 'PRODUCTION' ? 'group-hover:text-blue-400 transition-colors' : ''}`}>
+                <h2 className={`text-white font-bold text-lg ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'group-hover:text-blue-400 transition-colors' : ''}`}>
                   {user.filmTitle}
                 </h2>
                 {project.projectType && (
@@ -459,7 +459,7 @@ const AppContent: React.FC = () => {
                     {project.projectType}
                   </span>
                 )}
-                {user?.department === 'PRODUCTION' && (
+                {(user?.department === 'PRODUCTION' || user?.isAdmin) && (
                   <Settings className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 )}
               </button>

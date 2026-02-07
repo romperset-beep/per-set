@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { Department } from '../types';
-import { Search, FileText, Download, Mail, Phone } from 'lucide-react';
+import { Department, OfflineMember } from '../types';
+import { Search, FileText, Download, Mail, Phone, Upload } from 'lucide-react';
+import { extractTextFromPdf } from '../utils/pdfHelpers';
 
 export const TeamDirectory: React.FC = () => {
-    const { userProfiles, currentDept, project, addMember, removeMember } = useProject();
+    const { userProfiles, currentDept, project, addMember, removeMember, offlineMembers, addOfflineMember, deleteOfflineMember } = useProject();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
     const [selectedProfile, setSelectedProfile] = useState<any>(null);
     const [inviteEmail, setInviteEmail] = useState('');
     const [showInvite, setShowInvite] = useState(false); // UI State for Invite Box
+    const [showImportModal, setShowImportModal] = useState(false); // UI State for Import Modal
 
 
 
@@ -19,7 +21,13 @@ export const TeamDirectory: React.FC = () => {
         return p.currentProjectId === project.id || p.projectHistory?.some((h: any) => h.id === project.id);
     });
 
-    const filteredProfiles = projectMembers.filter(profile => {
+    // Merge Real Users and Offline Members
+    const allMembers = [
+        ...projectMembers.map(p => ({ ...p, isOffline: false })),
+        ...offlineMembers.map(p => ({ ...p, isOffline: true, email: p.email || '', phone: p.phone || '', role: p.role || 'N/A' }))
+    ];
+
+    const filteredProfiles = allMembers.filter(profile => {
         const matchesSearch = (
             (profile.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (profile.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -35,7 +43,7 @@ export const TeamDirectory: React.FC = () => {
         if (!acc[dept]) acc[dept] = [];
         acc[dept].push(profile);
         return acc;
-    }, {} as Record<string, typeof userProfiles>);
+    }, {} as Record<string, any[]>);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -43,10 +51,16 @@ export const TeamDirectory: React.FC = () => {
                 <div>
                     <h2 className="text-3xl font-bold text-white">Annuaire de l'Équipe</h2>
                     <p className="text-slate-400">
-                        {projectMembers.length} fiches de renseignements enregistrées
+                        {filteredProfiles.length} fiches de renseignements enregistrées
                     </p>
                     {currentDept === 'PRODUCTION' && (
                         <div className="mt-2 flex gap-2">
+                            <button
+                                onClick={() => setShowImportModal(true)}
+                                className="text-xs bg-cinema-700 hover:bg-cinema-600 text-white px-3 py-1 rounded transition-colors border border-cinema-600"
+                            >
+                                + Import / Créer (Hors Ligne)
+                            </button>
                             {!showInvite ? (
                                 <button
                                     onClick={() => setShowInvite(true)}
@@ -144,7 +158,11 @@ export const TeamDirectory: React.FC = () => {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (confirm(`Voulez-vous vraiment retirer ${profile.firstName} du projet ?`)) {
-                                                                removeMember(profile.id);
+                                                                if (profile.isOffline) {
+                                                                    deleteOfflineMember(profile.id);
+                                                                } else {
+                                                                    removeMember(profile.id);
+                                                                }
                                                             }
                                                         }}
                                                         className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-500 transition-all ml-2"
@@ -203,6 +221,9 @@ export const TeamDirectory: React.FC = () => {
             {selectedProfile && (
                 <ProfileDetailModal profile={selectedProfile} onClose={() => setSelectedProfile(null)} />
             )}
+            {showImportModal && (
+                <ImportMemberModal onClose={() => setShowImportModal(false)} />
+            )}
         </div>
     );
 };
@@ -236,7 +257,24 @@ const DocumentButton = ({ label, hasDoc, url }: { label: string, hasDoc: boolean
 };
 
 const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () => void }) => {
-    const { currentDept } = useProject();
+    const { updateOfflineMember, currentDept } = useProject();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        role: profile.role,
+        department: profile.department,
+        email: profile.email || '',
+        phone: profile.phone || ''
+    });
+
+    const handleSave = async () => {
+        if (!profile.isOffline) return;
+        await updateOfflineMember(profile.id, editData);
+        setIsEditing(false);
+        onClose();
+    };
+
     if (!profile) return null;
 
     return (
@@ -244,12 +282,64 @@ const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () =>
             <div className="bg-cinema-800 border border-cinema-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
                 <header className="p-6 border-b border-cinema-700 flex justify-between items-start sticky top-0 bg-cinema-800 z-10">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">{profile.firstName} {profile.lastName}</h2>
-                        <p className="text-blue-400">{profile.role} • {profile.department}</p>
+                        {isEditing ? (
+                            <div className="space-y-4 mb-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input
+                                        className="bg-cinema-900 border-cinema-700 rounded p-2 text-white text-3xl font-bold w-full"
+                                        value={editData.firstName}
+                                        onChange={e => setEditData({ ...editData, firstName: e.target.value })}
+                                        placeholder="Prénom"
+                                    />
+                                    <input
+                                        className="bg-cinema-900 border-cinema-700 rounded p-2 text-white text-3xl font-bold w-full"
+                                        value={editData.lastName}
+                                        onChange={e => setEditData({ ...editData, lastName: e.target.value })}
+                                        placeholder="Nom"
+                                    />
+                                </div>
+                                <input
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-blue-400 text-lg w-full"
+                                    value={editData.role}
+                                    onChange={e => setEditData({ ...editData, role: e.target.value })}
+                                    placeholder="Rôle"
+                                />
+                                <select
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-slate-400 w-full"
+                                    value={editData.department}
+                                    onChange={e => setEditData({ ...editData, department: e.target.value })}
+                                >
+                                    {Object.values(Department).map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <>
+                                <h2 className="text-2xl font-bold text-white">{profile.firstName} {profile.lastName}</h2>
+                                <p className="text-blue-400">{profile.role} • {profile.department}</p>
+                            </>
+                        )}
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-cinema-700 rounded-full transition-colors">
-                        <span className="text-2xl text-slate-400">&times;</span>
-                    </button>
+                    <div className="flex gap-2">
+                        {profile.isOffline && (
+                            <button
+                                onClick={() => {
+                                    if (isEditing) handleSave();
+                                    else setIsEditing(true);
+                                }}
+                                className={`px-4 py-2 rounded font-bold transition-colors ${isEditing
+                                        ? 'bg-green-600 hover:bg-green-500 text-white'
+                                        : 'bg-cinema-700 hover:bg-cinema-600 text-slate-200'
+                                    }`}
+                            >
+                                {isEditing ? 'Enregistrer' : 'Modifier'}
+                            </button>
+                        )}
+                        <button onClick={onClose} className="p-2 hover:bg-cinema-700 rounded-full transition-colors">
+                            <span className="text-2xl text-slate-400">&times;</span>
+                        </button>
+                    </div>
                 </header>
 
                 <div className="p-8 space-y-8">
@@ -257,10 +347,33 @@ const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () =>
                     <section>
                         <h3 className="text-lg font-bold text-eco-400 mb-4 border-b border-cinema-700/50 pb-2">Informations Personnelles</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                            <DetailRow label="Email" value={profile.email} />
-                            <DetailRow label="Téléphone" value={profile.phone} />
+                            {isEditing ? (
+                                <>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
+                                        <input
+                                            className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                            value={editData.email}
+                                            onChange={e => setEditData({ ...editData, email: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Téléphone</label>
+                                        <input
+                                            className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                            value={editData.phone}
+                                            onChange={e => setEditData({ ...editData, phone: e.target.value })}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <DetailRow label="Email" value={profile.email} />
+                                    <DetailRow label="Téléphone" value={profile.phone} />
+                                </>
+                            )}
 
-                            {currentDept === 'PRODUCTION' && (
+                            {currentDept === 'PRODUCTION' && !isEditing && (
                                 <>
                                     <DetailRow label="Adresse" value={`${profile.address || ''} ${profile.postalCode || ''} ${profile.city || ''}`} className="col-span-2" />
                                     <DetailRow label="Situation Familiale" value={profile.familyStatus} />
@@ -269,8 +382,8 @@ const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () =>
                         </div>
                     </section>
 
-                    {/* Restricted Sections - PRODUCTION ONLY */}
-                    {currentDept === 'PRODUCTION' && (
+                    {/* Restricted Sections - PRODUCTION ONLY - HIDE ON EDIT OR KEEP READONLY */}
+                    {currentDept === 'PRODUCTION' && !profile.isOffline && (
                         <>
                             {/* Civil Status */}
                             <section>
@@ -319,3 +432,188 @@ const DetailRow = ({ label, value, className = '' }: any) => (
         <span className="text-slate-200">{value || '-'}</span>
     </div>
 );
+
+const ImportMemberModal = ({ onClose }: { onClose: () => void }) => {
+    const { addOfflineMember } = useProject();
+    const [mode, setMode] = useState<'MANUAL' | 'BULK'>('MANUAL');
+    const [manualData, setManualData] = useState({
+        firstName: '',
+        lastName: '',
+        role: '',
+        phone: '',
+        department: Department.REGIE
+    });
+    const [bulkText, setBulkText] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/pdf') {
+            alert('Veuillez sélectionner un fichier PDF.');
+            return;
+        }
+
+        setIsAnalyzing(true);
+        try {
+            const text = await extractTextFromPdf(file);
+            setBulkText(prev => prev + '\n' + text);
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la lecture du PDF");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleManualSubmit = async () => {
+        if (!manualData.firstName || !manualData.lastName) return;
+        await addOfflineMember({
+            ...manualData,
+            department: manualData.department as any
+        });
+        onClose();
+    };
+
+    const handleBulkSubmit = async () => {
+        const lines = bulkText.split('\n').filter(l => l.trim().length > 0);
+
+        for (const line of lines) {
+            const parts = line.split(/[ \t,;]+/);
+            let phone = '';
+            let names = [];
+            let role = 'Renfort';
+
+            for (const p of parts) {
+                if (/^[\d\+\.\-]+$/.test(p) && p.length > 8) {
+                    phone = p;
+                } else {
+                    names.push(p);
+                }
+            }
+
+            if (names.length > 0) {
+                await addOfflineMember({
+                    firstName: names[0],
+                    lastName: names.slice(1).join(' ') || '',
+                    role: role,
+                    phone: phone,
+                    department: Department.REGIE
+                });
+            }
+        }
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-cinema-800 border border-cinema-700 rounded-2xl w-full max-w-2xl shadow-xl" onClick={e => e.stopPropagation()}>
+                <header className="p-6 border-b border-cinema-700 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-white">Ajouter un membre (Hors Ligne)</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white">&times;</button>
+                </header>
+                <div className="p-6">
+                    <div className="flex gap-4 mb-6 border-b border-cinema-700/50">
+                        <button
+                            onClick={() => setMode('MANUAL')}
+                            className={`pb-2 px-2 ${mode === 'MANUAL' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-slate-400'}`}
+                        >
+                            Manuel
+                        </button>
+                        <button
+                            onClick={() => setMode('BULK')}
+                            className={`pb-2 px-2 ${mode === 'BULK' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-slate-400'}`}
+                        >
+                            Import Liste
+                        </button>
+                    </div>
+
+                    {mode === 'MANUAL' ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <input
+                                    placeholder="Prénom"
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                    value={manualData.firstName}
+                                    onChange={e => setManualData({ ...manualData, firstName: e.target.value })}
+                                />
+                                <input
+                                    placeholder="Nom"
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                    value={manualData.lastName}
+                                    onChange={e => setManualData({ ...manualData, lastName: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <input
+                                    placeholder="Rôle (ex: Machiniste)"
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                    value={manualData.role}
+                                    onChange={e => setManualData({ ...manualData, role: e.target.value })}
+                                />
+                                <input
+                                    placeholder="Téléphone"
+                                    className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                    value={manualData.phone}
+                                    onChange={e => setManualData({ ...manualData, phone: e.target.value })}
+                                />
+                            </div>
+                            <select
+                                className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
+                                value={manualData.department}
+                                onChange={e => setManualData({ ...manualData, department: e.target.value as any })}
+                            >
+                                {Object.values(Department).map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleManualSubmit}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded"
+                            >
+                                Créer Fiche
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="bg-cinema-900/50 border border-dashed border-cinema-600 rounded-lg p-4 text-center">
+                                <p className="text-sm text-slate-400 mb-2">
+                                    Optionnel : Importez un PDF (Feuille de service, Liste équipe...)
+                                </p>
+                                <label className="cursor-pointer inline-flex items-center gap-2 bg-cinema-700 hover:bg-cinema-600 px-4 py-2 rounded text-sm text-white transition-colors">
+                                    <Upload className="h-4 w-4" />
+                                    {isAnalyzing ? 'Analyse en cours...' : 'Choisir un PDF'}
+                                    <input
+                                        type="file"
+                                        accept=".pdf"
+                                        className="hidden"
+                                        onChange={handleFileUpload}
+                                        disabled={isAnalyzing}
+                                    />
+                                </label>
+                            </div>
+
+                            <p className="text-sm text-slate-400">
+                                Collez une liste de noms (et numéros optionnels). Un par ligne.<br />
+                                Ex: <code>Jean Dupont 0612345678</code>
+                            </p>
+                            <textarea
+                                className="w-full h-48 bg-cinema-900 border-cinema-700 rounded p-2 text-white font-mono text-sm"
+                                placeholder="Jean Dupont 0600000000&#10;Marie Curie"
+                                value={bulkText}
+                                onChange={e => setBulkText(e.target.value)}
+                            />
+                            <button
+                                onClick={handleBulkSubmit}
+                                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded"
+                            >
+                                Importer la liste
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};

@@ -57,10 +57,10 @@ export const AdminDashboard: React.FC = () => {
 
     // Filter Logic
     const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.productionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.filmTitle.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.productionName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.filmTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const filteredProjects = projectsList.filter(p =>
@@ -76,7 +76,7 @@ export const AdminDashboard: React.FC = () => {
             projectCount: prodProjects.length,
             projects: prodProjects
         };
-    }).filter(p => !searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }).filter(p => !searchTerm || (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
     // Get all unique production names for search autocomplete
     const allProductionNames = Array.from(new Set([
@@ -160,8 +160,8 @@ export const AdminDashboard: React.FC = () => {
     };
 
     const filteredTransactions = transactions.filter(t =>
-        t.sellerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.buyerName.toLowerCase().includes(searchTerm.toLowerCase())
+        (t.sellerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.buyerName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const exportTransactionsCSV = (groupBy: 'seller' | 'buyer' | 'date', specificData?: Transaction[], filenameSuffix?: string) => {
@@ -643,7 +643,7 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => exportTransactionsCSV('date', filteredTransactions.filter(t => t.sellerName.toLowerCase().includes(searchTerm.toLowerCase())), `ventes_${searchTerm}`)}
+                                            onClick={() => exportTransactionsCSV('date', filteredTransactions.filter(t => (t.sellerName || '').toLowerCase().includes(searchTerm.toLowerCase())), `ventes_${searchTerm}`)}
                                             className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition-colors"
                                         >
                                             <Download className="h-3 w-3" />
@@ -664,7 +664,7 @@ export const AdminDashboard: React.FC = () => {
                                             </thead>
                                             <tbody className="divide-y divide-cinema-700 text-sm">
                                                 {filteredTransactions
-                                                    .filter(t => t.sellerName.toLowerCase().includes(searchTerm.toLowerCase()))
+                                                    .filter(t => (t.sellerName || '').toLowerCase().includes(searchTerm.toLowerCase()))
                                                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                                                     .map((t) => (
                                                         <tr key={t.id} className="hover:bg-cinema-700/30 transition-colors">
@@ -707,7 +707,7 @@ export const AdminDashboard: React.FC = () => {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                {filteredTransactions.filter(t => t.sellerName.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                                {filteredTransactions.filter(t => (t.sellerName || '').toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
                                                     <tr>
                                                         <td colSpan={6} className="px-6 py-8 text-center text-slate-500 italic">Aucune vente trouvée pour cette recherche.</td>
                                                     </tr>
@@ -730,7 +730,7 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => exportTransactionsCSV('date', filteredTransactions.filter(t => t.buyerName.toLowerCase().includes(searchTerm.toLowerCase())), `achats_${searchTerm}`)}
+                                            onClick={() => exportTransactionsCSV('date', filteredTransactions.filter(t => (t.buyerName || '').toLowerCase().includes(searchTerm.toLowerCase())), `achats_${searchTerm}`)}
                                             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-medium transition-colors"
                                         >
                                             <Download className="h-3 w-3" />
@@ -751,7 +751,7 @@ export const AdminDashboard: React.FC = () => {
                                             </thead>
                                             <tbody className="divide-y divide-cinema-700 text-sm">
                                                 {filteredTransactions
-                                                    .filter(t => t.buyerName.toLowerCase().includes(searchTerm.toLowerCase()))
+                                                    .filter(t => (t.buyerName || '').toLowerCase().includes(searchTerm.toLowerCase()))
                                                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                                                     .map((t) => (
                                                         <tr key={t.id} className="hover:bg-cinema-700/30 transition-colors">
@@ -793,7 +793,7 @@ export const AdminDashboard: React.FC = () => {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                {filteredTransactions.filter(t => t.buyerName.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                                {filteredTransactions.filter(t => (t.buyerName || '').toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
                                                     <tr>
                                                         <td colSpan={6} className="px-6 py-8 text-center text-slate-500 italic">Aucun achat trouvé pour cette recherche.</td>
                                                     </tr>
