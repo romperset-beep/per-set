@@ -202,7 +202,7 @@ export const CallSheetView: React.FC = () => {
 
             // Note: AI Analysis is already done in handleFileChange and stored in aiData state
 
-            const storageRef = ref(storage, `callsheets / ${Date.now()}_${file.name} `);
+            const storageRef = ref(storage, `callsheets/${Date.now()}_${file.name}`);
             const metadata = { customMetadata: { uploadedBy: user?.name || 'Unknown', department: user?.department || 'Unknown' } };
 
             const uploadTask = uploadBytes(storageRef, file, metadata);
