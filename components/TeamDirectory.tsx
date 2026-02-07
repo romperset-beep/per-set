@@ -45,16 +45,65 @@ export const TeamDirectory: React.FC = () => {
         return acc;
     }, {} as Record<string, any[]>);
 
+    const handleExportContacts = () => {
+        if (allMembers.length === 0) return;
+
+        let vCardContent = '';
+
+        allMembers.forEach(member => {
+            const firstName = member.firstName || '';
+            const lastName = member.lastName || '';
+            const fullName = `${firstName} ${lastName}`.trim();
+            const phone = member.phone || '';
+            const email = member.email || '';
+            const role = member.role || '';
+            const dept = member.department || '';
+            const org = project.name || 'A Better Set';
+
+            if (!fullName && !email && !phone) return;
+
+            vCardContent += 'BEGIN:VCARD\n';
+            vCardContent += 'VERSION:3.0\n';
+            vCardContent += `FN:${fullName}\n`;
+            vCardContent += `N:${lastName};${firstName};;;\n`;
+            if (phone) vCardContent += `TEL;TYPE=CELL:${phone}\n`;
+            if (email) vCardContent += `EMAIL;TYPE=WORK:${email}\n`;
+            if (role) vCardContent += `TITLE:${role}\n`;
+            if (dept) vCardContent += `NOTE:Département: ${dept}\n`;
+            vCardContent += `ORG:${org}\n`;
+            vCardContent += 'END:VCARD\n';
+        });
+
+        const blob = new Blob([vCardContent], { type: 'text/vcard' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Equipe_${project.name.replace(/\s+/g, '_')}.vcf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-white">Annuaire de l'Équipe</h2>
-                    <p className="text-slate-400">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-3xl font-bold text-white">Annuaire de l'Équipe</h2>
+                        <button
+                            onClick={handleExportContacts}
+                            className="flex items-center gap-2 bg-cinema-800 text-slate-300 hover:bg-cinema-700 border border-cinema-600 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                            title="Télécharger les contacts (.vcf)"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden sm:inline">Exporter</span>
+                        </button>
+                    </div>
+                    <p className="text-slate-400 mt-1">
                         {filteredProfiles.length} fiches de renseignements enregistrées
                     </p>
                     {currentDept === 'PRODUCTION' && (
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-3 flex gap-2">
                             <button
                                 onClick={() => setShowImportModal(true)}
                                 className="text-xs bg-cinema-700 hover:bg-cinema-600 text-white px-3 py-1 rounded transition-colors border border-cinema-600"
@@ -197,6 +246,46 @@ export const TeamDirectory: React.FC = () => {
                                         </div>
                                     </div>
 
+                                    <div className="flex justify-end pt-2 border-t border-cinema-700/50">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const firstName = profile.firstName || '';
+                                                const lastName = profile.lastName || '';
+                                                const fullName = `${firstName} ${lastName}`.trim();
+                                                const phone = profile.phone || '';
+                                                const email = profile.email || '';
+                                                const role = profile.role || '';
+                                                const dept = profile.department || '';
+                                                const org = project.name || 'A Better Set';
+
+                                                let vCardContent = 'BEGIN:VCARD\nVERSION:3.0\n';
+                                                vCardContent += `FN:${fullName}\n`;
+                                                vCardContent += `N:${lastName};${firstName};;;\n`;
+                                                if (phone) vCardContent += `TEL;TYPE=CELL:${phone}\n`;
+                                                if (email) vCardContent += `EMAIL;TYPE=WORK:${email}\n`;
+                                                if (role) vCardContent += `TITLE:${role}\n`;
+                                                if (dept) vCardContent += `NOTE:Département: ${dept}\n`;
+                                                vCardContent += `ORG:${org}\n`;
+                                                vCardContent += 'END:VCARD\n';
+
+                                                const blob = new Blob([vCardContent], { type: 'text/vcard' });
+                                                const url = window.URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = url;
+                                                link.setAttribute('download', `${firstName}_${lastName}.vcf`);
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                            }}
+                                            className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-cinema-700/50 rounded"
+                                            title="Exporter le contact"
+                                        >
+                                            <Download className="h-3 w-3" />
+                                            Exporter
+                                        </button>
+                                    </div>
+
                                     {currentDept === 'PRODUCTION' && (
                                         <div className="pt-4 border-t border-cinema-700 grid grid-cols-2 gap-2">
                                             <DocumentButton label="RIB" hasDoc={!!profile.rib} url={profile.rib} />
@@ -329,8 +418,8 @@ const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () =>
                                     else setIsEditing(true);
                                 }}
                                 className={`px-4 py-2 rounded font-bold transition-colors ${isEditing
-                                        ? 'bg-green-600 hover:bg-green-500 text-white'
-                                        : 'bg-cinema-700 hover:bg-cinema-600 text-slate-200'
+                                    ? 'bg-green-600 hover:bg-green-500 text-white'
+                                    : 'bg-cinema-700 hover:bg-cinema-600 text-slate-200'
                                     }`}
                             >
                                 {isEditing ? 'Enregistrer' : 'Modifier'}
