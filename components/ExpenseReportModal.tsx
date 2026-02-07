@@ -425,6 +425,7 @@ export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, 
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => setMode('ADVANCED')}
                                     className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${mode === 'ADVANCED' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
                                 >
                                     Détaillé
