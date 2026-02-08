@@ -34,7 +34,7 @@ export const GdprModal: React.FC<GdprModalProps> = ({ isOpen, onClose }) => {
 
                     <h3 className="text-white font-bold text-lg mt-4">1. Collecte des Données</h3>
                     <p>
-                        Nous collectons uniquement les informations nécessaires au fonctionnement de l'application "Per Set" et à la gestion de votre participation aux projets de production :
+                        Nous collectons uniquement les informations nécessaires au fonctionnement de l'application "Per-Set" et à la gestion de votre participation aux projets de production :
                         <ul className="list-disc pl-5 mt-2 space-y-1">
                             <li>Informations d'identité (Nom, Prénom, Email professionnel).</li>
                             <li>Informations professionnelles (Département, Rôle).</li>

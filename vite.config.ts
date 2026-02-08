@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'robots.txt'],
         manifest: {
-          name: 'Per Set - Gestion de Production',
-          short_name: 'Per Set',
+          name: 'Per-Set - Gestion de Production',
+          short_name: 'Per-Set',
           description: 'Application de gestion éco-responsable pour productions audiovisuelles',
           theme_color: '#10b981',
           background_color: '#0f172a',

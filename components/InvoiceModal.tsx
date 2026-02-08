@@ -96,7 +96,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, ite
             doc.setFont("helvetica", "italic");
             doc.setFontSize(9);
             doc.setTextColor(150);
-            doc.text("Document généré automatiquement via Per Set", 105, 280, { align: 'center' });
+            doc.text("Document généré automatiquement via Per-Set", 105, 280, { align: 'center' });
 
             doc.save(`Facture_${item.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (error) {

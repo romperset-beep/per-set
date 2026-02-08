@@ -40,7 +40,7 @@ export const ImpactReport: React.FC = () => {
             loading: "Analyse IA en cours...",
             share: "Partager / PDF",
             ecoScore: "Eco Score",
-            certification: "Certification Per Set",
+            certification: "Certification Per-Set",
             valuationRate: "Taux de Valorisation",
             reuseRecycle: "Réemploi & Recyclage (Objectif > 50%)",
             savings: "Économies",
@@ -114,7 +114,7 @@ export const ImpactReport: React.FC = () => {
             loading: "AI Analysis in progress...",
             share: "Share / PDF",
             ecoScore: "Eco Score",
-            certification: "Per Set Certification",
+            certification: "Per-Set Certification",
             valuationRate: "Valuation Rate",
             reuseRecycle: "Reuse & Recycling (Goal > 50%)",
             savings: "Savings",
@@ -183,7 +183,7 @@ export const ImpactReport: React.FC = () => {
             loading: "Análisis IA en curso...",
             share: "Compartir / PDF",
             ecoScore: "Eco Puntuación",
-            certification: "Certificación Per Set",
+            certification: "Certificación Per-Set",
             valuationRate: "Tasa de Valorización",
             reuseRecycle: "Reutilización y Reciclaje (Objetivo > 50%)",
             savings: "Ahorros",
@@ -384,7 +384,7 @@ export const ImpactReport: React.FC = () => {
 
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Dossier généré automatiquement par Per Set le ${new Date().toLocaleString()}`, 20, 280);
+        doc.text(`Dossier généré automatiquement par Per-Set le ${new Date().toLocaleString()}`, 20, 280);
 
         doc.save(`Audit_RSE_${project.filmTitle || 'Projet'}.pdf`);
     };
@@ -490,7 +490,7 @@ export const ImpactReport: React.FC = () => {
         let text = `🎬 Rapport Impact RSE - ${project.name}\n`;
         text += `Score Durabilité : ${displayScore}/100\n\n`;
 
-        text += `✨ Impact "Per Set" (Économie Circulaire) :\n`;
+        text += `✨ Impact "Per-Set" (Économie Circulaire) :\n`;
         text += `- ${donationCount + shortFilmCount} dons (écoles, courts-métrages, asso)\n`;
         // text += `- ${shortFilmCount} dons aux courts-métrages\n`;
         text += `- ${stockCount} articles en stock virtuel (réemploi)\n`;

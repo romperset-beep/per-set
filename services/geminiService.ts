@@ -274,7 +274,7 @@ export const analyzeMarketplaceMatch = async (
       ARTICLES DEMANDÉS :
       ${requestedItems.map(i => `- ${i.name} (quantité: ${i.quantity})`).join('\n')}
       
-      INVENTAIRE DISPONIBLE (Marketplace Per Set) :
+      INVENTAIRE DISPONIBLE (Marketplace Per-Set) :
       ${marketplaceItems.map(m => `- ${m.name}${m.category ? ` (catégorie: ${m.category})` : ''}`).join('\n')}
       
       Pour chaque article demandé, indique :

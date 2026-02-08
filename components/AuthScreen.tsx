@@ -281,7 +281,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 <div className="text-center mb-6">
                     <p className="text-slate-400 text-sm">
                         {isSignUp
-                            ? "Rejoignez la communauté Per Set"
+                            ? "Rejoignez la communauté Per-Set"
                             : "Accédez à vos projets en cours"}
                     </p>
                 </div>

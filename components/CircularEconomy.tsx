@@ -91,7 +91,7 @@ export const CircularEconomy: React.FC = () => {
                 sellerId: project.id,
                 sellerName: project.productionCompany || project.name,
                 buyerId: 'ABETTERSET_PLATFORM',
-                buyerName: 'Per Set',
+                buyerName: 'Per-Set',
                 items: [{
                     id: item.id,
                     name: item.name,
@@ -233,7 +233,7 @@ export const CircularEconomy: React.FC = () => {
                     sellerId: project.id,
                     sellerName: project.productionCompany || project.name || "Production",
                     buyerId: 'ABETTERSET_PLATFORM',
-                    buyerName: 'Per Set',
+                    buyerName: 'Per-Set',
                     items: itemsToSell,
                     totalAmount: totalAmount,
                     status: 'PENDING',
@@ -517,7 +517,7 @@ export const CircularEconomy: React.FC = () => {
 
                         <p className="text-slate-300 mb-6">
                             {bulkConfirmation.type === 'BUYBACK'
-                                ? `Voulez-vous vraiment revendre ${bulkConfirmation.count} articles à Per Set ? Une transaction unique sera générée.`
+                                ? `Voulez-vous vraiment revendre ${bulkConfirmation.count} articles à Per-Set ? Une transaction unique sera générée.`
                                 : `Voulez-vous vraiment déplacer ${bulkConfirmation.count} articles vers ${bulkConfirmation.targetAction} ?`
                             }
                         </p>
@@ -573,7 +573,7 @@ export const CircularEconomy: React.FC = () => {
                         onClick={() => setView('sales_abs')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'sales_abs' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
                     >
-                        <DollarSign className="h-4 w-4" /> Rachats Per Set
+                        <DollarSign className="h-4 w-4" /> Rachats Per-Set
                     </button>
                 </div>
 
@@ -588,7 +588,7 @@ export const CircularEconomy: React.FC = () => {
                             className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/30 flex items-center gap-2 transition-colors"
                         >
                             <DollarSign className="h-3 w-3" />
-                            Tout Revendre à Per Set
+                            Tout Revendre à Per-Set
                         </button>
 
                         <button
@@ -636,7 +636,7 @@ export const CircularEconomy: React.FC = () => {
                             const items = getCurrentItems();
                             if (items.length === 0) return alert("Aucun article à exporter dans cette vue.");
 
-                            const emailSubject = `Export Per Set - ${getTitle()}`;
+                            const emailSubject = `Export Per-Set - ${getTitle()}`;
                             const emailBody = items.map(i => `- ${i.name}: ${i.quantityCurrent} ${i.unit} (${i.department})`).join('%0D%0A');
                             window.location.href = `mailto:?subject=${emailSubject}&body=Voici la liste :%0D%0A%0D%0A${emailBody}`;
                         }}
@@ -768,7 +768,7 @@ export const CircularEconomy: React.FC = () => {
                             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-900/30 mb-4 border border-emerald-500/30">
                                 <DollarSign className="h-6 w-6 text-emerald-400" />
                             </div>
-                            <h3 className="text-xl font-bold text-white">Vente à Per Set</h3>
+                            <h3 className="text-xl font-bold text-white">Vente à Per-Set</h3>
                             <p className="text-slate-400 mt-2 text-sm">
                                 Combien d'unités de <strong>{buybackConfirmation.item.name}</strong> souhaitez-vous vendre ?
                             </p>

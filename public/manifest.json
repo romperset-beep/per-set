@@ -1,6 +1,6 @@
 {
-  "name": "Per Set",
-  "short_name": "Per Set",
+  "name": "Per-Set",
+  "short_name": "Per-Set",
   "description": "Gestion de stock et d'économie circulaire pour le cinéma",
   "start_url": "/",
   "display": "standalone",

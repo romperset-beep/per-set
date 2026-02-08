@@ -58,6 +58,7 @@ interface ProjectContextType {
   addItem: (item: ConsumableItem) => Promise<void>;
   updateItem: (item: Partial<ConsumableItem> & { id: string }) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
+  error: string | null;
 
   // Global Market moved to MarketplaceContext
 
@@ -141,7 +142,7 @@ interface ProjectContextType {
 
 const DEFAULT_PROJECT: Project = {
   id: 'default-project',
-  name: 'Per Set Demo',
+  name: 'Per-Set Demo',
   productionCompany: 'Horizon Productions',
   startDate: '2023-10-15',
   shootingStartDate: '2023-11-01',
@@ -1488,7 +1489,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     expenseReports,
     addExpenseReport,
     updateExpenseReportStatus,
-    deleteExpenseReport, // Added
+    deleteExpenseReport,
+
     addCallSheet,
     deleteCallSheet, // Added
 

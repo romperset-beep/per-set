@@ -17,7 +17,7 @@ export const EmergencyProfileRestore: React.FC<{ userId: string }> = ({ userId }
                 email: 'romperset@gmail.com',
                 department: 'PRODUCTION' as const,
                 role: 'ADMIN',
-                productionName: 'Per Set',
+                productionName: 'Per-Set',
                 filmTitle: 'Demo Film',
                 currentProjectId: 'demo-prod-demo-film',
                 status: 'approved' as const,

@@ -43,7 +43,7 @@ export const BetaTestBadge: React.FC = () => {
                         {/* Content */}
                         <div className="p-6 space-y-6">
                             <p className="text-sm text-slate-300 leading-relaxed">
-                                Vous êtes sur une version de test de l'application <strong>Per Set</strong>.
+                                Vous êtes sur une version de test de l'application <strong>Per-Set</strong>.
                                 Si vous rencontrez un problème ou avez une suggestion, n'hésitez pas à me contacter directement.
                             </p>
 

@@ -325,7 +325,7 @@ export const InventoryManager: React.FC = () => {
             else if (action === SurplusAction.DONATION) actionName = 'Dons';
             else if (action === SurplusAction.SHORT_FILM) actionName = 'Court-Métrage';
             else if (action === SurplusAction.RELEASED_TO_PROD) actionName = 'Envoi Stock Virtuel';
-            else if (action === SurplusAction.BUYBACK) actionName = 'Rachat Per Set';
+            else if (action === SurplusAction.BUYBACK) actionName = 'Rachat Per-Set';
 
             /*
             addNotification(
@@ -373,7 +373,7 @@ export const InventoryManager: React.FC = () => {
             } else {
                 const originalPrice = item.originalPrice || item.price || 0;
                 const buybackPrice = originalPrice * 0.5;
-                if (window.confirm(`Vendre cet article à Per Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
+                if (window.confirm(`Vendre cet article à Per-Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
                     setSurplusAction(item.id, action, buybackPrice);
                 }
             }
@@ -503,7 +503,7 @@ export const InventoryManager: React.FC = () => {
             const originalPrice = item.originalPrice || item.price || 0;
             const buybackPrice = originalPrice * 0.5;
 
-            if (window.confirm(`Vendre cet article à Per Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
+            if (window.confirm(`Vendre cet article à Per-Set pour ${buybackPrice} € (50% de la valeur) ?`)) {
                 executeSplit(mode, buybackPrice, item, action);
             }
         } else if (action === SurplusAction.MARKETPLACE) {
@@ -687,7 +687,7 @@ export const InventoryManager: React.FC = () => {
             body += `- ${item.name} (${item.department}) : ${item.quantityInitial} ${item.unit}\n`;
         });
 
-        body += `\nCordialement Per Set`;
+        body += `\nCordialement Per-Set`;
 
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };

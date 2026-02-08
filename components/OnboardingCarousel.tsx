@@ -15,7 +15,7 @@ const translations = {
         create: "Créer mon compte",
         steps: [
             {
-                title: "Per Set",
+                title: "Per-Set",
                 description: "Une application pour tout le plateau. Faites vos commandes de consommables, suivez les stocks et participez à l'économie circulaire."
             }
         ]
@@ -26,7 +26,7 @@ const translations = {
         create: "Create Account",
         steps: [
             {
-                title: "Per Set",
+                title: "Per-Set",
                 description: "One app for the entire set. Order consumables, track inventory, and participate in the circular economy."
             }
         ]
@@ -37,7 +37,7 @@ const translations = {
         create: "Crear cuenta",
         steps: [
             {
-                title: "Per Set",
+                title: "Per-Set",
                 description: "Una aplicación para todo el set. Pide consumibles, sigue el inventario y participa en la economía circular."
             }
         ]

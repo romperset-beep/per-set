@@ -95,7 +95,7 @@ export const generateInvoice = async (transaction: Transaction) => {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.setTextColor(150);
-    doc.text("Document généré automatiquement via Per Set - Conforme Loi Sapin", 105, 280, { align: 'center' });
+    doc.text("Document généré automatiquement via Per-Set - Conforme Loi Sapin", 105, 280, { align: 'center' });
 
     doc.save(`Facture_${transaction.id}_${invoiceDate.replace(/\//g, '-')}.pdf`);
 };
