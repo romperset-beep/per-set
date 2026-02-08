@@ -10,7 +10,7 @@ export const TRANSLATIONS = {
         'login.email': 'Votre Email Professionnel',
         'login.department': 'Votre Département',
         'login.submit': "Accéder à l'Espace",
-        'login.footer': '© 2024 A Better Set. Optimisé pour l\'industrie cinématographique durable.',
+        'login.footer': '© 2024 Per Set. Optimisé pour l\'industrie cinématographique durable.',
 
         // Sidebar
         'sidebar.dashboard': 'Tableau de Bord',
@@ -44,7 +44,7 @@ export const TRANSLATIONS = {
         'login.email': 'Professional Email',
         'login.department': 'Your Department',
         'login.submit': 'Enter Workspace',
-        'login.footer': '© 2024 A Better Set. Optimized for the sustainable film industry.',
+        'login.footer': '© 2024 Per Set. Optimized for the sustainable film industry.',
 
         // Sidebar
         'sidebar.dashboard': 'Dashboard',
@@ -76,7 +76,7 @@ export const TRANSLATIONS = {
         'login.email': 'Correo Profesional',
         'login.department': 'Su Departamento',
         'login.submit': 'Acceder al Espacio',
-        'login.footer': '© 2024 A Better Set. Optimizado para la industria cinematográfica sostenible.',
+        'login.footer': '© 2024 Per Set. Optimizado para la industria cinematográfica sostenible.',
 
         // Sidebar
         'sidebar.dashboard': 'Tablero',

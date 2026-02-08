@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://abetterset.com/sitemap.xml
+Sitemap: https://per-set.com/sitemap.xml

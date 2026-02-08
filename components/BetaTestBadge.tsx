@@ -43,7 +43,7 @@ export const BetaTestBadge: React.FC = () => {
                         {/* Content */}
                         <div className="p-6 space-y-6">
                             <p className="text-sm text-slate-300 leading-relaxed">
-                                Vous êtes sur une version de test de l'application <strong>A Better Set</strong>.
+                                Vous êtes sur une version de test de l'application <strong>Per Set</strong>.
                                 Si vous rencontrez un problème ou avez une suggestion, n'hésitez pas à me contacter directement.
                             </p>
 
@@ -54,8 +54,8 @@ export const BetaTestBadge: React.FC = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Email</p>
-                                        <a href="mailto:romain.perset@abatterset.com" className="text-sm text-blue-300 hover:text-white font-medium truncate block transition-colors">
-                                            romain.perset@abatterset.com
+                                        <a href="mailto:romain.perset@per-set.com" className="text-sm text-blue-300 hover:text-white font-medium truncate block transition-colors">
+                                            romain.perset@per-set.com
                                         </a>
                                     </div>
                                 </div>

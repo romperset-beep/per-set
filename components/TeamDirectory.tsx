@@ -58,7 +58,7 @@ export const TeamDirectory: React.FC = () => {
             const email = member.email || '';
             const role = member.role || '';
             const dept = member.department || '';
-            const org = project.name || 'A Better Set';
+            const org = project.name || 'Per Set';
 
             if (!fullName && !email && !phone) return;
 
@@ -257,7 +257,7 @@ export const TeamDirectory: React.FC = () => {
                                                 const email = profile.email || '';
                                                 const role = profile.role || '';
                                                 const dept = profile.department || '';
-                                                const org = project.name || 'A Better Set';
+                                                const org = project.name || 'Per Set';
 
                                                 let vCardContent = 'BEGIN:VCARD\nVERSION:3.0\n';
                                                 vCardContent += `FN:${fullName}\n`;

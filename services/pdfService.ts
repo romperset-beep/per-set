@@ -164,7 +164,7 @@ export const generateExpenseReportPDF = async (report: ExpenseReport) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text('Document généré via A Better Set - Certifié conforme à l\'original', pageWidth / 2, 285, { align: 'center' });
+    doc.text('Document généré via Per Set - Certifié conforme à l\'original', pageWidth / 2, 285, { align: 'center' });
 
     // -- Receipt Link & Image --
     if (report.receiptUrl) {

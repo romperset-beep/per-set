@@ -43,7 +43,7 @@ export const SaaSAgreementScreen: React.FC = () => {
                         Bonjour {user?.name},
                     </p>
                     <p>
-                        Avant d'accéder à votre tableau de bord de Production, vous devez prendre connaissance et accepter les conditions financières liées à l'utilisation de la plateforme <strong>A Better Set</strong>.
+                        Avant d'accéder à votre tableau de bord de Production, vous devez prendre connaissance et accepter les conditions financières liées à l'utilisation de la plateforme <strong>Per Set</strong>.
                     </p>
 
                     <div className="bg-cinema-900/50 rounded-xl p-6 border border-cinema-700 space-y-4">
@@ -52,11 +52,11 @@ export const SaaSAgreementScreen: React.FC = () => {
                             Frais de Service (Take Rate)
                         </h3>
                         <p className="leading-relaxed">
-                            L'utilisation du service SaaS "A Better Set" pour la gestion des surplus, des reventes et de la circulaire de production est soumise à une commission sur les transactions réalisées.
+                            L'utilisation du service SaaS "Per Set" pour la gestion des surplus, des reventes et de la circulaire de production est soumise à une commission sur les transactions réalisées.
                         </p>
                         <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-lg">
                             <p className="text-indigo-200 font-bold">
-                                A Better Set prélève une commission de 10% sur le montant total des ventes (Take Rate) réalisées via la plateforme.
+                                Per Set prélève une commission de 10% sur le montant total des ventes (Take Rate) réalisées via la plateforme.
                             </p>
                         </div>
                         <p className="text-sm text-slate-400">

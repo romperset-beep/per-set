@@ -71,7 +71,7 @@ export enum SurplusAction {
   MARKETPLACE = 'Stock Virtuel (Réemploi)',
   DONATION = 'Dons (Écoles, Courts, Asso...)',
   SHORT_FILM = 'Don Court-Métrage', // Deprecated in UI, merged into DONATION
-  BUYBACK = 'Rachat A Better Set',
+  BUYBACK = 'Rachat Per Set',
   STORAGE = 'Stock Production Future'
 }
 
@@ -586,7 +586,7 @@ export interface Transaction {
     price: number;
   }[];
   totalAmount: number;
-  platformFee?: number; // 10% commission for A Better Set
+  platformFee?: number; // 10% commission for Per Set
   status: 'PENDING' | 'VALIDATED' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
   invoicedAt?: string;

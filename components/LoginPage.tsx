@@ -87,11 +87,11 @@ export const LoginPage: React.FC = () => {
                         <div className="flex justify-center mb-4">
                             <img
                                 src="/logo.png"
-                                alt="A Better Set Logo"
+                                alt="Per Set Logo"
                                 className="h-32 w-auto object-contain"
                             />
                         </div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">A Better Set</h1>
+                        <h1 className="text-2xl font-bold text-white tracking-tight">Per Set</h1>
                     </div>
                     <AuthScreen onSuccess={handleAuthSuccess} />
                 </div>

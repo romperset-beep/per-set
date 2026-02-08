@@ -1,7 +1,7 @@
 {
-  "name": "A Better Set",
-  "short_name": "A Better Set",
-  "description": "Gestion d'inventaire et d'économie circulaire pour le cinéma",
+  "name": "Per Set",
+  "short_name": "Per Set",
+  "description": "Gestion de stock et d'économie circulaire pour le cinéma",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

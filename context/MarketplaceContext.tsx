@@ -273,7 +273,7 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
                     projectId: pid,
                     // Mask seller name for Buyback items
                     productionName: item.surplusAction === SurplusAction.BUYBACK
-                        ? "A BETTER SET"
+                        ? "PER SET"
                         : (projectNames[pid] || "Production Inconnue")
                 }));
 

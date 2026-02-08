@@ -105,7 +105,7 @@ export const DepartmentOrders: React.FC = () => {
         const subject = `Commande Achats - ${project.name} - ${date}`;
         let body = `Bonjour,\n\nVoici la liste des achats pour la production "${project.name}" (${project.productionCompany}).\n\nDate: ${date}\n\nArticles :\n`;
         (itemsToSend || []).forEach(item => { body += `- ${item.name} (${item.department}) : ${item.quantityInitial} ${item.unit}\n`; });
-        body += `\nCordialement A Better Set`;
+        body += `\nCordialement Per Set`;
 
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     };
@@ -420,7 +420,7 @@ export const DepartmentOrders: React.FC = () => {
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                    Disponible sur A Better Set
+                                    Disponible sur Per Set
                                     <span className="text-xs bg-emerald-500 text-black px-2 py-0.5 rounded-full font-bold">ECO</span>
                                 </h3>
                                 <p className="text-xs text-emerald-200/70">
@@ -462,7 +462,7 @@ export const DepartmentOrders: React.FC = () => {
                                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all"
                                     >
                                         <ShoppingCart className="h-4 w-4" />
-                                        Commander sur A Better Set
+                                        Commander sur Per Set
                                     </button>
                                 </div>
                             </div>

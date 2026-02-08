@@ -12,7 +12,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
     const translations = {
         fr: {
-            title: "A Better Set",
+            title: "Per Set",
             subtitle: "La première solution tout-en-un qui simplifie la vie de la production et des équipes techniques.",
             production: {
                 title: "Pour la Production",
@@ -62,7 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             footer: "Une production plus verte, une équipe plus heureuse."
         },
         en: {
-            title: "A Better Set",
+            title: "Per Set",
             subtitle: "The first all-in-one solution simplifying life for production and technical teams.",
             production: {
                 title: "For Production",
@@ -112,7 +112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             footer: "A greener production, a happier team."
         },
         es: {
-            title: "A Better Set",
+            title: "Per Set",
             subtitle: "La primera solución todo en uno que simplifica la vida de la producción y los equipos técnicos.",
             production: {
                 title: "Para la Producción",
@@ -173,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 <div className="inline-flex items-center justify-center p-4 bg-cinema-800 rounded-full border border-cinema-700 shadow-2xl mb-4">
                     <img
                         src="/logo.png"
-                        alt="A Better Set Logo"
+                        alt="Per Set Logo"
                         className="h-32 w-auto object-contain"
                     />
                 </div>
