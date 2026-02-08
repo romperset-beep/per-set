@@ -4,16 +4,25 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion, setDoc, arrayRemove } from 'firebase/firestore';
 
 export const usePushNotifications = (userId?: string) => {
-    const [permission, setPermission] = useState<NotificationPermission>(Notification.permission);
+    const [permission, setPermission] = useState<NotificationPermission>(
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    );
     const [fcmToken, setFcmToken] = useState<string | null>(null);
 
     useEffect(() => {
         // Determine current permission on mount
-        setPermission(Notification.permission);
+        if (typeof Notification !== 'undefined') {
+            setPermission(Notification.permission);
+        }
     }, []);
 
     const requestPermission = async () => {
         try {
+            if (typeof Notification === 'undefined') {
+                console.warn('Notifications not supported in this environment');
+                return;
+            }
+
             const permissionResult = await Notification.requestPermission();
             setPermission(permissionResult);
 
