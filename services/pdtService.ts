@@ -62,7 +62,8 @@ export const parsePDT = async (file: File): Promise<PDTAnalysisResult> => {
                     startDayOffset: aiResult.startDayOffset || 0,
                     debugExtract: `AI Analysis Used.${warnings.length > 0 ? '\n\nVALIDATION WARNINGS:\n' + warnings.join('\n') : ''}\n\nREASONING: ${aiResult.reasoning || 'No details provided'}\n\n`,
                     debugDates: JSON.stringify(aiResult.dates, null, 2),
-                    debugYear: "AI Detected"
+                    debugYear: "AI Detected",
+                    extractedSequences: aiResult.extractedSequences || []
                 };
             } else {
                 aiErrorMsg = "AI returned empty or invalid result.";
@@ -87,8 +88,8 @@ export const parsePDT = async (file: File): Promise<PDTAnalysisResult> => {
             if (worksheet['!ref']) {
                 const range = XLSX.utils.decode_range(worksheet['!ref']);
                 // Safety Cap
-                if (range.e.r > 2000) range.e.r = 2000;
-                if (range.e.c > 100) range.e.c = 100;
+                if (range.e.r > 5000) range.e.r = 5000;
+                if (range.e.c > 500) range.e.c = 500;
                 worksheet['!ref'] = XLSX.utils.encode_range(range);
             }
             // Convert to CSV or Space-separated text to mimic PDF layout for regex

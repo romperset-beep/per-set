@@ -10,6 +10,8 @@ export interface PDTAnalysisResult {
     debugExtract?: string;
     debugDates?: string;
     debugYear?: string;
+    extractedSequences?: { id: string, date: string }[];
+    pdtDays?: any[]; // Store rich day data
 }
 
 // Helper to normalize date strings to DD/MM/YYYY

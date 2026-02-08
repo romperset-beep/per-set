@@ -162,6 +162,7 @@ export const RenfortsWidget: React.FC = () => {
     const [newPhone, setNewPhone] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [newRole, setNewRole] = useState(''); // Added
+    const [linkedSequenceId, setLinkedSequenceId] = useState(''); // Added
     const [addingToDate, setAddingToDate] = useState<string | null>(null);
 
     const getReinforcements = (dateStr: string, dept: string) => {
@@ -187,7 +188,8 @@ export const RenfortsWidget: React.FC = () => {
             name: newName.trim(),
             phone: newPhone.trim(),
             email: newEmail.trim(),
-            role: newRole.trim() // Added
+            role: newRole.trim(), // Added
+            linkedSequenceId: linkedSequenceId || undefined // Added
         };
 
         if (existing) {
@@ -216,7 +218,7 @@ export const RenfortsWidget: React.FC = () => {
             );
             */
         }
-        setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setAddingToDate(null);
+        setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setLinkedSequenceId(''); setAddingToDate(null);
     };
 
     const handleRemoveReinforcement = async (dateStr: string, dept: string, staffId: string) => {
@@ -900,6 +902,44 @@ export const RenfortsWidget: React.FC = () => {
                         <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-indigo-300 text-sm font-medium flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
                             {new Date(addingToDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </div>
+
+                        {/* Sequence Link */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Lier à une Séquence (Optionnel)</label>
+                            <select
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                                value={linkedSequenceId}
+                                onChange={e => {
+                                    const newSeqId = e.target.value;
+                                    setLinkedSequenceId(newSeqId);
+
+                                    if (newSeqId && project.pdtSequences) {
+                                        const seq = project.pdtSequences.find(s => s.id === newSeqId);
+                                        if (seq) {
+                                            // Auto-Update Logic: Same Day
+                                            setAddingToDate(seq.date);
+                                        }
+                                    }
+                                }}
+                            >
+                                <option value="">Aucune séquence liée</option>
+                                {(project.pdtSequences || [])
+                                    .sort((a, b) => {
+                                        if (a.date !== b.date) return a.date.localeCompare(b.date);
+                                        return a.id.localeCompare(b.id, undefined, { numeric: true });
+                                    })
+                                    .map(seq => (
+                                        <option key={seq.id} value={seq.id}>
+                                            {seq.id} - {new Date(seq.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ({seq.decor})
+                                        </option>
+                                    ))}
+                            </select>
+                            {linkedSequenceId && (
+                                <p className="text-xs text-indigo-300 italic">
+                                    La date a été ajustée automatiquement à celle de la séquence.
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-4">

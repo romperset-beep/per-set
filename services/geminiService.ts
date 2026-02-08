@@ -338,22 +338,20 @@ export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
       const workbook = XLSX.read(arrayBuffer);
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
+      // REVERT TO CSV (Proven best for accuracy) with SAFETY TRUNCATION
+      // The "Sparse" method lost the grid context for dates.
+      // The "Smart JSON" method filtered too much context.
+      // Standard CSV is best for Gemini's spatial reasoning, we just need to prevent the "Infinite Empty Grid" freeze.
 
-      // Convert to CSV with safety limits
-      // 1. Check range
-      if (worksheet['!ref']) {
-        const range = XLSX.utils.decode_range(worksheet['!ref']);
-        const MAX_ROWS = 1000;
-        const MAX_COLS = 50; // AZ roughly
+      const csvContent = XLSX.utils.sheet_to_csv(worksheet); // Default options preserve blank rows/structure
 
-        if (range.e.r > MAX_ROWS) range.e.r = MAX_ROWS;
-        if (range.e.c > MAX_COLS) range.e.c = MAX_COLS;
+      // Safety Truncation: Prevent sending 10MB of empty commas
+      const MAX_CHARS = 300000; // 300k chars is ~75k tokens, plenty for a schedule
+      const truncatedCSV = csvContent.length > MAX_CHARS
+        ? csvContent.substring(0, MAX_CHARS) + "\n...[TRUNCATED]"
+        : csvContent;
 
-        worksheet['!ref'] = XLSX.utils.encode_range(range);
-      }
-
-      const csvContent = XLSX.utils.sheet_to_csv(worksheet, { blankrows: false });
-      contentPart = { text: `Here is the content of the Excel file (converted to CSV):\n\n${csvContent}` };
+      contentPart = { text: `Here is the content of the Excel file (converted to CSV):\n\n${truncatedCSV}` };
     } else {
       contentPart = await fileToGenerativePart(file);
     }
@@ -385,13 +383,14 @@ export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
       2. They can be:
          - Simple numbers: "1", "2", "30"
          - Alphanumeric: "1A", "36B", "11/12"
-         - Lists: "1, 2, 3" (Count as 3)
-         - Ranges: "1-3" (Count as 3)
+         - Lists: "1, 2, 3" (Count as 3 separate IDs)
+         - Ranges: "1-3" (Expand to 1, 2, 3)
       3. IGNORE: "Décor", "Lieu", "Page" numbers.
       4. STRICT EXCLUSION RULES (CRITICAL):
          - DO NOT COUNT a day as a shooting day if the sequence cell is EMPTY or BLANK.
          - DO NOT COUNT a day if the cell contains terms like: "OFF", "VACANCES", "VOYAGE", "TRAVEL", "PREP", "REPOS", "FERIÉ", "RTT".
-         - A day is ONLY a shooting day if it has specific SCENE/SEQUENCE NUMBERS or a SET NAME declared.
+
+      CRITICAL: You MUST list EVERY SINGLE sequence ID found for each date in the 'extractedSequences' array. Do not summarize. Do not skip. If a day has 10 sequences, list 10 objects.
       
       TOTAL COUNT CHECK:
       - Look for a header saying "JOUR DE TOURNAGE" or a cumulative count row (e.g. "1, 2, 3... 52").
@@ -402,9 +401,13 @@ export const analyzePDTWithGemini = async (file: File): Promise<any | null> => {
       {
         "dates": ["DD/MM/YYYY", ...],
         "sequencesCount": number,
+        "extractedSequences": [
+          { "id": "1", "date": "YYYY-MM-DD" },
+          { "id": "4A", "date": "YYYY-MM-DD" }
+        ],
         "startDayInfo": string | null,
         "startDayOffset": number,
-        "reasoning": "Detailed explanation: 'Found 74 date columns. Identified 45 active shooting days after excluding 20 weekends (no sequences), 5 OFF days, 4 PREP days. Date range: 04/10/2024 to 17/12/2024. Counted 123 distinct sequences (examples: 1, 2, 5A, 12-14 counted as 3, 18, 22A).'"
+        "reasoning": "Detailed explanation..."
       }
     `;
 

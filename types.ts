@@ -37,6 +37,13 @@ export interface OfflineMember {
   createdAt: string; // ISO Date
 }
 
+export interface CateringDayInfo {
+  date: string;
+  stunts?: number; // Cascadeurs
+  extrasManual?: number; // Figurants (Override)
+  notes?: string;
+}
+
 export interface UserTemplate {
   id: string;
   userId: string;
@@ -89,20 +96,44 @@ export interface ConsumableItem {
   quantityStarted?: number; // Number of items currently opened/started
 }
 
-export type LogisticsType = 'pickup' | 'dropoff' | 'roundtrip' | 'pickup_set' | 'dropoff_set';
+export type LogisticsType = 'pickup' | 'dropoff' | 'roundtrip' | 'pickup_set' | 'dropoff_set' | 'usage';
 
 export interface LogisticsRequest {
   id: string;
   date: string; // YYYY-MM-DD
+  returnDate?: string; // YYYY-MM-DD (End of roundtrip) - Added
   time: string; // HH:mm
+  returnTime?: string; // HH:mm - Added
   department: Department | 'PRODUCTION';
   type: LogisticsType;
   location: string;
   description: string;
   contact?: string;
-  status?: 'pending' | 'approved' | 'completed';
+  status: 'PENDING' | 'APPROVED' | 'COMPLETED' | 'CANCELLED';
   vehicleType?: 'HGV' | 'Truck' | 'Van' | 'Car' | 'Scooter';
   distanceKm?: number;
+
+  // Sequence Linking
+  linkedSequenceId?: string; // ID of the sequence (e.g., "43")
+  autoUpdateDates?: boolean; // If true, dates update automatically when sequence moves
+}
+
+export interface PDTSequence {
+  id: string; // "1", "4A", "1-3"
+  date: string; // YYYY-MM-DD
+  description?: string; // Optional: "Int. Cuisine", "Ext. Rue"
+  decor?: string; // Added
+}
+
+export interface PDTDay {
+  date: string; // YYYY-MM-DD
+  type: 'SHOOT' | 'PREP' | 'TRAVEL' | 'OFF' | 'WRAP';
+  location?: string;
+  set?: string;
+  sequences: string[]; // List of sequence IDs e.g. ["1", "2", "3A"]
+  cast?: string[]; // List of Actor Names or IDs
+  extras?: string; // e.g. "20 passants"
+  notes?: string;
 }
 
 export interface EnergyLog {
@@ -128,6 +159,8 @@ export interface Project {
   status: 'Pre-Prod' | 'Shooting' | 'Wrap';
   pdtUrl?: string; // Added: URL of the uploaded PDF
   pdtName?: string; // Added: Original filename
+  pdtSequences?: PDTSequence[]; // Added: Parsed sequences for linking logistics
+  pdtDays?: PDTDay[];
   items: ConsumableItem[];
   callSheets?: CallSheet[]; // Added: Call sheets list
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
@@ -155,6 +188,7 @@ export interface Project {
   carbonContext?: CarbonContext;
   cateringLogs?: CateringLog[];
   cateringValidations?: Record<string, boolean>; // date -> isValidated
+  cateringInfos?: Record<string, CateringDayInfo>; // date -> info (stunts, extras override)
   timeLogs?: TimeLog[];
   reinforcements?: Reinforcement[];
   logistics?: LogisticsRequest[];
@@ -168,6 +202,7 @@ export interface ReinforcementDetail {
   phone?: string;
   email?: string;
   role?: string; // Poste / Fonction
+  linkedSequenceId?: string; // Added: Link to PDT Sequence
 }
 
 export interface Reinforcement {
@@ -526,6 +561,9 @@ export interface CallSheet {
   departmentCallTimes?: Record<string, string>; // e.g. { "Caméra": "08:00", "Régie": "07:30" }
   departmentNotes?: Record<string, string[]>; // New: specific notes per dept
 }
+
+export type { PDTAnalysisResult } from './services/pdtAnalysis';
+export * from './services/matrixService'; // If needed, or just keep importing from service
 
 export interface CatalogItem {
   id: string; // Generated Firestore ID

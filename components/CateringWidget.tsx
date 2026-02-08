@@ -523,248 +523,380 @@ export const CateringWidget: React.FC = () => {
                 </div>
             </header>
 
-            {/* WEEKLY VIEW TABLE */}
-            {viewMode === 'weekly' ? (
-                <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden animate-in fade-in">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-cinema-900/50 border-b border-cinema-700 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    <th className="px-6 py-4">Semaine</th>
-                                    <th className="px-6 py-4 text-center">Total Repas</th>
-                                    <th className="px-6 py-4 text-center">Dont Végétariens</th>
-                                    <th className="px-6 py-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-cinema-700">
-                                {weeklyStats.length > 0 ? weeklyStats.map((week) => (
-                                    <tr key={week.key} className="hover:bg-cinema-700/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-bold text-white text-lg">{week.label}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="text-xl font-bold text-white">{week.total}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="text-xl font-bold text-eco-400">{week.veggie}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex justify-center gap-4">
-                                                <button
-                                                    onClick={() => {
-                                                        // Filter logs for this week
-                                                        const logsForWeek = (project.cateringLogs || []).filter(l => {
-                                                            if (!l.hasEaten) return false;
-                                                            const d = new Date(l.date);
-                                                            const info = getWeekInfo(d);
-                                                            // Match by key (S1, S2... or 2023-45)
-                                                            return info.key === week.key;
-                                                        });
-                                                        downloadWeeklyReport(week.key, logsForWeek);
-                                                    }}
-                                                    className="text-eco-400 hover:text-eco-300 text-sm font-bold flex items-center gap-1 hover:underline"
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                    CSV
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedDate(week.firstDate);
-                                                        setViewMode('daily');
-                                                    }}
-                                                    className="text-blue-400 hover:text-blue-300 text-sm font-bold hover:underline"
-                                                >
-                                                    Voir Détail
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                                            Aucune donnée enregistrée pour le moment.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ) : (
-                <>
+            {/* PDT / FORECAST SECTION */}
+            {
+                isRegie && (
+                    <div className="bg-cinema-900/50 border border-cinema-700 rounded-xl p-4 flex flex-col md:flex-row gap-6 items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                                <PieIcon className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold">Prévisions (PDT)</h3>
+                                <p className="text-xs text-slate-400">Basé sur la feuille de service</p>
+                            </div>
+                        </div>
 
-                    {/* Main Table (Daily) */}
-                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-4 md:gap-8">
+                            {/* Technique */}
+                            <div className="text-center">
+                                <div className="text-xl font-bold text-white">
+                                    {(project.members ? Object.values(project.members).length : 0)}
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-slate-500">Technique</div>
+                            </div>
+
+                            {/* Comédiens (From PDT) */}
+                            <div className="text-center">
+                                <div className="text-xl font-bold text-white">
+                                    {(() => {
+                                        const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                        return pdtDay?.cast?.length || 0;
+                                    })()}
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-slate-500">Comédiens</div>
+                            </div>
+
+                            {/* Figurants (Editable) */}
+                            <div className="text-center">
+                                <div className="relative group">
+                                    <input
+                                        type="number"
+                                        className="w-16 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                        value={(() => {
+                                            // 1. Manual Override?
+                                            if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
+                                                return project.cateringInfos[selectedDate].extrasManual;
+                                            }
+                                            // 2. PDT Value?
+                                            const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                            if (pdtDay?.extras) {
+                                                const match = pdtDay.extras.match(/(\d+)/);
+                                                return match ? parseInt(match[1]) : 0;
+                                            }
+                                            return 0;
+                                        })()}
+                                        onChange={async (e) => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            const newInfos = {
+                                                ...(project.cateringInfos || {}),
+                                                [selectedDate]: {
+                                                    ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                    extrasManual: val
+                                                }
+                                            };
+                                            await updateProjectDetails({ cateringInfos: newInfos });
+                                        }}
+                                    />
+                                    <div className="absolute -top-2 -right-2 hidden group-hover:block text-[8px] bg-slate-700 text-white px-1 rounded pointer-events-none">
+                                        Modifiable
+                                    </div>
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">Figurants</div>
+                            </div>
+
+                            {/* Cascadeurs (Editable) */}
+                            <div className="text-center">
+                                <div className="relative group">
+                                    <input
+                                        type="number"
+                                        className="w-16 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                        value={project.cateringInfos?.[selectedDate]?.stunts || 0}
+                                        onChange={async (e) => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            const newInfos = {
+                                                ...(project.cateringInfos || {}),
+                                                [selectedDate]: {
+                                                    ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                    stunts: val
+                                                }
+                                            };
+                                            await updateProjectDetails({ cateringInfos: newInfos });
+                                        }}
+                                    />
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">Cascadeurs</div>
+                            </div>
+
+                            {/* TOTAL PREVISIONNEL */}
+                            <div className="w-px h-10 bg-cinema-700 mx-2 hidden md:block"></div>
+
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-amber-500">
+                                    {(() => {
+                                        // Calculate Total Forecast
+                                        const tech = project.members ? Object.values(project.members).length : 0;
+
+                                        const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                        const cast = pdtDay?.cast?.length || 0;
+
+                                        let extras = 0;
+                                        if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
+                                            extras = project.cateringInfos[selectedDate].extrasManual!;
+                                        } else if (pdtDay?.extras) {
+                                            const match = pdtDay.extras.match(/(\d+)/);
+                                            extras = match ? parseInt(match[1]) : 0;
+                                        }
+
+                                        const stunts = project.cateringInfos?.[selectedDate]?.stunts || 0;
+
+                                        return tech + cast + extras + stunts;
+                                    })()}
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-amber-500/70">Total Prévu</div>
+                            </div>
+
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* WEEKLY VIEW TABLE */}
+            {
+                viewMode === 'weekly' ? (
+                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden animate-in fade-in">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-cinema-900/50 border-b border-cinema-700 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        <th className="px-2 py-3 md:px-6 md:py-4">Nom</th>
-                                        <th className="px-2 py-3 md:px-6 md:py-4 text-center">
-                                            <span className="md:hidden">Manger</span>
-                                            <span className="hidden md:inline">A Mangé ?</span>
-                                        </th>
-                                        <th className="px-2 py-3 md:px-6 md:py-4 text-center">
-                                            <span className="md:hidden">Végé</span>
-                                            <span className="hidden md:inline">Végétarien ?</span>
-                                        </th>
-                                        <th className="px-2 py-3 md:px-6 md:py-4">Régime</th>
+                                        <th className="px-6 py-4">Semaine</th>
+                                        <th className="px-6 py-4 text-center">Total Repas</th>
+                                        <th className="px-6 py-4 text-center">Dont Végétariens</th>
+                                        <th className="px-6 py-4 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-cinema-700">
-                                    {/* Group by Department */}
-                                    {Object.entries(
-                                        tableData.reduce((acc, row) => {
-                                            const dept = row.department || 'Autre';
-                                            if (!acc[dept]) acc[dept] = [];
-                                            acc[dept].push(row);
-                                            return acc;
-                                        }, {} as Record<string, typeof tableData>)
-                                    ).sort((a, b) => a[0].localeCompare(b[0])).map(([dept, rows]) => (
-                                        <React.Fragment key={dept}>
-                                            {/* Department Header */}
-                                            <tr className="bg-cinema-900/80 border-b border-cinema-700">
-                                                <td colSpan={4} className="px-2 py-2 md:px-6 md:py-3 text-eco-400 font-bold uppercase tracking-wider text-xs md:text-sm">
-                                                    {dept} <span className="text-slate-500 text-[10px] md:text-xs ml-2">({rows.length} pers.)</span>
-                                                </td>
-                                            </tr>
-                                            {/* Rows for this Department */}
-                                            {rows.map((row) => (
-                                                <tr key={row.id} className="hover:bg-cinema-700/30 transition-colors">
-                                                    <td className="px-2 py-3 md:px-6 md:py-4">
-                                                        <div className="font-bold text-white flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                                                            <span className="truncate max-w-[150px] md:max-w-none">{row.name}</span>
-                                                            <div className="text-[10px] md:text-xs text-slate-500 truncate max-w-[100px] md:max-w-none hidden sm:block">
-                                                                {row.role}
-                                                            </div>
-                                                            {row.isManual && <span className="text-[8px] md:text-[10px] bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/30 inline-block w-fit">INVITÉ</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-2 py-3 md:px-6 md:py-4 text-center">
-                                                        <button
-                                                            onClick={() => handleToggleMeal(row, 'hasEaten')}
-                                                            disabled={!isRegie || isValidated}
-                                                            className={`p-1.5 md:p-2 rounded-lg transition-all ${row.hasEaten
-                                                                ? 'bg-green-600 text-white shadow-lg shadow-green-600/20 md:scale-110'
-                                                                : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
-                                                                } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
-                                                        >
-                                                            <Check className="h-4 w-4 md:h-5 md:w-5" />
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-2 py-3 md:px-6 md:py-4 text-center">
-                                                        <button
-                                                            onClick={() => handleToggleMeal(row, 'isVegetarian')}
-                                                            disabled={!isRegie || isValidated}
-                                                            className={`p-1.5 md:p-2 rounded-lg transition-all ${row.isVegetarian
-                                                                ? 'bg-eco-600 text-white shadow-lg shadow-eco-600/20'
-                                                                : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
-                                                                } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
-                                                        >
-                                                            <Leaf className="h-4 w-4 md:h-5 md:w-5" />
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-2 py-3 md:px-6 md:py-4">
-                                                        {row.diet !== 'Standard' ? (
-                                                            <span className="text-[10px] md:text-xs font-bold bg-purple-900/50 text-purple-400 px-1.5 py-0.5 md:px-2 md:py-1 rounded border border-purple-500/30 whitespace-nowrap">
-                                                                {row.diet === 'Végétarien' ? 'Végé' : row.diet}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[10px] md:text-xs text-slate-600">Std</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </React.Fragment>
-                                    ))}
+                                    {weeklyStats.length > 0 ? weeklyStats.map((week) => (
+                                        <tr key={week.key} className="hover:bg-cinema-700/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-white text-lg">{week.label}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="text-xl font-bold text-white">{week.total}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="text-xl font-bold text-eco-400">{week.veggie}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex justify-center gap-4">
+                                                    <button
+                                                        onClick={() => {
+                                                            // Filter logs for this week
+                                                            const logsForWeek = (project.cateringLogs || []).filter(l => {
+                                                                if (!l.hasEaten) return false;
+                                                                const d = new Date(l.date);
+                                                                const info = getWeekInfo(d);
+                                                                // Match by key (S1, S2... or 2023-45)
+                                                                return info.key === week.key;
+                                                            });
+                                                            downloadWeeklyReport(week.key, logsForWeek);
+                                                        }}
+                                                        className="text-eco-400 hover:text-eco-300 text-sm font-bold flex items-center gap-1 hover:underline"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                        CSV
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedDate(week.firstDate);
+                                                            setViewMode('daily');
+                                                        }}
+                                                        className="text-blue-400 hover:text-blue-300 text-sm font-bold hover:underline"
+                                                    >
+                                                        Voir Détail
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                                                Aucune donnée enregistrée pour le moment.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                ) : (
+                    <>
 
-                    {/* Production Summary View (Daily) - Moved to Bottom */}
-                    {isProduction && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-                            {Object.entries(stats.byDept).map(([dept, count]) => (
-                                <div key={dept} className="bg-cinema-800 p-4 rounded-xl border border-cinema-700">
-                                    <h4 className="text-sm font-bold text-slate-300 mb-2">{dept}</h4>
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-2xl font-bold text-white">{count.total}</span>
-                                        <span className="text-sm font-medium text-eco-400 flex items-center gap-1">
-                                            <Leaf className="h-3 w-3" /> {count.veggie}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
+                        {/* Main Table (Daily) */}
+                        <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-cinema-900/50 border-b border-cinema-700 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <th className="px-2 py-3 md:px-6 md:py-4">Nom</th>
+                                            <th className="px-2 py-3 md:px-6 md:py-4 text-center">
+                                                <span className="md:hidden">Manger</span>
+                                                <span className="hidden md:inline">A Mangé ?</span>
+                                            </th>
+                                            <th className="px-2 py-3 md:px-6 md:py-4 text-center">
+                                                <span className="md:hidden">Végé</span>
+                                                <span className="hidden md:inline">Végétarien ?</span>
+                                            </th>
+                                            <th className="px-2 py-3 md:px-6 md:py-4">Régime</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-cinema-700">
+                                        {/* Group by Department */}
+                                        {Object.entries(
+                                            tableData.reduce((acc, row) => {
+                                                const dept = row.department || 'Autre';
+                                                if (!acc[dept]) acc[dept] = [];
+                                                acc[dept].push(row);
+                                                return acc;
+                                            }, {} as Record<string, typeof tableData>)
+                                        ).sort((a, b) => a[0].localeCompare(b[0])).map(([dept, rows]) => (
+                                            <React.Fragment key={dept}>
+                                                {/* Department Header */}
+                                                <tr className="bg-cinema-900/80 border-b border-cinema-700">
+                                                    <td colSpan={4} className="px-2 py-2 md:px-6 md:py-3 text-eco-400 font-bold uppercase tracking-wider text-xs md:text-sm">
+                                                        {dept} <span className="text-slate-500 text-[10px] md:text-xs ml-2">({rows.length} pers.)</span>
+                                                    </td>
+                                                </tr>
+                                                {/* Rows for this Department */}
+                                                {rows.map((row) => (
+                                                    <tr key={row.id} className="hover:bg-cinema-700/30 transition-colors">
+                                                        <td className="px-2 py-3 md:px-6 md:py-4">
+                                                            <div className="font-bold text-white flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                                <span className="truncate max-w-[150px] md:max-w-none">{row.name}</span>
+                                                                <div className="text-[10px] md:text-xs text-slate-500 truncate max-w-[100px] md:max-w-none hidden sm:block">
+                                                                    {row.role}
+                                                                </div>
+                                                                {row.isManual && <span className="text-[8px] md:text-[10px] bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/30 inline-block w-fit">INVITÉ</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-2 py-3 md:px-6 md:py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleToggleMeal(row, 'hasEaten')}
+                                                                disabled={!isRegie || isValidated}
+                                                                className={`p-1.5 md:p-2 rounded-lg transition-all ${row.hasEaten
+                                                                    ? 'bg-green-600 text-white shadow-lg shadow-green-600/20 md:scale-110'
+                                                                    : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
+                                                                    } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
+                                                            >
+                                                                <Check className="h-4 w-4 md:h-5 md:w-5" />
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-2 py-3 md:px-6 md:py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleToggleMeal(row, 'isVegetarian')}
+                                                                disabled={!isRegie || isValidated}
+                                                                className={`p-1.5 md:p-2 rounded-lg transition-all ${row.isVegetarian
+                                                                    ? 'bg-eco-600 text-white shadow-lg shadow-eco-600/20'
+                                                                    : 'bg-cinema-900 text-slate-600 hover:bg-cinema-700'
+                                                                    } ${(!isRegie || isValidated) && 'opacity-50 cursor-not-allowed'}`}
+                                                            >
+                                                                <Leaf className="h-4 w-4 md:h-5 md:w-5" />
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-2 py-3 md:px-6 md:py-4">
+                                                            {row.diet !== 'Standard' ? (
+                                                                <span className="text-[10px] md:text-xs font-bold bg-purple-900/50 text-purple-400 px-1.5 py-0.5 md:px-2 md:py-1 rounded border border-purple-500/30 whitespace-nowrap">
+                                                                    {row.diet === 'Végétarien' ? 'Végé' : row.diet}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] md:text-xs text-slate-600">Std</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    )}
-                </>
-            )}
+
+                        {/* Production Summary View (Daily) - Moved to Bottom */}
+                        {isProduction && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+                                {Object.entries(stats.byDept).map(([dept, count]) => (
+                                    <div key={dept} className="bg-cinema-800 p-4 rounded-xl border border-cinema-700">
+                                        <h4 className="text-sm font-bold text-slate-300 mb-2">{dept}</h4>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-2xl font-bold text-white">{count.total}</span>
+                                            <span className="text-sm font-medium text-eco-400 flex items-center gap-1">
+                                                <Leaf className="h-3 w-3" /> {count.veggie}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )
+            }
 
             {/* Add Guest Modal */}
-            {isAddGuestModalOpen && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 w-full max-w-md p-6 relative">
-                        <button
-                            onClick={() => setIsAddGuestModalOpen(false)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-
-                        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <UserPlus className="h-5 w-5 text-eco-400" />
-                            Ajouter un Invité
-                        </h3>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Nom Prénom</label>
-                                <input
-                                    type="text"
-                                    value={guestName}
-                                    onChange={(e) => setGuestName(e.target.value)}
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
-                                    placeholder="Ex: Chauffeur Camion"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Département (Rattachement)</label>
-                                <select
-                                    value={guestDept}
-                                    onChange={(e) => setGuestDept(e.target.value as any)}
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
-                                >
-                                    {Object.values(Department).map(d => (
-                                        <option key={d} value={d}>{d}</option>
-                                    ))}
-                                    <option value="PRODUCTION">Production</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Régime Spécifique</label>
-                                <select
-                                    value={guestDiet}
-                                    onChange={(e) => setGuestDiet(e.target.value)}
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
-                                >
-                                    <option value="">Standard</option>
-                                    <option value="Végétarien">Végétarien</option>
-                                    <option value="Sans Porc">Sans Porc</option>
-                                </select>
-                            </div>
-
+            {
+                isAddGuestModalOpen && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                        <div className="bg-cinema-800 rounded-xl border border-cinema-700 w-full max-w-md p-6 relative">
                             <button
-                                onClick={handleAddGuest}
-                                disabled={!guestName}
-                                className="w-full bg-eco-600 hover:bg-eco-500 text-white font-bold py-3 rounded-lg mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => setIsAddGuestModalOpen(false)}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white"
                             >
-                                Valider & Ajouter
+                                <X className="h-5 w-5" />
                             </button>
+
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <UserPlus className="h-5 w-5 text-eco-400" />
+                                Ajouter un Invité
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Nom Prénom</label>
+                                    <input
+                                        type="text"
+                                        value={guestName}
+                                        onChange={(e) => setGuestName(e.target.value)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
+                                        placeholder="Ex: Chauffeur Camion"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Département (Rattachement)</label>
+                                    <select
+                                        value={guestDept}
+                                        onChange={(e) => setGuestDept(e.target.value as any)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
+                                    >
+                                        {Object.values(Department).map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                        ))}
+                                        <option value="PRODUCTION">Production</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Régime Spécifique</label>
+                                    <select
+                                        value={guestDiet}
+                                        onChange={(e) => setGuestDiet(e.target.value)}
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
+                                    >
+                                        <option value="">Standard</option>
+                                        <option value="Végétarien">Végétarien</option>
+                                        <option value="Sans Porc">Sans Porc</option>
+                                    </select>
+                                </div>
+
+                                <button
+                                    onClick={handleAddGuest}
+                                    disabled={!guestName}
+                                    className="w-full bg-eco-600 hover:bg-eco-500 text-white font-bold py-3 rounded-lg mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Valider & Ajouter
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

@@ -1,12 +1,13 @@
 
 import React, { useState, useCallback } from 'react';
 import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, Download } from 'lucide-react';
+import { Project, PDTAnalysisResult, User, PDTSequence, PDTDay } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { useToast } from '../hooks/useToast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
-// We'll implement the actual parser service next
-// import { parsePDT } from '../services/pdtService'; 
+import { parsePDT } from '../services/pdtService';
+import { generatePDTTemplate, parsePDTMatrix } from '../services/matrixService';
+import * as XLSX from 'xlsx';
 
 export const PDTManager: React.FC = () => {
     const { project, updateProjectDetails } = useProject();
@@ -14,18 +15,8 @@ export const PDTManager: React.FC = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [isUploading, setIsUploading] = useState(false); // New state
-    const [analysisResult, setAnalysisResult] = useState<{
-        dates: number;
-        sequences: number;
-        period: string;
-        text?: string;
-        startDayInfo?: string;
-        startDayOffset?: number;
-        debugExtract?: string;
-        debugDates?: string;
-        debugYear?: string;
-    } | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<PDTAnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Editable State
@@ -59,8 +50,26 @@ export const PDTManager: React.FC = () => {
         }
     };
 
+    const handleDownloadTemplate = (demoMode: boolean = false) => {
+        const wb = generatePDTTemplate(
+            project.shootingStartDate,
+            project.shootingEndDate,
+            demoMode
+        );
+        const fileName = demoMode ? "Modele_PDT_DEMO.xlsx" : "Modele_PDT_ABetterSet.xlsx";
+        XLSX.writeFile(wb, fileName);
+
+        if (demoMode) {
+            toast.success("PDT de DÉMO généré avec succès !");
+        } else if (project.shootingStartDate && project.shootingEndDate) {
+            toast.success("Modèle généré avec les dates du projet !");
+        } else {
+            toast.success("Modèle vierge téléchargé (Dates projet manquantes)");
+        }
+    };
+
     const validateAndSetFile = (f: File) => {
-        if (f.type === 'application/pdf' || f.name.endsWith('.xlsx')) {
+        if (f.type === 'application/pdf' || f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) {
             setFile(f);
             setError(null);
             setAnalysisResult(null);
@@ -82,7 +91,7 @@ export const PDTManager: React.FC = () => {
             await uploadBytes(storageRef, file);
             const downloadUrl = await getDownloadURL(storageRef);
 
-            // 2. Update Project with Dates AND File URL
+            // 2. Prepare Updates
             const updates: any = {
                 pdtUrl: downloadUrl,
                 pdtName: file.name
@@ -100,9 +109,86 @@ export const PDTManager: React.FC = () => {
                 };
             }
 
+            // 3. Persist Sequences & Auto-Update Logistics
+            if (analysisResult.extractedSequences) {
+                updates.pdtSequences = analysisResult.extractedSequences;
+            }
+            // NEW: Store rich day data if available
+            if (analysisResult.pdtDays) {
+                updates.pdtDays = analysisResult.pdtDays;
+            }
+
+            // Auto-Sync Logic: Logistics
+            if (project.logistics && project.logistics.length > 0 && analysisResult.extractedSequences) {
+                const updatedLogistics = project.logistics.map(req => {
+                    if (req.linkedSequenceId && req.autoUpdateDates) {
+                        const relatedSeq = analysisResult.extractedSequences!.find((s: any) => s.id === req.linkedSequenceId);
+                        if (relatedSeq) {
+                            const seqDate = new Date(relatedSeq.date);
+                            const pickupDate = new Date(seqDate);
+                            pickupDate.setDate(seqDate.getDate() - 1);
+                            const returnDate = new Date(seqDate);
+                            returnDate.setDate(seqDate.getDate() + 1);
+
+                            return {
+                                ...req,
+                                date: pickupDate.toISOString().split('T')[0],
+                                returnDate: returnDate.toISOString().split('T')[0]
+                            };
+                        }
+                    }
+                    return req;
+                });
+                updates.logistics = updatedLogistics;
+            }
+
+            // Auto-Sync Logic: Renforts (Move staff if sequence date changes)
+            if (project.reinforcements && project.reinforcements.length > 0 && analysisResult.extractedSequences) {
+                // 1. Flatten all staff
+                let allStaff: { staff: any, dept: string, date: string }[] = [];
+                project.reinforcements.forEach(r => {
+                    if (r.staff) {
+                        r.staff.forEach(s => {
+                            allStaff.push({ staff: s, dept: r.department, date: r.date });
+                        });
+                    }
+                });
+
+                // 2. Update dates based on linked sequences
+                let hasRenfortChanges = false;
+                const updatedStaffList = allStaff.map(item => {
+                    if (item.staff.linkedSequenceId) {
+                        const seq = analysisResult.extractedSequences!.find((s: any) => s.id === item.staff.linkedSequenceId);
+                        if (seq && seq.date !== item.date) {
+                            hasRenfortChanges = true;
+                            return { ...item, date: seq.date }; // Move to new date
+                        }
+                    }
+                    return item;
+                });
+
+                // 3. Re-group into Reinforcement objects
+                if (hasRenfortChanges) {
+                    const newReinforcementsMap: Record<string, any> = {};
+                    updatedStaffList.forEach(item => {
+                        const key = `${item.date}_${item.dept}`;
+                        if (!newReinforcementsMap[key]) {
+                            newReinforcementsMap[key] = {
+                                id: key,
+                                date: item.date,
+                                department: item.dept,
+                                staff: []
+                            };
+                        }
+                        newReinforcementsMap[key].staff.push(item.staff);
+                    });
+                    updates.reinforcements = Object.values(newReinforcementsMap);
+                }
+            }
+
             await updateProjectDetails(updates);
 
-            toast.success("Plan de travail importé et sauvegardé !");
+            toast.success("Plan de travail importé et logistique synchronisée !");
 
             // Clear state to show "done"
             setFile(null);
@@ -118,17 +204,60 @@ export const PDTManager: React.FC = () => {
     };
 
     const handleAnalyze = async () => {
-        if (!file) return;
+        if (!file) {
+            setError('Veuillez sélectionner un fichier.');
+            return;
+        }
 
         setIsAnalyzing(true);
         setError(null);
         setAnalysisResult(null);
 
         try {
-            // Import dynamically to avoid SSR issues if any (though client-side only here)
-            const { parsePDT } = await import('../services/pdtService');
+            let result: PDTAnalysisResult;
 
-            const result = await parsePDT(file);
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                // Try Matrix Parse First
+                try {
+                    const matrixData = await parsePDTMatrix(file);
+                    if (matrixData.days.length > 0) {
+                        // Success! Convert to PDTAnalysisResult format for UI
+                        const shootDays = matrixData.days.filter(d => d.type === 'SHOOT').length;
+                        const dates = matrixData.days.filter(d => d.type === 'SHOOT').map(d => d.date);
+
+                        result = {
+                            dates: shootDays,
+                            sequences: matrixData.sequences.length,
+                            period: dates.length > 0 ? `${dates[0]} - ${dates[dates.length - 1]}` : "N/A",
+                            text: "Import Matrice Standard",
+                            startDayInfo: "Import Excel Standard",
+                            startDayOffset: 0,
+                            extractedSequences: matrixData.sequences,
+                            pdtDays: matrixData.days
+                        };
+
+                        setAnalysisResult(result);
+
+                        // Initialize Editable State
+                        setEditDates(shootDays);
+                        setEditSequences(matrixData.sequences.length);
+                        if (dates.length > 0) {
+                            setEditStartDate(dates[0]);
+                            setEditEndDate(dates[dates.length - 1]);
+                        }
+
+                        setIsAnalyzing(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Not a standard matrix, falling back to AI/Legacy parser");
+                }
+            }
+
+            // Legacy / AI Parse
+            // Import dynamically to avoid SSR issues if any (though client-side only here)
+            // const { parsePDT } = await import('../services/pdtService');
+            result = await parsePDT(file);
 
             setAnalysisResult({
                 dates: result.dates,
@@ -139,7 +268,8 @@ export const PDTManager: React.FC = () => {
                 startDayOffset: result.startDayOffset,
                 debugExtract: result.debugExtract,
                 debugDates: result.debugDates,
-                debugYear: result.debugYear
+                debugYear: result.debugYear,
+                extractedSequences: result.extractedSequences
             });
 
             // Initialize Editable State
@@ -207,73 +337,96 @@ export const PDTManager: React.FC = () => {
                 )}
             </div>
 
-            {/* Upload Area */}
-            <div
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                className={`
-                    border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer
-                    ${isDragging ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/50'}
-                    ${file ? 'border-emerald-500/50' : ''}
-                `}
-            >
-                <input
-                    type="file"
-                    id="pdt-upload"
-                    className="hidden"
-                    accept=".pdf,.xlsx,.xls"
-                    onChange={onFileSelect}
-                />
+            {/* Template Download Button - Only show if no file is selected */}
+            {!file && (
+                <div className="flex justify-center gap-4">
+                    <button
+                        onClick={() => handleDownloadTemplate(false)}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-bold transition-all shadow-lg shadow-emerald-900/20"
+                    >
+                        <Download className="w-4 h-4" />
+                        1. Télécharger le Modèle Excel à Remplir
+                    </button>
 
-                {!file ? (
-                    <label htmlFor="pdt-upload" className="flex flex-col items-center gap-4 cursor-pointer w-full h-full">
-                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-2">
-                            <Upload className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <h3 className="text-xl font-medium text-white">Glissez-déposez votre PDT ici</h3>
-                        <p className="text-slate-500">ou cliquez pour parcourir vos fichiers</p>
-                        <div className="mt-4 flex gap-2">
-                            <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs font-mono font-bold">PDF</span>
-                            <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-mono font-bold">EXCEL</span>
-                        </div>
-                    </label>
-                ) : (
-                    <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                        <FileText className="w-16 h-16 text-emerald-500" />
-                        <div className="text-center">
-                            <h3 className="text-lg font-bold text-white max-w-md truncate">{file.name}</h3>
-                            <p className="text-sm text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
+                    <button
+                        onClick={() => handleDownloadTemplate(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 border border-purple-500/30 rounded-lg text-sm font-bold transition-all shadow-lg shadow-purple-900/20"
+                    >
+                        <span className="text-lg">🧪</span>
+                        Générer PDT Démo (Test)
+                    </button>
+                </div>
+            )}
 
-                        <div className="flex gap-4 mt-4">
-                            <button
-                                onClick={() => setFile(null)}
-                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                                Changer de fichier
-                            </button>
-                            <button
-                                onClick={handleAnalyze}
-                                disabled={isAnalyzing}
-                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
-                            >
-                                {isAnalyzing ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Analyse en cours...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle className="w-4 h-4" />
-                                        Lancer l'analyse
-                                    </>
-                                )}
-                            </button>
+            {/* Upload Area - Hide if analysis result is present to focus on validation */}
+            {!analysisResult && (
+                <div
+                    onDragOver={onDragOver}
+                    onDragLeave={onDragLeave}
+                    onDrop={onDrop}
+                    className={`
+                        border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer
+                        ${isDragging ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/50'}
+                        ${file ? 'border-emerald-500/50' : ''}
+                    `}
+                >
+                    <input
+                        type="file"
+                        id="pdt-upload"
+                        className="hidden"
+                        accept=".pdf,.xlsx,.xls"
+                        onChange={onFileSelect}
+                    />
+
+                    {!file ? (
+                        <label htmlFor="pdt-upload" className="flex flex-col items-center gap-4 cursor-pointer w-full h-full">
+                            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-2">
+                                <Upload className="w-8 h-8 text-slate-400" />
+                            </div>
+                            <h3 className="text-xl font-medium text-white">2. Glissez-déposez le fichier rempli ici</h3>
+                            <p className="text-slate-500">ou cliquez pour parcourir vos fichiers (PDF ou Excel Standard)</p>
+                            <div className="mt-4 flex gap-2">
+                                <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs font-mono font-bold">PDF (IA)</span>
+                                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-mono font-bold">Matrice Excel</span>
+                            </div>
+                        </label>
+                    ) : (
+                        <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+                            <FileText className="w-16 h-16 text-emerald-500" />
+                            <div className="text-center">
+                                <h3 className="text-lg font-bold text-white max-w-md truncate">{file.name}</h3>
+                                <p className="text-sm text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+
+                            <div className="flex gap-4 mt-4">
+                                <button
+                                    onClick={() => setFile(null)}
+                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Changer de fichier
+                                </button>
+                                <button
+                                    onClick={handleAnalyze}
+                                    disabled={isAnalyzing}
+                                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
+                                >
+                                    {isAnalyzing ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Analyse en cours...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="w-4 h-4" />
+                                            Lancer l'analyse
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {error && (
                 <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3 text-red-400 animate-in slide-in-from-top-2">
@@ -290,12 +443,20 @@ export const PDTManager: React.FC = () => {
                             <CheckCircle className="w-5 h-5 text-emerald-500" />
                             Analyse terminée avec succès
                         </h3>
-                        {analysisResult.text?.includes("Analyzed by Gemini AI") && (
-                            <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs font-bold border border-purple-500/30 flex items-center gap-1">
-                                ✨ Analysé par IA
-                            </span>
-                        )}
+                        <div className="flex gap-2">
+                            {analysisResult.text?.includes("Standard") && (
+                                <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs font-bold border border-green-500/30 flex items-center gap-1">
+                                    🚀 Matrice Standard
+                                </span>
+                            )}
+                            {analysisResult.text?.includes("Analyzed by Gemini AI") && (
+                                <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs font-bold border border-purple-500/30 flex items-center gap-1">
+                                    ✨ Analysé par IA
+                                </span>
+                            )}
+                        </div>
                     </div>
+
                     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Editable Dates Count */}
                         <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
@@ -311,11 +472,11 @@ export const PDTManager: React.FC = () => {
                                 />
                                 <span className="text-sm font-medium text-slate-500">jours</span>
                             </div>
-                            {analysisResult.startDayOffset && analysisResult.startDayOffset > 0 && (
+                            {analysisResult.startDayOffset && analysisResult.startDayOffset > 0 ? (
                                 <div className="text-xs text-orange-400 mt-1 font-medium">
                                     Dont {analysisResult.startDayOffset} déjà effectués (inclus)
                                 </div>
-                            )}
+                            ) : null}
                         </div>
 
                         {/* Editable Sequences Count */}
@@ -394,21 +555,92 @@ export const PDTManager: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="p-4 bg-emerald-500/5 border-t border-emerald-500/10 flex justify-end gap-3">
-                        <button className="px-4 py-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg text-sm font-bold transition-colors">
-                            Voir le détail
+                    {/* Sequences Breakdown - NEW VERIFICATION TABLE */}
+                    {analysisResult.extractedSequences && analysisResult.extractedSequences.length > 0 && (
+                        <div className="mx-6 mb-6">
+                            <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                Détail Séquences par Jour
+                            </h4>
+                            <div className="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden max-h-96 overflow-y-auto">
+                                <table className="w-full text-left text-sm text-slate-300">
+                                    <thead className="bg-slate-900 text-xs uppercase text-slate-500 font-bold sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 w-32">Date</th>
+                                            <th className="px-4 py-2">Séquences Identifiées</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {Array.from(new Set(analysisResult.extractedSequences.map(s => s.date))).sort().map(dateStr => {
+                                            const daySeqs = analysisResult.extractedSequences?.filter(s => s.date === dateStr) || [];
+                                            const displayDate = new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+                                            // Optional: Find extra rich data for this day from pdtDays if available
+                                            const dayInfo = analysisResult.pdtDays?.find((d: any) => d.date === dateStr);
+
+                                            // Sort numerical/alphanumerical
+                                            const sortedSeqs = daySeqs.sort((a, b) => {
+                                                const numA = parseInt(a.id.replace(/\D/g, '')) || 0;
+                                                const numB = parseInt(b.id.replace(/\D/g, '')) || 0;
+                                                return numA - numB;
+                                            });
+
+                                            return (
+                                                <tr key={dateStr} className="hover:bg-slate-700/50">
+                                                    <td className="px-4 py-2 font-mono text-emerald-400 whitespace-nowrap">
+                                                        {displayDate}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {sortedSeqs.map(seq => (
+                                                                <span key={seq.id} className="px-1.5 py-0.5 bg-slate-700 rounded text-xs text-white border border-slate-600">
+                                                                    {seq.id}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        {dayInfo && dayInfo.set && (
+                                                            <div className="text-xs text-slate-500 mt-1 italic">
+                                                                Sets: {dayInfo.set}
+                                                            </div>
+                                                        )}
+                                                        {dayInfo && dayInfo.cast && dayInfo.cast.length > 0 && (
+                                                            <div className="text-xs text-slate-500 mt-0.5">
+                                                                Cast: {dayInfo.cast.join(', ')}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CONFIRM ACTIONS */}
+                    <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end gap-3 rounded-b-xl">
+                        <button
+                            onClick={() => setAnalysisResult(null)}
+                            className="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
+                        >
+                            Annuler
                         </button>
                         <button
                             onClick={handleValidate}
                             disabled={isUploading}
-                            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait">
+                            className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
                             {isUploading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     Sauvegarde...
                                 </>
                             ) : (
-                                "Valider et Importer"
+                                <>
+                                    <CheckCircle className="w-4 h-4" />
+                                    Valider et Importer
+                                </>
                             )}
                         </button>
                     </div>
