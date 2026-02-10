@@ -38,34 +38,43 @@ export const OnlineUsersModal: React.FC<OnlineUsersModalProps> = ({ onClose, onM
 
                 {/* List */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {otherUsers.map(profile => (
-                        <div key={profile.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <div className="h-10 w-10 rounded-full bg-cinema-700 flex items-center justify-center text-white font-bold border border-cinema-600">
-                                        {profile.firstName ? profile.firstName[0] : (profile.lastName ? profile.lastName[0] : '?')}
-                                    </div>
-                                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-cinema-800"></div>
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-white">
-                                        {profile.firstName} {profile.lastName}
-                                    </h4>
-                                    <p className="text-xs text-slate-400">
-                                        {profile.role || profile.department}
-                                    </p>
-                                </div>
-                            </div>
+                    {otherUsers.map(profile => {
+                        // Logic for display name
+                        const displayName = profile.name ||
+                            (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` :
+                                (profile.firstName || profile.lastName || profile.email));
 
-                            <button
-                                onClick={() => onMessage(profile.id)}
-                                className="p-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 text-xs font-medium"
-                            >
-                                <MessageSquare className="h-4 w-4" />
-                                <span className="hidden sm:inline">Message</span>
-                            </button>
-                        </div>
-                    ))}
+                        const initial = displayName ? displayName[0].toUpperCase() : '?';
+
+                        return (
+                            <div key={profile.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <div className="h-10 w-10 rounded-full bg-cinema-700 flex items-center justify-center text-white font-bold border border-cinema-600">
+                                            {initial}
+                                        </div>
+                                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-cinema-800"></div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-medium text-white">
+                                            {displayName}
+                                        </h4>
+                                        <p className="text-xs text-slate-400">
+                                            {profile.role || profile.department}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => onMessage(profile.id)}
+                                    className="p-2 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 text-xs font-medium"
+                                >
+                                    <MessageSquare className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Message</span>
+                                </button>
+                            </div>
+                        );
+                    })}
 
                     {otherUsers.length === 0 && (
                         <div className="text-center py-8 text-slate-500 text-sm">

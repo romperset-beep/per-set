@@ -18,7 +18,9 @@ export const TeamDirectory: React.FC = () => {
     // Filter profiles belonging to THIS project
     const projectMembers = userProfiles.filter(profile => {
         const p = profile as any;
-        return p.currentProjectId === project.id || p.projectHistory?.some((h: any) => h.id === project.id);
+        const isCurrent = p.currentProjectId === project.id;
+        const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
+        return isCurrent || isInHistory;
     });
 
     // Merge Real Users and Offline Members

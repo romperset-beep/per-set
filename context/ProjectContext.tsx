@@ -124,6 +124,7 @@ interface ProjectContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
+  deleteMyAccount: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   deleteAllData: () => Promise<void>;
   addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
@@ -168,7 +169,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateUserProfile,
     refreshUser,
     resendVerification,
-    deleteUser
+    deleteMyAccount
   } = useAuth();
 
   // useNotification removed to avoid circular dependency
@@ -675,15 +676,27 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (type) projectData.projectType = type;
       if (convention) projectData.convention = convention;
 
+      // CRITICAL FIX: Add user to members map for Firestore security rules
+      // Without this, isMemberOfProject() returns false and user can't access project
       if (!projectSnap.exists()) {
         await setDoc(projectRef, {
           ...DEFAULT_PROJECT,
           ...projectData,
           id: projectId,
-          items: []
+          items: [],
+          members: {
+            [user.id]: true  // Add current user as member
+          }
         });
       } else {
-        await setDoc(projectRef, projectData, { merge: true });
+        // Merge and ensure user is added to members
+        await setDoc(projectRef, {
+          ...projectData,
+          members: {
+            ...(projectSnap.data()?.members || {}),
+            [user.id]: true  // Add current user as member
+          }
+        }, { merge: true });
       }
 
       // 1. Update Local Project State
@@ -1436,6 +1449,28 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Social Logic Removed
   const unreadSocialCount = 0;
 
+  // SAFE DELETE USER (Admin capable)
+  const deleteUser = async (userId: string) => {
+    if (!user) return;
+    try {
+      console.log(`[ProjectContext] Safe deleting user: ${userId}`);
+      // 1. Delete Firestore User Document
+      await deleteDoc(doc(db, 'users', userId));
+
+      // 2. Remove from Project Members if applicable
+      // await removeMember(userId); // Optional but good practice
+
+      // Note: usage of auth.currentUser.delete() is NOT POSSIBLE here for other users.
+      // Admin SDK or Cloud Functions are required for that.
+      // But removing the Firestore doc effectively removes them from the app logic.
+
+      addNotification("Utilisateur supprimé (Données locales).", "INFO", "PRODUCTION");
+    } catch (err: any) {
+      console.error("[ProjectContext] Delete User Error:", err);
+      throw err;
+    }
+  };
+
   const unreadCount = project.items.filter(i =>
     !i.purchased &&
     (
@@ -1506,6 +1541,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateOfflineMember,
     deleteOfflineMember,
     searchProjects,
+    deleteMyAccount,
     deleteUser,
     deleteAllData,
     // Pagination

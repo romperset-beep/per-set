@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import { ProjectProvider, useProject } from '@/context/ProjectContext';
@@ -13,6 +13,7 @@ import { usePushNotifications } from './hooks/usePushNotifications';
 import { LoadingFallback } from './components/LoadingFallback';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings, BellOff, CheckCircle, Loader2 } from 'lucide-react';
 import { Department } from './types';
+import { MissingProfileDetailsModal } from './components/MissingProfileDetailsModal';
 
 // Eager imports - Components used frequently or on initial load
 import { ProjectManager } from './components/ProjectManager';
@@ -102,7 +103,7 @@ const AppContent: React.FC = () => {
     t,
     project, setCurrentDept, updateProjectDetails } = useProject();
 
-  const { user, userProfiles, logout } = useAuth(); // Added
+  const { user, userProfiles, logout, loading: authLoading } = useAuth(); // Added
 
   const {
     notifications,
@@ -307,6 +308,25 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const [showProfileCompleteModal, setShowProfileCompleteModal] = useState(false);
+
+  // Check for missing profile info when user loads
+  useEffect(() => {
+    if (user && !authLoading) {
+      // Check essential fields
+      const isMissingInfo = !user.firstName || !user.lastName || !user.phone || !user.department || !user.role;
+
+      // Only show if missing info AND not already showing
+      if (isMissingInfo) {
+        // Small delay to ensure UI is ready
+        const timer = setTimeout(() => setShowProfileCompleteModal(true), 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, authLoading]);
+
+  if (authLoading) return <LoadingFallback />;
+
   if (!user) {
     return <LoginPage />;
   }
@@ -415,7 +435,7 @@ const AppContent: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="flex h-screen bg-cinema-900 text-slate-200 font-sans overflow-hidden"
+      className="flex h-dvh bg-cinema-900 text-white overflow-hidden"
     >
       {/* Global Search Modal */}
       {showGlobalSearch && (
@@ -432,9 +452,9 @@ const AppContent: React.FC = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
         {/* Top Bar */}
-        <div className="sticky top-0 z-30 bg-cinema-900/80 backdrop-blur-md border-b border-cinema-700 px-4 md:px-8 py-4 flex justify-between items-center">
+        <div className="sticky top-0 z-30 bg-cinema-900/80 backdrop-blur-md border-b border-cinema-700 px-4 md:px-8 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -810,10 +830,12 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {renderContent()}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 scroll-smooth">
+          <div className="max-w-7xl mx-auto w-full pb-20 md:pb-0">
+            {renderContent()}
+          </div>
         </div>
-      </main >
+      </main>
 
       {/* Mobile Bottom Navigation */}
       <BottomNav
@@ -823,70 +845,52 @@ const AppContent: React.FC = () => {
         onMenuClick={() => setIsSidebarOpen(true)}
       />
 
-      {/* Offline Indicator */}
-      <OfflineIndicator />
+      {/* Global Modals */}
+      <ProjectConfigurationModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+      />
 
-      {/* Configuration Modal */}
-      {isConfigModalOpen && (
-        <ProjectConfigurationModal
-          isOpen={isConfigModalOpen}
-          onClose={() => setIsConfigModalOpen(false)}
-        />
-      )}
-
-      {/* Online Users Modal */}
       {isOnlineUsersOpen && (
         <OnlineUsersModal
           onClose={() => setIsOnlineUsersOpen(false)}
           onMessage={(userId) => {
-            setSocialTargetUserId(userId);
-            setSocialAudience('USER');
-            setActiveTab('social');
             setIsOnlineUsersOpen(false);
-            setIsSidebarOpen(false);
+            setActiveTab('social');
+            // Optional: setSocialTargetUserId(userId); // If implemented in SocialContext
           }}
         />
+      )}
+
+      {/* Profile Completion Modal */}
+      {showProfileCompleteModal && (
+        <MissingProfileDetailsModal onClose={() => setShowProfileCompleteModal(false)} />
       )}
     </div>
   );
 };
 
-// ...
-
-const App: React.FC = () => {
-  // Determine debug state if possible (hacky for root)
-  const [debugInfo, setDebugInfo] = useState<any>({});
-
+// ... exports
+const AppWrapper = () => {
   return (
     <AuthProvider>
       <ProjectProvider>
         <NotificationProvider>
           <SocialProvider>
             <MarketplaceProvider>
+              <AppContent />
               <Toaster
                 position="top-right"
                 toastOptions={{
-                  duration: 4000,
                   style: {
                     background: '#1e293b',
                     color: '#fff',
-                    border: '1px solid #334155',
-                  },
-                  success: {
-                    iconTheme: {
-                      primary: '#10b981',
-                      secondary: '#fff',
-                    },
-                  },
-                  error: {
-                    iconTheme: {
-                      primary: '#ef4444',
-                      secondary: '#fff',
-                    },
-                  },
+                    border: '1px solid #334155'
+                  }
                 }}
               />
-              <AppContent />
+              <OfflineIndicator />
+              <DebugFooter />
             </MarketplaceProvider>
           </SocialProvider>
         </NotificationProvider>
@@ -895,4 +899,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default AppWrapper;

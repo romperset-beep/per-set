@@ -538,12 +538,20 @@ export const CateringWidget: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-4 md:gap-8">
-                            {/* Technique */}
+                            {/* Équipe */}
                             <div className="text-center">
                                 <div className="text-xl font-bold text-white">
-                                    {(project.members ? Object.values(project.members).length : 0)}
+                                    {(() => {
+                                        // Count active team members with profiles for this project
+                                        // This matches the logic used in TeamDirectory to avoid ghost members
+                                        const activeMembers = userProfiles.filter(p =>
+                                            p.currentProjectId === project.id ||
+                                            p.projectHistory?.some((h: any) => h.id === project.id)
+                                        );
+                                        return activeMembers.length;
+                                    })()}
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-slate-500">Technique</div>
+                                <div className="text-[10px] uppercase font-bold text-slate-500">Équipe</div>
                             </div>
 
                             {/* Comédiens (From PDT) */}
@@ -625,7 +633,13 @@ export const CateringWidget: React.FC = () => {
                                 <div className="text-2xl font-bold text-amber-500">
                                     {(() => {
                                         // Calculate Total Forecast
-                                        const tech = project.members ? Object.values(project.members).length : 0;
+                                        // Use same logic as "Équipe" count to match active members
+                                        const tech = userProfiles.filter(profile => {
+                                            const p = profile as any;
+                                            const isCurrent = p.currentProjectId === project.id;
+                                            const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
+                                            return isCurrent || isInHistory;
+                                        }).length;
 
                                         const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
                                         const cast = pdtDay?.cast?.length || 0;

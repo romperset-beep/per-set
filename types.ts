@@ -383,6 +383,7 @@ export interface SocialPost {
 export interface UserProfile {
   id: string; // Linked to User email or ID
   email: string;
+  name?: string; // Common display name
   department: Department | 'PRODUCTION';
 
   // Personal Info
@@ -468,6 +469,7 @@ export interface User {
   originalEmail?: string; // Added: Original email before anonymization
   firstName?: string; // Added for Profile Sync
   lastName?: string; // Added for Profile Sync
+  phone?: string; // Added for Profile Sync and AuthContext
   role?: string; // Explicitly added for AuthContext usage
 }
 

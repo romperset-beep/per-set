@@ -33,7 +33,7 @@ interface AuthContextType {
     updateUserProfile: (profile: UserProfile) => Promise<void>;
     refreshUser: () => Promise<void>;
     resendVerification: () => Promise<void>;
-    deleteUser: () => Promise<void>;
+    deleteMyAccount: () => Promise<void>;
     error: string | null;
 }
 
@@ -275,6 +275,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const updated = { ...user, ...data };
             setUser(updated);
             localStorage.setItem('aBetterSetUser', JSON.stringify(updated));
+
+            // Update local userProfiles list so TeamDirectory reflects changes immediately
+            setUserProfiles(prev => prev.map(p =>
+                p.id === auth.currentUser!.uid ? { ...p, ...data } as UserProfile : p
+            ));
+
         } catch (err: any) {
             console.error("Update User Error", err);
             throw err;
@@ -303,7 +309,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const deleteUser = async () => {
+    const deleteMyAccount = async () => {
         if (!auth.currentUser) return;
         try {
             // This is complex - usually requires recent login. 
@@ -347,8 +353,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // I will add a fetcher that runs once on mount if user is admin/production, or just simple fetch.
         const fetchProfiles = async () => {
             try {
+                console.log('[Auth] Fetching all user profiles...');
                 const snap = await getDocs(collection(db, 'users'));
                 const profiles = snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+                console.log('[Auth] Fetched profiles:', profiles.length);
+
+                // CRITICAL FIX: Ensure current user is ALWAYS in the list
+                // This handles race conditions where user joins project before fetch completes
+                if (user && !profiles.some(p => p.id === user.id)) {
+                    console.log('[Auth] Current user not in list, injecting now');
+                    profiles.push({
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        firstName: user.firstName || '',
+                        lastName: user.lastName || '',
+                        department: user.department,
+                        role: user.role || 'USER',
+                        phone: user.phone || '',
+                        currentProjectId: user.currentProjectId,
+                        projectHistory: user.projectHistory
+                    } as UserProfile);
+                }
+
                 setUserProfiles(profiles);
             } catch (e) {
                 console.error("Error fetching user profiles", e);
@@ -381,7 +408,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             updateUserProfile,
             refreshUser,
             resendVerification,
-            deleteUser,
+            deleteMyAccount,
             error
         }}>
             {children}
