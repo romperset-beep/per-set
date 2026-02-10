@@ -39,6 +39,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper to detect incomplete/ghost profiles
+export const isProfileComplete = (user: User | null): boolean => {
+    if (!user) return false;
+    return !!(
+        user.firstName &&
+        user.lastName &&
+        user.phone &&
+        user.email
+    );
+};
+
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -46,6 +57,7 @@ export const useAuth = () => {
     }
     return context;
 };
+
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Persist user in localStorage for better DX
@@ -133,6 +145,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             id: firebaseUser.uid,
                             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
                             email: firebaseUser.email || '',
+                            firstName: '', // Empty - will trigger MissingProfileDetailsModal
+                            lastName: '',  // Empty - will trigger MissingProfileDetailsModal
+                            phone: '',     // Empty - will trigger MissingProfileDetailsModal
                             department: 'PRODUCTION',
                             role: isSuperAdmin ? 'ADMIN' : 'USER',
                             productionName: '', // Empty - user will fill this when joining a project
