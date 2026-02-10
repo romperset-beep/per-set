@@ -48,47 +48,72 @@ export const usePushNotifications = (userId?: string) => {
 
     // Listen for foreground messages & fetch token if granted
     useEffect(() => {
-        if (permission === 'granted') {
+        if (permission === 'granted' && !fcmToken) {
+            let timeoutId: NodeJS.Timeout;
+
             messaging.then(async (msg) => {
                 if (msg) {
-                    // 1. Get Token automatically if not present
-                    if (!fcmToken) {
-                        try {
-                            setLoading(true); // START LOADING
-                            // Explicitly register service worker first to avoid timeout/path issues
-                            let registration;
-                            try {
-                                registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                                console.log('Service Worker registered explicitly:', registration);
-                            } catch (swError) {
-                                console.warn('Manual SW registration failed, letting SDK try:', swError);
-                            }
+                    try {
+                        setLoading(true);
 
-                            const token = await getToken(msg, {
-                                vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-                                serviceWorkerRegistration: registration // Pass explicit registration
-                            });
-                            console.log('FCM Token (Auto-fetch):', token);
-                            setFcmToken(token);
-                            setError(null);
-                        } catch (err: any) {
-                            console.error("Failed to fetch flush token:", err);
-                            setError(err.message || "Failed to fetch token");
-                        } finally {
-                            setLoading(false); // STOP LOADING
+                        // Safety timeout: reset loading after 10s to prevent infinite loading
+                        timeoutId = setTimeout(() => {
+                            console.warn('[Push] Token fetch timeout - resetting loading state');
+                            setLoading(false);
+                            setError("Délai d'attente dépassé. Veuillez réessayer.");
+                        }, 10000);
+
+                        // Explicitly register service worker first to avoid timeout/path issues
+                        let registration;
+                        try {
+                            registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                            console.log('Service Worker registered explicitly:', registration);
+                        } catch (swError) {
+                            console.warn('Manual SW registration failed, letting SDK try:', swError);
                         }
+
+                        const token = await getToken(msg, {
+                            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+                            serviceWorkerRegistration: registration // Pass explicit registration
+                        });
+
+                        console.log('FCM Token (Auto-fetch):', token);
+
+                        // Success - clear timeout and update state
+                        clearTimeout(timeoutId);
+                        setFcmToken(token);
+                        setError(null);
+                        setLoading(false);
+                    } catch (err: any) {
+                        // Error - clear timeout and update state
+                        clearTimeout(timeoutId);
+                        console.error("Failed to fetch FCM token:", err);
+                        setError(err.message || "Échec de récupération du token");
+                        setLoading(false);
                     }
 
-                    // 2. Setup listener
+                    // Setup message listener (only once)
                     onMessage(msg, (payload) => {
                         console.log('Foreground Message received:', payload);
                     });
                 } else {
                     setError("Messaging not supported (browser)");
+                    setLoading(false);
                 }
+            }).catch((err) => {
+                console.error('[Push] Messaging initialization failed:', err);
+                setError("Impossible d'initialiser les notifications");
+                setLoading(false);
             });
+
+            // Cleanup function to clear timeout if component unmounts
+            return () => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+            };
         }
-    }, [permission]); // REMOVED fcmToken dependency to prevent loop
+    }, [permission, fcmToken]); // Added fcmToken to dependencies to prevent re-runs when token exists
 
     // Save token to user profile
     useEffect(() => {
