@@ -27,6 +27,7 @@ export const usePushNotifications = (userId?: string) => {
             setPermission(permissionResult);
 
             if (permissionResult === 'granted') {
+                setUserDisabled(false); // Reset disabled flag when user explicitly activates
                 const msg = await messaging;
                 if (msg) {
                     const token = await getToken(msg, {
@@ -45,10 +46,11 @@ export const usePushNotifications = (userId?: string) => {
 
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [userDisabled, setUserDisabled] = useState(false); // Track if user explicitly disabled notifications
 
-    // Listen for foreground messages & fetch token if granted
+    // Listen for foreground messages & fetch token if granted (but not if user disabled)
     useEffect(() => {
-        if (permission === 'granted' && !fcmToken) {
+        if (permission === 'granted' && !fcmToken && !userDisabled) {
             let timeoutId: NodeJS.Timeout;
 
             messaging.then(async (msg) => {
@@ -113,7 +115,7 @@ export const usePushNotifications = (userId?: string) => {
                 }
             };
         }
-    }, [permission, fcmToken]); // Added fcmToken to dependencies to prevent re-runs when token exists
+    }, [permission, fcmToken, userDisabled]); // Added userDisabled to dependencies
 
     // Save token to user profile
     useEffect(() => {
@@ -161,6 +163,7 @@ export const usePushNotifications = (userId?: string) => {
             });
             console.log('[Push] Token removed from server');
             setFcmToken(null);
+            setUserDisabled(true); // Set flag to prevent auto-reactivation
         } catch (error) {
             console.error('[Push] Failed to remove token:', error);
             setError("Impossible de désactiver les notifications (Erreur serveur)");
