@@ -281,7 +281,13 @@ export const LogisticsWidget: React.FC = () => {
                 }
                 return r;
             });
-            await updateProjectDetails({ logistics: updatedReqs });
+
+
+            const requestToUpdate = updatedReqs.find(r => r.id === editingRequestId);
+            if (requestToUpdate) {
+                await addLogisticsRequest(requestToUpdate);
+            }
+
             resetForm();
             return;
         }
@@ -381,10 +387,14 @@ export const LogisticsWidget: React.FC = () => {
         }
 
         // Batch Update
-        // We use updateProjectDetails to update the logistics array atomically in one operation
-        // This prevents the race condition where calling addLogisticsRequest multiple times strictly sequentially might fail if state doesn't update fast enough
-        const updatedLogistics = [...(project.logistics || []), ...newRequests];
-        await updateProjectDetails({ logistics: updatedLogistics });
+        // Use atomic addLogisticsRequest for each request
+        try {
+            await Promise.all(newRequests.map(req => addLogisticsRequest(req)));
+            addNotification(newRequests.length > 1 ? "Transports ajoutés" : "Transport ajouté", "SUCCESS");
+        } catch (error) {
+            console.error("Error adding logistics requests", error);
+            addNotification("Erreur lors de l'ajout", "ERROR");
+        }
 
         // Reset Form
         resetForm();
@@ -445,15 +455,8 @@ export const LogisticsWidget: React.FC = () => {
             // Update the request with the new date
             const updatedReq = { ...reqToMove, date: targetDateStr };
 
-            // We need to update the whole logistics array
-            // Since we don't have a direct 'updateLogisticsRequest' method exposed in the context hook usage above (only add/delete),
-            // we might need to use updateProjectDetails directly or assume addLogisticsRequest handles upsert?
-            // Checking Context usage: addLogisticsRequest usually appends. delete removes.
-            // Let's check if we can update. 
-            // Actually, updateProjectDetails takes partial project. So we can update the logistics array directly.
-
-            const newLogistics = allRequests.map(r => r.id === requestId ? updatedReq : r);
-            await updateProjectDetails({ logistics: newLogistics });
+            // Atomic update (Upsert)
+            await addLogisticsRequest(updatedReq);
 
         } catch (error) {
             console.error("Error moving logistics request", error);

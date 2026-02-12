@@ -404,21 +404,32 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                     <h2 className="text-2xl font-bold text-white">{t('sidebar.dashboard')}</h2>
                     <p className="text-slate-400 text-sm">Maintenez appuyé pour réorganiser • {t('login.welcome')}</p>
                 </div>
-                <div className="flex items-center gap-3 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
-                    <Users className="text-eco-400 h-5 w-5" />
-                    <select
-                        value={currentDept}
-                        onChange={(e) => setCurrentDept(e.target.value)}
-                        disabled={user?.department !== 'PRODUCTION' && user?.department !== Department.REGIE}
-                        className={`bg-transparent text-white font-medium focus:outline-none ${(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
-                    >
-                        <option value="PRODUCTION">VUE PRODUCTION (Admin)</option>
-                        <option disabled>──────────</option>
-                        {Object.values(Department).map(dept => (
-                            <option key={dept} value={dept}>{dept}</option>
-                        ))}
-                    </select>
-                </div>
+
+                {/* Production / Régie: Can change department view */}
+                {(user?.department === 'PRODUCTION' || user?.department === 'Régie' || user?.department === 'REGIE' || user?.department === Department.REGIE) && (
+                    <div className="flex items-center gap-3 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
+                        <Users className="text-eco-400 h-5 w-5" />
+                        <select
+                            value={currentDept}
+                            onChange={(e) => setCurrentDept(e.target.value)}
+                            className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+                        >
+                            <option value="PRODUCTION">VUE PRODUCTION (Admin)</option>
+                            <option disabled>──────────</option>
+                            {Object.values(Department).map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {/* Other departments: Read-only display of their department */}
+                {(user?.department !== 'PRODUCTION' && user?.department !== 'Régie' && user?.department !== 'REGIE' && user?.department !== Department.REGIE) && (
+                    <div className="flex items-center gap-3 bg-cinema-900 p-2 px-4 rounded-lg border border-cinema-700">
+                        <Users className="text-eco-400 h-5 w-5" />
+                        <span className="text-white font-medium">{currentDept}</span>
+                    </div>
+                )}
             </div>
 
             {/* Project Settings moved to Header Modal */}

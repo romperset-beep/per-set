@@ -18,9 +18,28 @@ export const TeamDirectory: React.FC = () => {
     // Filter profiles belonging to THIS project
     const projectMembers = userProfiles.filter(profile => {
         const p = profile as any;
-        const isCurrent = p.currentProjectId === project.id;
-        const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
-        return isCurrent || isInHistory;
+
+        // Safety check
+        if (!project?.id) return false;
+
+        // Case 1: Active project
+        if (p.currentProjectId === project.id) return true;
+
+        // Case 2: Project in history
+        if (p.projectHistory && Array.isArray(p.projectHistory)) {
+            return p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id);
+        }
+
+        return false;
+    });
+
+    // Debug logging
+    console.log('📚 Bible Équipe - Project filtering:', {
+        projectId: project.id,
+        projectName: project.name,
+        totalProfiles: userProfiles.length,
+        filteredMembers: projectMembers.length,
+        members: projectMembers.map(p => ({ name: `${p.firstName} ${p.lastName}`, dept: p.department }))
     });
 
     // Merge Real Users and Offline Members

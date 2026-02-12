@@ -127,6 +127,12 @@ interface ProjectContextType {
   deleteMyAccount: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   deleteAllData: () => Promise<void>;
+  addReinforcement: (reinforcement: any) => Promise<void>; // Added
+  updateReinforcement: (reinforcement: any) => Promise<void>; // Added
+  deleteReinforcement: (id: string) => Promise<void>; // Added
+
+  // Logistics
+  logistics: LogisticsRequest[]; // Keep for existing logic if needed, but project.logistics works too
   addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
   deleteLogisticsRequest: (requestId: string) => Promise<void>;
 
@@ -179,7 +185,29 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Persist user logic removed (handled by AuthContext)
 
   const [project, setProject] = useState<Project>(DEFAULT_PROJECT);
-  const [currentDept, setCurrentDept] = useState<string>('PRODUCTION');
+  const [_currentDept, _setCurrentDept] = useState<string>('PRODUCTION');
+
+  // Initialize currentDept to user's department on login
+  useEffect(() => {
+    if (user?.department) {
+      console.log('🔐 Initializing department view:', user.department);
+      _setCurrentDept(user.department);
+    }
+  }, [user?.department]);
+
+  // Wrapper for setCurrentDept that enforces permissions
+  const setCurrentDept = useCallback((dept: string) => {
+    // Only Production and Régie can change department view
+    if (user?.department !== 'PRODUCTION' && user?.department !== 'Régie' && user?.department !== 'REGIE' && user?.department !== Department.REGIE) {
+      console.warn('🚫 Permission denied: only Production/Régie can change department view');
+      return;
+    }
+    console.log('✅ Department view changed to:', dept);
+    _setCurrentDept(dept);
+  }, [user?.department]);
+
+  // Expose currentDept as read-only for non-privileged users
+  const currentDept = _currentDept;
   const [circularView, setCircularView] = useState<'overview' | 'marketplace' | 'donations' | 'shortFilm' | 'sales_abs' | 'storage'>('overview');
   // notifications state removed (handled by NotificationContext)
   const [expenseReports, setExpenseReports] = useState<ExpenseReport[]>([]);
@@ -1186,6 +1214,47 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => unsubscribe();
   }, [project.id]);
 
+  // ------------------------------------------------------------------
+  // 5. SYNC SUBCOLLECTIONS (Renforts & Logistics)
+  // ------------------------------------------------------------------
+  // Fix for Bug #3: Data Disappearance due to Race Conditions.
+  // We now sync 'reinforcements' and 'logistics' from subcollections instead of a single array.
+
+  useEffect(() => {
+    const projectId = project.id;
+    if (!projectId || projectId === 'default-project') return;
+
+    // A. SYNC REINFORCEMENTS
+    const renfortsRef = collection(db, 'projects', projectId, 'reinforcements');
+    const unsubRenforts = onSnapshot(renfortsRef, (snapshot) => {
+      const reinforcements = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
+      setProject(prev => {
+        if (JSON.stringify(prev.reinforcements) === JSON.stringify(reinforcements)) return prev;
+        return { ...prev, reinforcements };
+      });
+    }, (error) => {
+      console.error("[RenfortsSync] Error:", error);
+    });
+
+    // B. SYNC LOGISTICS
+    const logisticsRef = collection(db, 'projects', projectId, 'logistics');
+    const unsubLogistics = onSnapshot(logisticsRef, (snapshot) => {
+      const logistics = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
+      setProject(prev => {
+        if (JSON.stringify(prev.logistics) === JSON.stringify(logistics)) return prev;
+        return { ...prev, logistics };
+      });
+    }, (error) => {
+      console.error("[LogisticsSync] Error:", error);
+    });
+
+    return () => {
+      unsubRenforts();
+      unsubLogistics();
+    };
+  }, [project.id]);
+
+
   const addSocialPost = async (post: SocialPost) => {
     try {
       const projectId = project.id;
@@ -1468,130 +1537,194 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: any) {
       console.error("[ProjectContext] Delete User Error:", err);
       throw err;
-    }
+    };
+
+    // --- RENFORTS (Atomic Subcollection Updates) ---
+    const addReinforcement = async (reinforcement: any) => {
+      const projectId = project.id;
+      if (!projectId) return;
+
+      // Use ID as doc ID to prevent duplicates/ensure idempotency
+      const docRef = doc(db, 'projects', projectId, 'reinforcements', reinforcement.id);
+      await setDoc(docRef, reinforcement, { merge: true });
+
+      // Notification
+      if (user?.department !== 'PRODUCTION' && reinforcement.department) {
+        addNotification(
+          `Nouveau Renfort planifié pour ${reinforcement.department}`,
+          'INFO',
+          'PRODUCTION'
+        );
+      }
+    };
+
+    const updateReinforcement = async (reinforcement: any) => {
+      const projectId = project.id;
+      if (!projectId) return;
+      const docRef = doc(db, 'projects', projectId, 'reinforcements', reinforcement.id);
+      await updateDoc(docRef, reinforcement);
+    };
+
+    const deleteReinforcement = async (reinforcementId: string) => {
+      const projectId = project.id;
+      if (!projectId) return;
+      await deleteDoc(doc(db, 'projects', projectId, 'reinforcements', reinforcementId));
+    };
+
+
+    // --- LOGISTICS (Atomic Subcollection Updates) ---
+    // Overrides previous array implementation
+    const addLogisticsRequest = async (request: LogisticsRequest) => {
+      const projectId = project.id;
+      if (!projectId) return;
+
+      // Ensure ID
+      const id = request.id || `logistics_${Date.now()}`;
+      const docRef = doc(db, 'projects', projectId, 'logistics', id);
+
+      await setDoc(docRef, { ...request, id });
+
+      addNotification(
+        `Demande transport (${request.type}) pour ${request.department}`,
+        'INFO',
+        'PRODUCTION'
+      );
+    };
+
+    const deleteLogisticsRequest = async (requestId: string) => {
+      const projectId = project.id;
+      if (!projectId) return;
+      await deleteDoc(doc(db, 'projects', projectId, 'logistics', requestId));
+    };
+
+    const unreadCount = project.items.filter(i =>
+      !i.purchased &&
+      (
+        ((currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE') ? true : i.department === currentDept)
+      )
+    ).length;
+
+    const itemsToReceiveCount = project.items.filter(i =>
+      i.isBought && i.department === currentDept
+    ).length;
+
+    const value = React.useMemo(() => ({
+      project,
+      setProject,
+      updateProjectDetails,
+      updateEcoprodChecklist,
+      joinProject,
+      leaveProject,
+      deleteProject, // Added
+      removeProjectFromHistory, // Added
+      addItem,
+      // getGlobalMarketplaceItems moved to MarketplaceContext
+      updateItem,
+      itemsToReceiveCount, // Added
+      deleteItem,
+      currentDept,
+      setCurrentDept,
+      circularView,
+      setCircularView,
+      user,
+      updateUser, // Added
+      login,
+      register,
+      resendVerification,
+      refreshUser, // Added
+      resetPassword,
+      logout,
+      notifications: [], // Deprecated: Consumers should use useNotification()
+      addNotification,
+      markAsRead,
+      deleteNotification,
+      markAllAsRead,
+      markNotificationAsReadByItemId,
+      clearAllNotifications,
+      unreadCount,
+      unreadSocialCount,
+      // unreadMarketplaceCount moved
+      unreadNotificationCount: 0, // Deprecated: Consumers should use useNotification()
+      // markSocialAsRead moved
+      // markMarketplaceAsRead moved
+      expenseReports,
+      addExpenseReport,
+      updateExpenseReportStatus,
+      deleteExpenseReport,
+
+      addCallSheet,
+      deleteCallSheet, // Added
+
+      // Marketplace & Catalog Logic moved to MarketplaceContext
+
+      // Logistics
+      // Renforts
+      addReinforcement,
+      updateReinforcement,
+      deleteReinforcement,
+
+      // Logistics
+      logistics: project.logistics || [],
+      addLogisticsRequest,
+      deleteLogisticsRequest,
+      addMember,
+      removeMember,
+      offlineMembers,
+      addOfflineMember,
+      updateOfflineMember,
+      deleteOfflineMember,
+      searchProjects,
+      deleteMyAccount,
+      deleteUser,
+      deleteAllData,
+      // Pagination
+
+      userProfiles,
+      updateUserProfile,
+      language,
+      setLanguage,
+      t,
+      error,
+      testConnection,
+      debugStatus,
+      lastLog,
+      callSheets, // Exposed
+
+      // Templates
+      saveUserTemplate,
+      getUserTemplates,
+      deleteUserTemplate,
+      // Pagination
+      hasMoreItems,
+      loadMoreItems
+    }), [
+      project,
+      currentDept,
+      circularView,
+      user,
+      callSheets, // Include in dependency array
+      offlineMembers, // Added
+      unreadCount,
+      itemsToReceiveCount, // Added
+      unreadSocialCount,
+      expenseReports,
+      // Pagination
+      hasMoreItems,
+      loadMoreItems
+      // Functions are stable or should be assumed stable if defined outside or via useCallback (most aren't but this is a start)
+    ]);
+
+    return (
+      <ProjectContext.Provider value={value}>
+        {children}
+      </ProjectContext.Provider>
+    );
   };
 
-  const unreadCount = project.items.filter(i =>
-    !i.purchased &&
-    (
-      ((currentDept === 'PRODUCTION' || currentDept === 'Régie' || currentDept === 'REGIE') ? true : i.department === currentDept)
-    )
-  ).length;
-
-  const itemsToReceiveCount = project.items.filter(i =>
-    i.isBought && i.department === currentDept
-  ).length;
-
-  const value = React.useMemo(() => ({
-    project,
-    setProject,
-    updateProjectDetails,
-    updateEcoprodChecklist,
-    joinProject,
-    leaveProject,
-    deleteProject, // Added
-    removeProjectFromHistory, // Added
-    addItem,
-    // getGlobalMarketplaceItems moved to MarketplaceContext
-    updateItem,
-    itemsToReceiveCount, // Added
-    deleteItem,
-    currentDept,
-    setCurrentDept,
-    circularView,
-    setCircularView,
-    user,
-    updateUser, // Added
-    login,
-    register,
-    resendVerification,
-    refreshUser, // Added
-    resetPassword,
-    logout,
-    notifications: [], // Deprecated: Consumers should use useNotification()
-    addNotification,
-    markAsRead,
-    deleteNotification,
-    markAllAsRead,
-    markNotificationAsReadByItemId,
-    clearAllNotifications,
-    unreadCount,
-    unreadSocialCount,
-    // unreadMarketplaceCount moved
-    unreadNotificationCount: 0, // Deprecated: Consumers should use useNotification()
-    // markSocialAsRead moved
-    // markMarketplaceAsRead moved
-    expenseReports,
-    addExpenseReport,
-    updateExpenseReportStatus,
-    deleteExpenseReport,
-
-    addCallSheet,
-    deleteCallSheet, // Added
-
-    // Marketplace & Catalog Logic moved to MarketplaceContext
-
-    // Logistics
-    addLogisticsRequest,
-    deleteLogisticsRequest,
-    addMember,
-    removeMember,
-    offlineMembers,
-    addOfflineMember,
-    updateOfflineMember,
-    deleteOfflineMember,
-    searchProjects,
-    deleteMyAccount,
-    deleteUser,
-    deleteAllData,
-    // Pagination
-
-    userProfiles,
-    updateUserProfile,
-    language,
-    setLanguage,
-    t,
-    error,
-    testConnection,
-    debugStatus,
-    lastLog,
-    callSheets, // Exposed
-
-    // Templates
-    saveUserTemplate,
-    getUserTemplates,
-    deleteUserTemplate,
-    // Pagination
-    hasMoreItems,
-    loadMoreItems
-  }), [
-    project,
-    currentDept,
-    circularView,
-    user,
-    callSheets, // Include in dependency array
-    offlineMembers, // Added
-    unreadCount,
-    itemsToReceiveCount, // Added
-    unreadSocialCount,
-    expenseReports,
-    // Pagination
-    hasMoreItems,
-    loadMoreItems
-    // Functions are stable or should be assumed stable if defined outside or via useCallback (most aren't but this is a start)
-  ]);
-
-  return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
-  );
-};
-
-export const useProject = () => {
-  const context = useContext(ProjectContext);
-  if (context === undefined) {
-    throw new Error('useProject must be used within a ProjectProvider');
-  }
-  return context;
-};
+  export const useProject = () => {
+    const context = useContext(ProjectContext);
+    if (context === undefined) {
+      throw new Error('useProject must be used within a ProjectProvider');
+    }
+    return context;
+  };
