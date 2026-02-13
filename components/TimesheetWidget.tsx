@@ -4,7 +4,7 @@ import { useProject } from '../context/ProjectContext';
 import { TimeLog, SavedRoute } from '../types';
 import { db, auth } from '../services/firebase';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
-import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ArrowLeft, Download, Loader2, Coins, Truck, MapPin, X } from 'lucide-react';
+import { Clock, Calendar, Save, Trash2, StopCircle, PlayCircle, Utensils, Users, ChevronRight, ChevronDown, ArrowLeft, Download, Loader2, Coins, Truck, MapPin, X } from 'lucide-react';
 import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calculateShiftDetails, TimeEntry, isFrenchPublicHoliday, calculateMileageIndemnity } from '../utils/payrollUtils';
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
@@ -36,6 +36,9 @@ export const TimesheetWidget: React.FC = () => {
 
     const [isDownloading, setIsDownloading] = useState(false); // New: Async download state
     const [debugSource, setDebugSource] = useState<string>(''); // Debug info for call time source
+
+    // Salary Estimation State
+    const [selectedJob, setSelectedJob] = useState<any>(null);
 
     // Dynamic Job List based on Convention
     const availableJobs = useMemo(() => {
@@ -192,6 +195,30 @@ export const TimesheetWidget: React.FC = () => {
         };
         fetchProfile();
     }, [user]);
+
+    // Auto-Select Job for Salary Estimation based on Profile Role
+    useEffect(() => {
+        if (availableJobs.length > 0 && userProfileData.role && !selectedJob) {
+            const jobTitle = (userProfileData.role || '').trim().toLowerCase();
+            const match = availableJobs.find(j => {
+                const t = j.title.toLowerCase();
+                // Normalize for common variations (USPA vs Cinema)
+                const normalizedUserTitle = jobTitle
+                    .replace('opv', 'opérateur')
+                    .replace(' / pointeur', '')
+                    .trim();
+
+                return t === jobTitle ||
+                    t === normalizedUserTitle ||
+                    t === `${normalizedUserTitle} cinéma` ||
+                    t === `${jobTitle} cinéma` ||
+                    t.replace(' cinéma', '') === jobTitle ||
+                    jobTitle.startsWith(t);
+            });
+            if (match) setSelectedJob(match);
+        }
+    }, [availableJobs, userProfileData.role]);
+
 
     // Auto-Toggle Continuous Day
     useEffect(() => {
@@ -1145,50 +1172,60 @@ export const TimesheetWidget: React.FC = () => {
 
                                     {/* Salary Estimate - Only for USPA Projects (Telefilm / Plateforme / Série TV) */}
                                     {['Long Métrage', 'Série TV', 'Téléfilm', 'Plateforme', 'Publicité'].includes(project.projectType) && (
-                                        <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50">
+                                        <div className="col-span-full mt-2 bg-emerald-900/20 px-4 py-2.5 rounded-lg border border-emerald-700/50 space-y-2">
                                             {(() => {
                                                 const bd = getShiftBreakdown();
-                                                if (!bd) return <span className="text-emerald-400 font-bold text-sm">Prév. Salaire : -- €</span>;
 
-                                                const jobTitle = (userProfileData.role || '').trim().toLowerCase();
-
-                                                const job = availableJobs.find(j => {
-                                                    const t = j.title.toLowerCase();
-
-                                                    // Normalize for common variations (USPA vs Cinema)
-                                                    const normalizedUserTitle = jobTitle
-                                                        .replace('opv', 'opérateur')
-                                                        .replace(' / pointeur', '')
-                                                        .trim();
-
-                                                    return t === jobTitle ||
-                                                        t === normalizedUserTitle ||
-                                                        t === `${normalizedUserTitle} cinéma` ||
-                                                        t === `${jobTitle} cinéma` ||
-                                                        t.replace(' cinéma', '') === jobTitle ||
-                                                        jobTitle.startsWith(t);
-                                                }) || {};
+                                                // Calculate based on selectedJob
+                                                const job = selectedJob || {};
 
                                                 const params = {
                                                     job,
-                                                    hoursWorked: bd.effectiveHours,
-                                                    contractType: 'SEMAINE' as const,
+                                                    hoursWorked: bd ? bd.effectiveHours : 0,
+                                                    contractType: 'JOUR' as const, // Default to Day for daily timesheet
                                                     travelHoursInside,
                                                     travelHoursOutside,
                                                     isContinuousDay,
                                                     convention: project.convention,
-                                                    isSunday: bd.sundayHours > 0,
-                                                    isHoliday: bd.holidayHours > 0
+                                                    isSunday: bd ? bd.sundayHours > 0 : false,
+                                                    isHoliday: bd ? bd.holidayHours > 0 : false
                                                 };
 
                                                 const result = calculateEstimatedSalary(params);
 
                                                 return (
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span className="text-emerald-500 text-xs font-bold uppercase">Estimation Salaire Brut :</span>
-                                                        <span className="text-emerald-300 font-bold text-lg">
-                                                            {result && result.grossAmount ? `${result.grossAmount.toFixed(2)} €` : '-- €'}
-                                                        </span>
+                                                    <div className="flex flex-col gap-3">
+                                                        {/* Stylized Job Selector */}
+                                                        <div className="flex flex-col gap-1">
+                                                            <label className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider">Poste de référence</label>
+                                                            <div className="relative group">
+                                                                <select
+                                                                    className="w-full bg-emerald-950/80 border border-emerald-700/50 rounded-lg text-sm text-emerald-100 pl-3 pr-10 py-2.5 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 appearance-none cursor-pointer hover:bg-emerald-900/60 transition-all shadow-sm"
+                                                                    value={selectedJob ? selectedJob.title : ""}
+                                                                    onChange={(e) => {
+                                                                        const j = availableJobs.find(job => job.title === e.target.value);
+                                                                        setSelectedJob(j || null);
+                                                                    }}
+                                                                >
+                                                                    <option value="">-- Sélectionner un poste --</option>
+                                                                    {availableJobs.map(j => (
+                                                                        <option key={j.title} value={j.title}>{j.title}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-emerald-500 group-hover:text-emerald-400 transition-colors">
+                                                                    <ChevronDown size={16} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Result Display */}
+                                                        <div className="flex justify-between items-end mt-1 pt-3 border-t border-emerald-800/30">
+                                                            <span className="text-emerald-500/70 text-[10px] font-medium uppercase mb-1">Estimation Brut (Jour)</span>
+                                                            <span className="text-emerald-300 font-bold text-2xl tracking-tight leading-none drop-shadow-sm">
+                                                                {result && result.grossAmount ? `${result.grossAmount.toFixed(2)} €` : '-- €'}
+                                                            </span>
+                                                        </div>
+                                                        {(!bd) && <div className="text-[10px] text-emerald-500/70 italic text-right">Saisissez vos heures pour voir l'estimation</div>}
                                                     </div>
                                                 );
                                             })()}
