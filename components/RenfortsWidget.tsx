@@ -657,371 +657,375 @@ export const RenfortsWidget: React.FC = () => {
                 alert("Erreur lors du déplacement.");
             }
 
-        };
+
+        } catch (error) {
+            console.error("Error regarding drag data parsing", error);
+        }
+    };
 
 
-        // 2. DEPARTMENT VIEW (Original Matrix) - UPDATED
-        return (
-            <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-cinema-800 p-6 rounded-xl border border-cinema-700">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-500/20 rounded-xl text-indigo-400">
-                            <Users className="h-8 w-8" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-white">Gestion des Renforts</h2>
-                            <p className="text-slate-400">
-                                {currentDept} - Gestion de votre équipe supplémentaire
-                            </p>
-                        </div>
+    // 2. DEPARTMENT VIEW (Original Matrix) - UPDATED
+    return (
+        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-cinema-800 p-6 rounded-xl border border-cinema-700">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-indigo-500/20 rounded-xl text-indigo-400">
+                        <Users className="h-8 w-8" />
                     </div>
-
-                    {user?.department === 'PRODUCTION' && (
-                        <button
-                            onClick={() => setViewMode('OVERVIEW')}
-                            className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-                        >
-                            <Users className="h-4 w-4" />
-                            Vue Globale
-                        </button>
-                    )}
-
-                    <div className="flex items-center gap-4 bg-cinema-900 rounded-lg p-1 border border-cinema-700">
-                        <button onClick={() => changeWeek('prev')} className="p-2 text-slate-400 hover:text-white transition-colors">
-                            <ChevronLeft className="h-5 w-5" />
-                        </button>
-                        <div className="text-center px-4">
-                            <div className="text-xs text-slate-500 uppercase font-bold">Semaine du</div>
-                            <div className="text-white font-mono">{weekStart.toLocaleDateString()}</div>
-                        </div>
-                        <button onClick={() => changeWeek('next')} className="p-2 text-slate-400 hover:text-white transition-colors">
-                            <ChevronRight className="h-5 w-5" />
-                        </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">Gestion des Renforts</h2>
+                        <p className="text-slate-400">
+                            {currentDept} - Gestion de votre équipe supplémentaire
+                        </p>
                     </div>
                 </div>
 
-                {/* Matrix View */}
-                <div className="relative">
-                    {/* Navigation Zones */}
-                    {isDragging && (
-                        <>
+                {user?.department === 'PRODUCTION' && (
+                    <button
+                        onClick={() => setViewMode('OVERVIEW')}
+                        className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Users className="h-4 w-4" />
+                        Vue Globale
+                    </button>
+                )}
+
+                <div className="flex items-center gap-4 bg-cinema-900 rounded-lg p-1 border border-cinema-700">
+                    <button onClick={() => changeWeek('prev')} className="p-2 text-slate-400 hover:text-white transition-colors">
+                        <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <div className="text-center px-4">
+                        <div className="text-xs text-slate-500 uppercase font-bold">Semaine du</div>
+                        <div className="text-white font-mono">{weekStart.toLocaleDateString()}</div>
+                    </div>
+                    <button onClick={() => changeWeek('next')} className="p-2 text-slate-400 hover:text-white transition-colors">
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Matrix View */}
+            <div className="relative">
+                {/* Navigation Zones */}
+                {isDragging && (
+                    <>
+                        <div
+                            className="absolute -left-4 top-0 bottom-0 w-20 bg-gradient-to-r from-indigo-500/20 to-transparent z-50 flex items-center justify-start pl-2 transition-opacity opacity-0 hover:opacity-100 rounded-l-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'prev')}
+                        >
+                            <ChevronLeft className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        </div>
+
+                        <div
+                            className="absolute -right-4 top-0 bottom-0 w-20 bg-gradient-to-l from-indigo-500/20 to-transparent z-50 flex items-center justify-end pr-2 transition-opacity opacity-0 hover:opacity-100 rounded-r-xl"
+                            onDragOver={(e) => handleZoneDragOver(e, 'next')}
+                        >
+                            <ChevronRight className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        </div>
+                    </>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+                    {days.map((day) => {
+                        const dateStr = day.toISOString().split('T')[0];
+                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+
+                        return (
                             <div
-                                className="absolute -left-4 top-0 bottom-0 w-20 bg-gradient-to-r from-indigo-500/20 to-transparent z-50 flex items-center justify-start pl-2 transition-opacity opacity-0 hover:opacity-100 rounded-l-xl"
-                                onDragOver={(e) => handleZoneDragOver(e, 'prev')}
-                            >
-                                <ChevronLeft className="w-8 h-8 text-indigo-400 animate-pulse" />
-                            </div>
-
-                            <div
-                                className="absolute -right-4 top-0 bottom-0 w-20 bg-gradient-to-l from-indigo-500/20 to-transparent z-50 flex items-center justify-end pr-2 transition-opacity opacity-0 hover:opacity-100 rounded-r-xl"
-                                onDragOver={(e) => handleZoneDragOver(e, 'next')}
-                            >
-                                <ChevronRight className="w-8 h-8 text-indigo-400 animate-pulse" />
-                            </div>
-                        </>
-                    )}
-
-                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-                        {days.map((day) => {
-                            const dateStr = day.toISOString().split('T')[0];
-                            const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-
-                            return (
-                                <div
-                                    key={dateStr}
-                                    onDragOver={handleDayDragOver}
-                                    onDrop={(e) => handleDropOnDay(e, dateStr)}
-                                    className={`rounded-xl border flex flex-col h-full min-h-[300px] transition-colors
+                                key={dateStr}
+                                onDragOver={handleDayDragOver}
+                                onDrop={(e) => handleDropOnDay(e, dateStr)}
+                                className={`rounded-xl border flex flex-col h-full min-h-[300px] transition-colors
                                     ${isToday ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-cinema-700'}
                                     ${isDragging ? 'hover:bg-cinema-700/50' : ''}
                                     ${isWeekend && !isToday ? 'bg-black/40' : 'bg-cinema-800'}
                                 `}
-                                >
-                                    {/* Day Header */}
-                                    <div className={`p-3 text-center border-b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
-                                        <div className={`text-sm font-bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
-                                            {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
-                                        </div>
-                                        <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
-                                            {day.getDate()}
-                                        </div>
+                            >
+                                {/* Day Header */}
+                                <div className={`p-3 text-center border-b ${isToday ? 'bg-indigo-500/10 border-indigo-500' : 'bg-cinema-900/50 border-cinema-700'}`}>
+                                    <div className={`text-sm font-bold uppercase ${isToday ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                        {day.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
                                     </div>
+                                    <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                                        {day.getDate()}
+                                    </div>
+                                </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-                                        <div className="h-full flex flex-col">
-                                            <div className="flex-1 space-y-2">
-                                                {(() => {
-                                                    const targetDept = user?.department === 'PRODUCTION' ? currentDept : user?.department;
-                                                    const items = getReinforcements(dateStr, targetDept as string);
-                                                    const staffList = items.length ? getStaffList(items[0]) : [];
+                                {/* Content */}
+                                <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+                                    <div className="h-full flex flex-col">
+                                        <div className="flex-1 space-y-2">
+                                            {(() => {
+                                                const targetDept = user?.department === 'PRODUCTION' ? currentDept : user?.department;
+                                                const items = getReinforcements(dateStr, targetDept as string);
+                                                const staffList = items.length ? getStaffList(items[0]) : [];
 
-                                                    return staffList.length > 0 ? (
-                                                        staffList.map((s) => (
-                                                            <div
-                                                                key={s.id}
-                                                                draggable
-                                                                onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
-                                                                onDragEnd={handleDragEndGlobal}
-                                                                onClick={() => setViewingStaff(s)}
-                                                                className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                return staffList.length > 0 ? (
+                                                    staffList.map((s) => (
+                                                        <div
+                                                            key={s.id}
+                                                            draggable
+                                                            onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
+                                                            onDragEnd={handleDragEndGlobal}
+                                                            onClick={() => setViewingStaff(s)}
+                                                            className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                        >
+                                                            <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
+                                                                <div className="text-sm text-white font-bold truncate">{s.name}</div>
+                                                                {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
+                                                            </div>
+
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                                className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                             >
-                                                                <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
-                                                                    <div className="text-sm text-white font-bold truncate">{s.name}</div>
-                                                                    {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
-                                                                </div>
-
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
-                                                                    className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        !addingToDate && (
-                                                            <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-indigo-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-indigo-500/50 rounded-lg p-4 min-h-[100px]">
-                                                                <UserPlus className="h-6 w-6 mb-2" />
-                                                                <span className="text-xs font-medium">Ajouter</span>
-                                                            </div>
-                                                        )
-                                                    );
-                                                })()}
-                                            </div>
-
-
-                                            {/* Mini Add Button */}
-                                            {addingToDate !== dateStr && getReinforcements(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '').length > 0 && (
-                                                <button
-                                                    onClick={() => setAddingToDate(dateStr)}
-                                                    className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
-                                                >
-                                                    <UserPlus className="h-3 w-3" />
-                                                    Ajouter
-                                                </button>
-                                            )}
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    !addingToDate && (
+                                                        <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-indigo-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-indigo-500/50 rounded-lg p-4 min-h-[100px]">
+                                                            <UserPlus className="h-6 w-6 mb-2" />
+                                                            <span className="text-xs font-medium">Ajouter</span>
+                                                        </div>
+                                                    )
+                                                );
+                                            })()}
                                         </div>
+
+
+                                        {/* Mini Add Button */}
+                                        {addingToDate !== dateStr && getReinforcements(dateStr, user?.department === 'PRODUCTION' ? currentDept : user?.department || '').length > 0 && (
+                                            <button
+                                                onClick={() => setAddingToDate(dateStr)}
+                                                className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-indigo-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
+                                            >
+                                                <UserPlus className="h-3 w-3" />
+                                                Ajouter
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* DETAILS MODAL FOR STANDARD VIEW */}
-                {viewingStaff && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setViewingStaff(null)}
-                    >
-                        <div
-                            className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-sm p-6 space-y-6 animate-in fade-in zoom-in-95"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">{viewingStaff.name}</h3>
-                                    <p className="text-sm text-slate-400">Détails du renfort</p>
-                                </div>
-                                <button onClick={() => setViewingStaff(null)} className="text-slate-400 hover:text-white">
-                                    <X className="h-5 w-5" />
-                                </button>
                             </div>
+                        );
+                    })}
+                </div>
+            </div>
 
-                            <div className="space-y-4">
-                                {viewingStaff.role && (
-                                    <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-300 font-medium text-center">
-                                        {viewingStaff.role}
+            {/* DETAILS MODAL FOR STANDARD VIEW */}
+            {viewingStaff && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => setViewingStaff(null)}
+                >
+                    <div
+                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-sm p-6 space-y-6 animate-in fade-in zoom-in-95"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{viewingStaff.name}</h3>
+                                <p className="text-sm text-slate-400">Détails du renfort</p>
+                            </div>
+                            <button onClick={() => setViewingStaff(null)} className="text-slate-400 hover:text-white">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {viewingStaff.role && (
+                                <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-indigo-300 font-medium text-center">
+                                    {viewingStaff.role}
+                                </div>
+                            )}
+
+                            <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
+                                {viewingStaff.phone ? (
+                                    <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                        <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">{viewingStaff.phone}</span>
+                                    </a>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                        <div className="p-2 bg-cinema-800 rounded-full">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <span className="italic">Pas de téléphone</span>
                                     </div>
                                 )}
 
-                                <div className="p-4 bg-cinema-900 rounded-lg border border-cinema-700 space-y-3">
-                                    {viewingStaff.phone ? (
-                                        <a href={`tel:${viewingStaff.phone}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
-                                            <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
-                                                <Phone className="h-4 w-4" />
-                                            </div>
-                                            <span className="font-medium">{viewingStaff.phone}</span>
-                                        </a>
-                                    ) : (
-                                        <div className="flex items-center gap-3 text-slate-500 opacity-50">
-                                            <div className="p-2 bg-cinema-800 rounded-full">
-                                                <Phone className="h-4 w-4" />
-                                            </div>
-                                            <span className="italic">Pas de téléphone</span>
+                                {viewingStaff.email ? (
+                                    <a href={`mailto:${viewingStaff.email}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
+                                        <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
+                                            <Mail className="h-4 w-4" />
                                         </div>
-                                    )}
+                                        <span className="font-medium truncate">{viewingStaff.email}</span>
+                                    </a>
+                                ) : (
+                                    <div className="flex items-center gap-3 text-slate-500 opacity-50">
+                                        <div className="p-2 bg-cinema-800 rounded-full">
+                                            <Mail className="h-4 w-4" />
+                                        </div>
+                                        <span className="italic">Pas d'email</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                                    {viewingStaff.email ? (
-                                        <a href={`mailto:${viewingStaff.email}`} className="flex items-center gap-3 text-slate-200 hover:text-indigo-400 transition-colors">
-                                            <div className="p-2 bg-cinema-800 rounded-full text-indigo-400">
-                                                <Mail className="h-4 w-4" />
-                                            </div>
-                                            <span className="font-medium truncate">{viewingStaff.email}</span>
-                                        </a>
-                                    ) : (
-                                        <div className="flex items-center gap-3 text-slate-500 opacity-50">
-                                            <div className="p-2 bg-cinema-800 rounded-full">
-                                                <Mail className="h-4 w-4" />
-                                            </div>
-                                            <span className="italic">Pas d'email</span>
-                                        </div>
-                                    )}
+                        <button
+                            onClick={() => setViewingStaff(null)}
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors"
+                        >
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal for Adding Renfort */}
+            {addingToDate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
+                >
+                    <div
+                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md p-6 space-y-6"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-white">Ajouter un Renfort</h3>
+                            <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }} className="text-slate-400 hover:text-white">
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-indigo-300 text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(addingToDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </div>
+
+                        {/* Sequence Link */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Lier à une Séquence (Optionnel)</label>
+                            <select
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                                value={linkedSequenceId}
+                                onChange={e => {
+                                    const newSeqId = e.target.value;
+                                    setLinkedSequenceId(newSeqId);
+
+                                    if (newSeqId && project.pdtSequences) {
+                                        const seq = project.pdtSequences.find(s => s.id === newSeqId);
+                                        if (seq) {
+                                            // Auto-Update Logic: Same Day
+                                            setAddingToDate(seq.date);
+                                        }
+                                    }
+                                }}
+                            >
+                                <option value="">Aucune séquence liée</option>
+                                {(project.pdtSequences || [])
+                                    .sort((a, b) => {
+                                        if (a.date !== b.date) return a.date.localeCompare(b.date);
+                                        return a.id.localeCompare(b.id, undefined, { numeric: true });
+                                    })
+                                    .map(seq => (
+                                        <option key={seq.id} value={seq.id}>
+                                            {seq.id} - {new Date(seq.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ({seq.decor})
+                                        </option>
+                                    ))}
+                            </select>
+                            {linkedSequenceId && (
+                                <p className="text-xs text-indigo-300 italic">
+                                    La date a été ajustée automatiquement à celle de la séquence.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Nom Complet <span className="text-red-400">*</span></label>
+                                <div className="relative">
+                                    <User className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        placeholder="Ex: Thomas Dubreuil"
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                        value={newName}
+                                        onChange={e => setNewName(e.target.value)}
+                                    />
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Poste</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Électricien, Assistant..."
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                        value={newRole}
+                                        onChange={e => setNewRole(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Téléphone</label>
+                                    <div className="relative">
+                                        <Phone className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                        <input
+                                            type="tel"
+                                            placeholder="06 12..."
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                            value={newPhone}
+                                            onChange={e => setNewPhone(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Email</label>
+                                    <div className="relative">
+                                        <Mail className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
+                                        <input
+                                            type="email"
+                                            placeholder="contact@..."
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
+                                            value={newEmail}
+                                            onChange={e => setNewEmail(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' && newName.trim()) handleAddReinforcement(addingToDate);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 justify-end pt-2">
                             <button
-                                onClick={() => setViewingStaff(null)}
-                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-colors"
+                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); }}
+                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
                             >
-                                Fermer
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => handleAddReinforcement(addingToDate)}
+                                disabled={!newName.trim()}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                            >
+                                Valider le Renfort
                             </button>
                         </div>
                     </div>
-                )}
-
-                {/* Modal for Adding Renfort */}
-                {addingToDate && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                        onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
-                    >
-                        <div
-                            className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md p-6 space-y-6"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-white">Ajouter un Renfort</h3>
-                                <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }} className="text-slate-400 hover:text-white">
-                                    <X className="h-6 w-6" />
-                                </button>
-                            </div>
-
-                            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 text-indigo-300 text-sm font-medium flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(addingToDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </div>
-
-                            {/* Sequence Link */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Lier à une Séquence (Optionnel)</label>
-                                <select
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
-                                    value={linkedSequenceId}
-                                    onChange={e => {
-                                        const newSeqId = e.target.value;
-                                        setLinkedSequenceId(newSeqId);
-
-                                        if (newSeqId && project.pdtSequences) {
-                                            const seq = project.pdtSequences.find(s => s.id === newSeqId);
-                                            if (seq) {
-                                                // Auto-Update Logic: Same Day
-                                                setAddingToDate(seq.date);
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <option value="">Aucune séquence liée</option>
-                                    {(project.pdtSequences || [])
-                                        .sort((a, b) => {
-                                            if (a.date !== b.date) return a.date.localeCompare(b.date);
-                                            return a.id.localeCompare(b.id, undefined, { numeric: true });
-                                        })
-                                        .map(seq => (
-                                            <option key={seq.id} value={seq.id}>
-                                                {seq.id} - {new Date(seq.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ({seq.decor})
-                                            </option>
-                                        ))}
-                                </select>
-                                {linkedSequenceId && (
-                                    <p className="text-xs text-indigo-300 italic">
-                                        La date a été ajustée automatiquement à celle de la séquence.
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Nom Complet <span className="text-red-400">*</span></label>
-                                    <div className="relative">
-                                        <User className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            placeholder="Ex: Thomas Dubreuil"
-                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
-                                            value={newName}
-                                            onChange={e => setNewName(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Poste</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: Électricien, Assistant..."
-                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
-                                            value={newRole}
-                                            onChange={e => setNewRole(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">Téléphone</label>
-                                        <div className="relative">
-                                            <Phone className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
-                                            <input
-                                                type="tel"
-                                                placeholder="06 12..."
-                                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
-                                                value={newPhone}
-                                                onChange={e => setNewPhone(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-300">Email</label>
-                                        <div className="relative">
-                                            <Mail className="h-4 w-4 absolute left-3 top-3 text-slate-500" />
-                                            <input
-                                                type="email"
-                                                placeholder="contact@..."
-                                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
-                                                value={newEmail}
-                                                onChange={e => setNewEmail(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter' && newName.trim()) handleAddReinforcement(addingToDate);
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 justify-end pt-2">
-                                <button
-                                    onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); }}
-                                    className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={() => handleAddReinforcement(addingToDate)}
-                                    disabled={!newName.trim()}
-                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
-                                >
-                                    Valider le Renfort
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
+                </div>
+            )}
+        </div>
+    );
+};
 
