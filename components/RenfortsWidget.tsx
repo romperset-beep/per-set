@@ -188,7 +188,7 @@ export const RenfortsWidget: React.FC = () => {
             phone: newPhone.trim(),
             email: newEmail.trim(),
             role: newRole.trim(),
-            linkedSequenceId: linkedSequenceId || undefined
+            linkedSequenceId: linkedSequenceId || null
         };
 
         try {

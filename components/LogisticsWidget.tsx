@@ -275,7 +275,7 @@ export const LogisticsWidget: React.FC = () => {
                         // Contact removed
                         vehicleType: newVehicle,
                         distanceKm: 0,
-                        linkedSequenceId: linkedSequenceId || undefined,
+                        linkedSequenceId: linkedSequenceId || null,
                         autoUpdateDates: !!linkedSequenceId
                     };
                 }
@@ -316,7 +316,7 @@ export const LogisticsWidget: React.FC = () => {
                 contact: user?.name || '', // Default to user if needed by type, but ideally removed
                 vehicleType: newVehicle,
                 distanceKm: 0,
-                linkedSequenceId: linkedSequenceId || undefined,
+                linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
                 status: 'PENDING'
             };
@@ -334,7 +334,7 @@ export const LogisticsWidget: React.FC = () => {
                 contact: user?.name || '',
                 vehicleType: newVehicle,
                 distanceKm: 0,
-                linkedSequenceId: linkedSequenceId || undefined,
+                linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
                 status: 'PENDING'
             };
@@ -360,7 +360,7 @@ export const LogisticsWidget: React.FC = () => {
                 contact: user?.name || '',
                 vehicleType: newVehicle,
                 distanceKm: 0,
-                linkedSequenceId: linkedSequenceId || undefined,
+                linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
                 status: 'PENDING'
             };
@@ -379,7 +379,7 @@ export const LogisticsWidget: React.FC = () => {
                 contact: user?.name || '',
                 vehicleType: newVehicle,
                 distanceKm: 0,
-                linkedSequenceId: linkedSequenceId || undefined,
+                linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
                 status: 'PENDING'
             };
