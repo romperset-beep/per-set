@@ -27,6 +27,8 @@ export const AdminDashboard: React.FC = () => {
     const [editForm, setEditForm] = useState<any>({});
     const [resetConfirm, setResetConfirm] = useState("");
 
+    const [showGhostsOnly, setShowGhostsOnly] = useState(false); // Added for ghost filtering
+
     const fetchData = async () => {
         setIsLoading(true);
         try {
@@ -58,12 +60,19 @@ export const AdminDashboard: React.FC = () => {
     }, []);
 
     // Filter Logic
-    const filteredUsers = users.filter(u =>
-        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.productionName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.filmTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = users.filter(u => {
+        const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (u.productionName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (u.filmTitle || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        if (showGhostsOnly) {
+            const isGhost = !u.firstName || !u.lastName;
+            return matchesSearch && isGhost;
+        }
+
+        return matchesSearch;
+    });
 
     const filteredProjects = projectsList.filter(p =>
         (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,7 +104,25 @@ export const AdminDashboard: React.FC = () => {
 
     // Actions
     const handleDeleteUser = async (userId: string, userName: string) => {
-        // PROTECTION 1: Prevent self-deletion
+        // PROTECTION A: Strict Super Admin Protection
+        const targetUser = users.find(u => (u as any).id === userId);
+
+        // Block Deletion of Super Admin
+        if (targetUser?.email === 'romperset@gmail.com') {
+            alert("🛑 ACTION INTERDITE 🛑\n\nCe compte est le SUPER ADMIN du système.\nIl ne peut pas être supprimé.");
+            return;
+        }
+
+        // PROTECTION B: Prevent deleting a ghost profile that is actually YOUR account
+        // Note: user object usually has 'id' in our app, 'uid' might be from Firebase User object directly.
+        // We check both to be safe, but safely.
+        const currentUserId = user?.id || (user as any)?.uid;
+        if (targetUser?.email === user?.email || targetUser?.id === currentUserId) {
+            alert("🛑 ACTION INTERDITE 🛑\n\nCe profil fantôme est lié à VOTRE session actuelle.\nLe supprimer couperait votre accès immédiatement.");
+            return;
+        }
+
+        // PROTECTION 1: Prevent self-deletion (redundant but safe)
         if (userId === user?.id) {
             alert("🚫 Vous ne pouvez pas supprimer votre propre profil !");
             return;
@@ -109,12 +136,14 @@ export const AdminDashboard: React.FC = () => {
 
         let confirmMessage: string;
         if (isGhost) {
-            confirmMessage = `⚠️ ATTENTION: Ce profil semble incomplet (profil fantôme).\n\n` +
+            // CONFIRMATION IF UNLINKED (Safe to delete)
+            confirmMessage = `👻 PROFIL FANTÔME DÉTECTÉ\n\n` +
+                `Statut : Non lié à votre compte administrateur.\n` +
                 `Nom: ${userName || 'Non défini'}\n` +
-                `Email: ${targetProfile?.email || 'Non défini'}\n` +
-                `Prénom/Nom: ${targetProfile?.firstName || '?'} ${targetProfile?.lastName || '?'}\n\n` +
-                `Il pourrait s'agir d'un profil d'authentification important.\n` +
-                `Êtes-vous ABSOLUMENT SÛR de vouloir le supprimer ?`;
+                `Email: ${targetProfile?.email || 'Non défini'}\n\n` +
+                `Ce profil semble être une coquille vide ou un ancien accès.\n` +
+                `Vous pouvez probablement le supprimer sans risque.\n\n` +
+                `Voulez-vous le supprimer définitivement ?`;
         } else {
             confirmMessage = `Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}" ?`;
         }
@@ -394,6 +423,22 @@ export const AdminDashboard: React.FC = () => {
                 {view === 'USERS' && (
                     <>
                         {renderHeader('Gestion Utilisateurs', `${filteredUsers.length} utilisateurs trouvés`, <Users className="h-6 w-6 text-eco-500" />)}
+
+                        {/* Ghost Filter Toggle */}
+                        <div className="bg-cinema-800 border-b border-cinema-700 px-6 py-2 flex items-center justify-end">
+                            <label className="flex items-center space-x-2 cursor-pointer text-sm text-slate-300 hover:text-white transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={showGhostsOnly}
+                                    onChange={(e) => setShowGhostsOnly(e.target.checked)}
+                                    className="rounded border-cinema-600 bg-cinema-700 text-eco-500 focus:ring-eco-500/50"
+                                />
+                                <span className={showGhostsOnly ? "text-yellow-400 font-bold" : ""}>
+                                    Afficher uniquement les profils FANTÔMES 👻
+                                </span>
+                            </label>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -411,8 +456,13 @@ export const AdminDashboard: React.FC = () => {
                                         .map((u: any) => {
                                             const isGhost = !u.firstName || !u.lastName;
                                             const isSelf = u.id === user?.id;
+                                            const isSuperAdmin = u.email === 'romperset@gmail.com';
+                                            // Safely get current user ID
+                                            const currentUserId = user?.id || (user as any)?.uid;
+                                            const isLinkedToMe = u.email === user?.email || u.id === currentUserId;
+
                                             return (
-                                                <tr key={u.id} className={`hover:bg-cinema-700/30 transition-colors group ${u.status === 'pending' ? 'bg-yellow-500/5' : ''} ${isGhost ? 'bg-yellow-900/10' : ''}`}>
+                                                <tr key={u.id} className={`hover:bg-cinema-700/30 transition-colors group ${u.status === 'pending' ? 'bg-yellow-500/5' : ''} ${isGhost ? 'bg-yellow-900/10' : ''} ${isSuperAdmin ? 'bg-purple-900/20 border-l-4 border-purple-500' : ''} ${isLinkedToMe && isGhost ? 'border-l-4 border-orange-500 bg-orange-900/10' : ''}`}>
                                                     <td className="px-6 py-4">
                                                         {editingId === u.id ? (
                                                             <div className="space-y-2">
@@ -429,14 +479,24 @@ export const AdminDashboard: React.FC = () => {
                                                             </div>
                                                         ) : (
                                                             <div className="flex items-center gap-3">
-                                                                <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white relative">
+                                                                <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-white relative ${isSuperAdmin ? 'bg-purple-600 ring-2 ring-purple-400' : 'bg-slate-700'}`}>
                                                                     {u.name?.charAt(0)}
                                                                     {u.status === 'pending' && <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-500 rounded-full border-2 border-cinema-800"></span>}
                                                                 </div>
                                                                 <div>
                                                                     <div className="font-medium text-white flex items-center gap-2">
                                                                         {u.name}
-                                                                        {isGhost && (
+                                                                        {isSuperAdmin && (
+                                                                            <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] font-bold rounded border border-purple-500/30 flex items-center gap-1">
+                                                                                👑 SUPER ADMIN
+                                                                            </span>
+                                                                        )}
+                                                                        {isLinkedToMe && isGhost && (
+                                                                            <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] font-bold rounded border border-orange-500/30 flex items-center gap-1">
+                                                                                ⚠️ LIÉ À VOTRE COMPTE
+                                                                            </span>
+                                                                        )}
+                                                                        {isGhost && !isSuperAdmin && !isLinkedToMe && (
                                                                             <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] font-bold rounded border border-yellow-500/30">
                                                                                 👻 FANTÔME
                                                                             </span>
@@ -509,10 +569,10 @@ export const AdminDashboard: React.FC = () => {
                                                                         </>
                                                                     )}
                                                                     <button onClick={() => startEditing('USER', u)} className="text-slate-400 hover:text-white p-2"><Edit2 className="h-4 w-4" /></button>
-                                                                    {!isSelf ? (
+                                                                    {(!isSelf && !isSuperAdmin && !isLinkedToMe) ? (
                                                                         <button onClick={() => handleDeleteUser(u.id, u.name)} className="text-red-500 hover:bg-red-500/20 p-2 rounded"><Trash2 className="h-4 w-4" /></button>
                                                                     ) : (
-                                                                        <button disabled className="text-slate-600 p-2 rounded cursor-not-allowed opacity-50" title="Vous ne pouvez pas vous supprimer vous-même"><Trash2 className="h-4 w-4" /></button>
+                                                                        <button disabled className="text-slate-600 p-2 rounded cursor-not-allowed opacity-50" title={isLinkedToMe ? "NE PAS SUPPRIMER : Lié à votre compte" : (isSuperAdmin ? "Super Admin protégé" : "Vous ne pouvez pas vous supprimer vous-même")}><Trash2 className="h-4 w-4" /></button>
                                                                     )}
                                                                 </>
                                                             )}

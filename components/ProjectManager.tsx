@@ -244,14 +244,36 @@ const ExpensesWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const TeamWidget = ({ onClick }: { onClick: () => void }) => {
-    const { userProfiles } = useProject();
+    const { userProfiles, project, offlineMembers } = useProject();
+
+    // Filter profiles belonging to THIS project
+    const projectMembers = userProfiles.filter(profile => {
+        const p = profile as any;
+
+        // Safety check
+        if (!project?.id) return false;
+
+        // Case 1: Active project
+        if (p.currentProjectId === project.id) return true;
+
+        // Case 2: Project in history
+        if (p.projectHistory && Array.isArray(p.projectHistory)) {
+            return p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id);
+        }
+
+        return false;
+    });
+
+    // Total Count = Real Members + Offline Members
+    const totalCount = projectMembers.length + offlineMembers.length;
+
     return (
         <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Bible Équipe Technique</h3>
+                <h3 className="text-lg font-semibold opacity-70">Bible Équipe Tournage</h3>
                 <Users className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-4xl font-bold mt-2 text-green-400">{userProfiles?.length || 0}</p>
+            <p className="text-4xl font-bold mt-2 text-green-400">{totalCount}</p>
             <p className="text-xs text-slate-400 mt-1">Annuaire & Fiches</p>
         </button>
     );
