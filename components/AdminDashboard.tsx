@@ -541,7 +541,7 @@ export const AdminDashboard: React.FC = () => {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 text-slate-300">
-                                                        {u.filmTitle || 'Aucun'}
+                                                        {projectsList.find(p => p.id === u.currentProjectId)?.name || u.filmTitle || 'Aucun'}
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
