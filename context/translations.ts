@@ -21,7 +21,7 @@ export const TRANSLATIONS = {
         'sidebar.circular': 'Économie Circulaire', // Legacy
         'sidebar.expenses': 'Notes de Frais',
         'sidebar.buyback': 'Ventes de la Production',
-        'sidebar.social': 'Mur Social',
+        'nav.social': 'Messagerie',
         'sidebar.team': 'Bible Équipe Technique',
         'sidebar.report': 'Rapport RSE',
         'sidebar.profile': 'Mon Profil',

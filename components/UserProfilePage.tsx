@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { UserProfile, Department } from '../types';
-import { Save, Upload, FileText, CheckCircle, Trash2, Bell, BellOff, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Save, Upload, FileText, CheckCircle, Trash2, Bell, BellOff, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getStorage } from 'firebase/storage';
 import { db, auth, storage } from '../services/firebase';
@@ -343,7 +343,25 @@ ${formData.firstName} ${formData.lastName}`;
                         </div>
                         <Input label="Email" name="email" value={formData.email} onChange={handleChange} disabled={true} />
                         <Input label="Téléphone" name="phone" value={formData.phone} onChange={handleChange} disabled={!isEditing} required />
-                        <Input label="Situation Familiale" name="familyStatus" value={formData.familyStatus} onChange={handleChange} disabled={!isEditing} />
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Situation Familiale</label>
+                            <select
+                                name="familyStatus"
+                                value={formData.familyStatus || ''}
+                                onChange={handleChange}
+                                disabled={!isEditing}
+                                className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-eco-500 focus:outline-none appearance-none disabled:opacity-50"
+                            >
+                                <option value="">Sélectionnez...</option>
+                                <option value="Célibataire">Célibataire</option>
+                                <option value="Marié(e)">Marié(e)</option>
+                                <option value="Pacsé(e)">Pacsé(e)</option>
+                                <option value="Divorcé(e)">Divorcé(e)</option>
+                                <option value="Veuf / Veuve">Veuf / Veuve</option>
+                                <option value="Concubinage">Concubinage</option>
+                                <option value="Autre">Autre</option>
+                            </select>
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Input label="Adresse" name="address" value={formData.address} onChange={handleChange} disabled={!isEditing} className="md:col-span-3" required />
@@ -371,6 +389,73 @@ ${formData.firstName} ${formData.lastName}`;
                         <p className="text-xs text-slate-500 mt-1">Ces informations seront visibles par la Régie pour l'organisation des repas.</p>
                     </div>
 
+
+                </section>
+
+                {/* Privacy Settings */}
+                <section className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 space-y-4">
+                    <h3 className="text-xl font-bold text-blue-300 border-b border-cinema-700 pb-2 flex items-center gap-2">
+                        <Lock className="h-5 w-5" />
+                        Confidentialité
+                    </h3>
+                    <div className="bg-cinema-900/50 p-4 rounded-lg border border-cinema-700">
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Qui peut voir mes coordonnées (Email & Téléphone) ?</label>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${(!formData.privacySettings?.contactVisibility || formData.privacySettings?.contactVisibility === 'TEAM')
+                                ? 'bg-blue-600/20 border-blue-500'
+                                : 'bg-cinema-800 border-cinema-700 hover:bg-cinema-700'
+                                }`}>
+                                <input
+                                    type="radio"
+                                    name="contactVisibility"
+                                    checked={!formData.privacySettings?.contactVisibility || formData.privacySettings?.contactVisibility === 'TEAM'}
+                                    onChange={() => setFormData(prev => ({
+                                        ...prev,
+                                        privacySettings: { ...prev.privacySettings, contactVisibility: 'TEAM' }
+                                    }))}
+                                    disabled={!isEditing}
+                                    className="hidden"
+                                />
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${(!formData.privacySettings?.contactVisibility || formData.privacySettings?.contactVisibility === 'TEAM')
+                                    ? 'border-blue-500 bg-blue-500'
+                                    : 'border-slate-500'
+                                    }`}>
+                                    {(!formData.privacySettings?.contactVisibility || formData.privacySettings?.contactVisibility === 'TEAM') && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                </div>
+                                <div>
+                                    <span className="block font-bold text-white">Toute l'équipe</span>
+                                    <span className="text-xs text-slate-400">Visible par tous les membres du projet</span>
+                                </div>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${formData.privacySettings?.contactVisibility === 'PRODUCTION'
+                                ? 'bg-blue-600/20 border-blue-500'
+                                : 'bg-cinema-800 border-cinema-700 hover:bg-cinema-700'
+                                }`}>
+                                <input
+                                    type="radio"
+                                    name="contactVisibility"
+                                    checked={formData.privacySettings?.contactVisibility === 'PRODUCTION'}
+                                    onChange={() => setFormData(prev => ({
+                                        ...prev,
+                                        privacySettings: { ...prev.privacySettings, contactVisibility: 'PRODUCTION' }
+                                    }))}
+                                    disabled={!isEditing}
+                                    className="hidden"
+                                />
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${formData.privacySettings?.contactVisibility === 'PRODUCTION'
+                                    ? 'border-blue-500 bg-blue-500'
+                                    : 'border-slate-500'
+                                    }`}>
+                                    {formData.privacySettings?.contactVisibility === 'PRODUCTION' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                </div>
+                                <div>
+                                    <span className="block font-bold text-white">Production Uniquement</span>
+                                    <span className="text-xs text-slate-400">Masqué pour les autres techniciens</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </section>
 
                 {/* Notification Preferences */}

@@ -34,7 +34,7 @@ export const SocialFeed: React.FC = () => {
         fr: {
             // ... (keeping translations)
             myDiscussions: "Mes Discussions",
-            socialWall: "Mur Social",
+            socialWall: "Messagerie d'Équipe",
             viewGallery: "Voir la galerie photo",
             viewDiscussion: "Voir la discussion",
             theWall: "Le Mur",

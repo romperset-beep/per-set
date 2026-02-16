@@ -431,6 +431,11 @@ export interface UserProfile {
   cmbCard?: string;
   idCard?: string;
   drivingLicense?: string;
+
+  // Privacy Settings
+  privacySettings?: {
+    contactVisibility: 'TEAM' | 'PRODUCTION'; // Default 'TEAM'
+  };
 }
 
 export interface SavedRoute {

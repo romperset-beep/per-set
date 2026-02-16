@@ -224,9 +224,9 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                         )}
 
                         {/* 2. ADRESSE : CANTINE */}
-                        {todayCallSheet?.cateringLocation && (
+                        {(todayCallSheet?.cateringLocation || todayCallSheet?.cateringAddress) && (
                             <a
-                                href={getMapsLink(todayCallSheet.cateringLocation)}
+                                href={getMapsLink(todayCallSheet.cateringAddress || todayCallSheet.cateringLocation || "")}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="block group"
@@ -244,7 +244,13 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="text-sm font-medium text-white line-clamp-1">{todayCallSheet.cateringLocation}</div>
+                                        {/* Location Name */}
+                                        <div className="text-sm font-medium text-white line-clamp-1">{todayCallSheet.cateringLocation || "Lieu Cantine"}</div>
+
+                                        {/* Address (New) */}
+                                        {todayCallSheet.cateringAddress && (
+                                            <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{todayCallSheet.cateringAddress}</div>
+                                        )}
                                     </div>
                                     <div className="text-xs text-blue-400 font-bold group-hover:underline">Voir</div>
                                 </div>

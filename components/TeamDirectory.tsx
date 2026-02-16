@@ -261,54 +261,76 @@ export const TeamDirectory: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-2 text-sm text-slate-400 mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4" />
-                                            <a href={`mailto:${profile.email}`} className="hover:text-white transition-colors">{profile.email}</a>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone className="h-4 w-4" />
-                                            <a href={`tel:${profile.phone}`} className="hover:text-white transition-colors">{profile.phone}</a>
-                                        </div>
+                                        {/* Privacy Check */}
+                                        {(currentDept === 'PRODUCTION' ||
+                                            !profile.privacySettings?.contactVisibility ||
+                                            profile.privacySettings.contactVisibility === 'TEAM') ? (
+                                            <>
+                                                <div className="flex items-center gap-2">
+                                                    <Mail className="h-4 w-4" />
+                                                    <a href={`mailto:${profile.email}`} className="hover:text-white transition-colors">{profile.email}</a>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Phone className="h-4 w-4" />
+                                                    <a href={`tel:${profile.phone}`} className="hover:text-white transition-colors">{profile.phone}</a>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col gap-2 py-1">
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <Mail className="h-4 w-4" />
+                                                    <span className="italic">Masqué (Privé)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-600">
+                                                    <Phone className="h-4 w-4" />
+                                                    <span className="italic">Masqué (Privé)</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-end pt-2 border-t border-cinema-700/50">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const firstName = profile.firstName || '';
-                                                const lastName = profile.lastName || '';
-                                                const fullName = `${firstName} ${lastName}`.trim();
-                                                const phone = profile.phone || '';
-                                                const email = profile.email || '';
-                                                const role = profile.role || '';
-                                                const dept = profile.department || '';
-                                                const org = project.name || 'Per-Set';
+                                        {(currentDept === 'PRODUCTION' ||
+                                            !profile.privacySettings?.contactVisibility ||
+                                            profile.privacySettings.contactVisibility === 'TEAM') && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const firstName = profile.firstName || '';
+                                                        const lastName = profile.lastName || '';
+                                                        const fullName = `${firstName} ${lastName}`.trim();
+                                                        const phone = profile.phone || '';
+                                                        const email = profile.email || '';
+                                                        const role = profile.role || '';
+                                                        const dept = profile.department || '';
+                                                        const org = project.name || 'Per-Set';
 
-                                                let vCardContent = 'BEGIN:VCARD\nVERSION:3.0\n';
-                                                vCardContent += `FN:${fullName}\n`;
-                                                vCardContent += `N:${lastName};${firstName};;;\n`;
-                                                if (phone) vCardContent += `TEL;TYPE=CELL:${phone}\n`;
-                                                if (email) vCardContent += `EMAIL;TYPE=WORK:${email}\n`;
-                                                if (role) vCardContent += `TITLE:${role}\n`;
-                                                if (dept) vCardContent += `NOTE:Département: ${dept}\n`;
-                                                vCardContent += `ORG:${org}\n`;
-                                                vCardContent += 'END:VCARD\n';
+                                                        let vCardContent = 'BEGIN:VCARD\nVERSION:3.0\n';
+                                                        vCardContent += `FN:${fullName}\n`;
+                                                        vCardContent += `N:${lastName};${firstName};;;\n`;
+                                                        if (phone) vCardContent += `TEL;TYPE=CELL:${phone}\n`;
+                                                        if (email) vCardContent += `EMAIL;TYPE=WORK:${email}\n`;
+                                                        if (role) vCardContent += `TITLE:${role}\n`;
+                                                        if (dept) vCardContent += `NOTE:Département: ${dept}\n`;
+                                                        vCardContent += `ORG:${org}\n`;
+                                                        vCardContent += 'END:VCARD\n';
 
-                                                const blob = new Blob([vCardContent], { type: 'text/vcard' });
-                                                const url = window.URL.createObjectURL(blob);
-                                                const link = document.createElement('a');
-                                                link.href = url;
-                                                link.setAttribute('download', `${firstName}_${lastName}.vcf`);
-                                                document.body.appendChild(link);
-                                                link.click();
-                                                document.body.removeChild(link);
-                                            }}
-                                            className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-cinema-700/50 rounded"
-                                            title="Exporter le contact"
-                                        >
-                                            <Download className="h-3 w-3" />
-                                            Exporter
-                                        </button>
+                                                        const blob = new Blob([vCardContent], { type: 'text/vcard' });
+                                                        const url = window.URL.createObjectURL(blob);
+                                                        const link = document.createElement('a');
+                                                        link.href = url;
+                                                        link.setAttribute('download', `${firstName}_${lastName}.vcf`);
+                                                        document.body.appendChild(link);
+                                                        link.click();
+                                                        document.body.removeChild(link);
+                                                    }}
+                                                    className="text-xs flex items-center gap-1.5 text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-cinema-700/50 rounded"
+                                                    title="Exporter le contact"
+                                                >
+                                                    <Download className="h-3 w-3" />
+                                                    Exporter
+                                                </button>
+                                            )}
                                     </div>
 
                                     {currentDept === 'PRODUCTION' && (
