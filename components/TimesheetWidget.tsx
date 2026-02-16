@@ -384,6 +384,13 @@ export const TimesheetWidget: React.FC = () => {
         const newLogs = [...otherLogs, newLog];
 
         await updateProjectDetails({ timeLogs: newLogs });
+
+        // Reset Form
+        setCallTime('');
+        setEndTime('');
+        setMealTime('');
+        setNote(''); // Clear Note
+
     };
 
     const handleDeleteLog = async (logId: string) => {
@@ -1101,15 +1108,14 @@ export const TimesheetWidget: React.FC = () => {
                                     </div>
 
 
-                                    <div className="col-span-2 lg:col-span-1 flex items-end">
+                                    <div className="col-span-full mt-4 flex justify-end pt-4 border-t border-cinema-700/50">
                                         <button
                                             onClick={handleSaveLog}
                                             disabled={!date || !callTime || !endTime}
-                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                            className="w-full md:w-auto px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]"
                                         >
-                                            <Save className="h-4 w-4" />
-                                            <span className="hidden lg:inline">Ajouter</span>
-                                            <span className="lg:hidden">Enregistrer</span>
+                                            <Save className="h-5 w-5" />
+                                            <span>Valider la feuille du jour</span>
                                         </button>
                                     </div>
 
@@ -1257,6 +1263,7 @@ export const TimesheetWidget: React.FC = () => {
                                                         <th className="px-6 py-3">Repas</th>
                                                         <th className="px-6 py-3 text-right">Ampli</th>
                                                         <th className="px-6 py-3 text-right">Eff.</th>
+                                                        <th className="px-6 py-3">Note</th>
                                                         <th className="px-6 py-3 text-right">Validé</th>
                                                         <th className="px-6 py-3 text-center">Action</th>
                                                     </tr>
@@ -1281,6 +1288,7 @@ export const TimesheetWidget: React.FC = () => {
                                                                 </td>
                                                                 <td className="px-6 py-3 text-right text-slate-500">{formatHours(ampli)}</td>
                                                                 <td className="px-6 py-3 text-right">{formatHours(log.effectiveHours || log.totalHours)}</td>
+                                                                <td className="px-6 py-3 text-xs italic text-slate-400 max-w-[150px] truncate" title={log.note}>{log.note || '-'}</td>
                                                                 <td className="px-6 py-3 text-right font-bold text-blue-400">{formatHours(log.totalHours)}</td>
                                                                 <td className="px-6 py-3 text-center">
                                                                     <button

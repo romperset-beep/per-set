@@ -22,13 +22,17 @@ export const TeamDirectory: React.FC = () => {
         // Safety check
         if (!project?.id) return false;
 
-        // Case 1: Active project
+        // Case 1: Active project (Redundant but keeps UI snappy)
         if (p.currentProjectId === project.id) return true;
 
         // Case 2: Project in history
         if (p.projectHistory && Array.isArray(p.projectHistory)) {
-            return p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id);
+            if (p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id)) return true;
         }
+
+        // Case 3: Explicitly in project members map (The Admin Dashboard Logic)
+        // This fixes the issue where users have currentProjectId=null but are members
+        if (project.members && project.members[profile.id]) return true;
 
         return false;
     });
