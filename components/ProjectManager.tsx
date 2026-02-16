@@ -258,8 +258,11 @@ const TeamWidget = ({ onClick }: { onClick: () => void }) => {
 
         // Case 2: Project in history
         if (p.projectHistory && Array.isArray(p.projectHistory)) {
-            return p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id);
+            if (p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id)) return true;
         }
+
+        // Case 3: Explicitly in project members map
+        if (project.members && project.members[profile.id]) return true;
 
         return false;
     });
