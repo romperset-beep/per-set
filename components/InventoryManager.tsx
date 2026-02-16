@@ -38,6 +38,28 @@ export const InventoryManager: React.FC = () => {
     const [targetDept, setTargetDept] = useState<Department | 'PRODUCTION'>('PRODUCTION');
     const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const [bulkSurplusConfirmation, setBulkSurplusConfirmation] = useState<{ targets: any[], action: SurplusAction } | null>(null);
+    const [selectedForVirtualStock, setSelectedForVirtualStock] = useState<Set<string>>(new Set());
+
+    const toggleVirtualStockSelection = (id: string) => {
+        setSelectedForVirtualStock(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBulkVirtualStock = () => {
+        // Find all selected items (expanding groups)
+        const allGroups = Object.values(stockByDept).flatMap(deptList => groupStockItems(deptList));
+        const selectedGroups = allGroups.filter(g => selectedForVirtualStock.has(g.id));
+        const targets = selectedGroups.flatMap(g => g.items.filter((i: any) => i.quantityCurrent > 0));
+
+        if (targets.length === 0) return;
+
+        // Use the existing bulk confirmation modal mechanism
+        setBulkSurplusConfirmation({ targets, action: SurplusAction.RELEASED_TO_PROD });
+    };
 
     const toggleDeptExpansion = (dept: string) => {
         setExpandedDepts(prev => {
@@ -1262,6 +1284,15 @@ export const InventoryManager: React.FC = () => {
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-px flex-1 bg-cinema-700"></div>
                     <h3 className="text-xl font-bold text-slate-300 uppercase tracking-wider">Stock En Cours</h3>
+                    {selectedForVirtualStock.size > 0 && (
+                        <button
+                            onClick={handleBulkVirtualStock}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 animate-in fade-in zoom-in"
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            Envoyer vers Stock Virtuel ({selectedForVirtualStock.size})
+                        </button>
+                    )}
                     <div className="h-px flex-1 bg-cinema-700"></div>
                 </div>
 
@@ -1305,6 +1336,13 @@ export const InventoryManager: React.FC = () => {
                                                 <div key={item.id + (isStarted ? '_started' : '_new')} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2">
+                                                            {/* Selection Checkbox */}
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedForVirtualStock.has(item.id)}
+                                                                onChange={() => toggleVirtualStockSelection(item.id)}
+                                                                className="h-5 w-5 rounded border-cinema-600 bg-cinema-900 text-blue-500 focus:ring-blue-500 cursor-pointer mr-2"
+                                                            />
                                                             <span className="font-medium text-lg text-white">
                                                                 {item.name}
                                                                 {item.items.length > 1 && (
@@ -1428,13 +1466,7 @@ export const InventoryManager: React.FC = () => {
                                                             )
                                                         )}
                                                         {/* Transfer Button - Only for current dept items */}
-                                                        <button
-                                                            onClick={() => setTransferConfirmation({ item })}
-                                                            className="p-2 text-blue-400 hover:text-white hover:bg-blue-600/20 rounded-lg transition-colors"
-                                                            title="Transférer à un autre département"
-                                                        >
-                                                            <ArrowRightLeft className="h-4 w-4" />
-                                                        </button>
+
 
                                                         <button
                                                             onClick={async (e) => {
@@ -1481,15 +1513,7 @@ export const InventoryManager: React.FC = () => {
                                                                 <span className="text-xs text-slate-500">/ {item.quantityInitial} {item.unit}</span>
                                                             </div>
 
-                                                            <button
-                                                                onClick={() => {
-                                                                    const target = item.items[0];
-                                                                    if (target) updateQuantity(target.id, 1);
-                                                                }}
-                                                                className="p-2 rounded-md hover:bg-cinema-700 text-slate-300 hover:text-white transition-colors"
-                                                            >
-                                                                <Plus className="h-5 w-5" />
-                                                            </button>
+
                                                         </div>
                                                     </div>
                                                 </div>

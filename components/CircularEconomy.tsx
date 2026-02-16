@@ -564,12 +564,6 @@ export const CircularEconomy: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setView('storage')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'storage' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                        <Archive className="h-4 w-4" /> Stock Futur ({storageItems.length})
-                    </button>
-                    <button
                         onClick={() => setView('sales_abs')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${view === 'sales_abs' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
                     >
@@ -598,24 +592,6 @@ export const CircularEconomy: React.FC = () => {
                         >
                             <Gift className="h-3 w-3" />
                             Tout Donner
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleBulkAction(SurplusAction.MARKETPLACE)}
-                            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-500/30 flex items-center gap-2 transition-colors"
-                        >
-                            <ShoppingBag className="h-3 w-3" />
-                            Tout Mettre en Vente
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => handleBulkAction(SurplusAction.STORAGE)}
-                            className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-500/30 flex items-center gap-2 transition-colors"
-                        >
-                            <Archive className="h-3 w-3" />
-                            Tout Stocker
                         </button>
                     </div>
                 )}
@@ -903,10 +879,10 @@ export const CircularEconomy: React.FC = () => {
                                                     type="button"
                                                     onClick={(e) => handleBuyback(e, item)}
                                                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 flex items-center gap-2 transition-all flex-1 md:flex-none justify-center"
-                                                    title="Revendre à ABS"
+                                                    title="Revendre à P-S"
                                                 >
                                                     <DollarSign className="h-3.5 w-3.5" />
-                                                    Revendre à ABS
+                                                    Revendre à P-S
                                                 </button>
                                                 <button
                                                     onClick={() => handleTransferClick(item, SurplusAction.DONATION)}
@@ -914,20 +890,6 @@ export const CircularEconomy: React.FC = () => {
                                                     title="Donner"
                                                 >
                                                     <GraduationCap className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setAction(item.id, SurplusAction.MARKETPLACE)}
-                                                    className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-blue-500/20"
-                                                    title="Mettre en vente au nom de votre production sur la marketplace"
-                                                >
-                                                    <ShoppingBag className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleTransferClick(item, SurplusAction.STORAGE)}
-                                                    className="p-2 text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-indigo-500/20"
-                                                    title="Stocker (Futur)"
-                                                >
-                                                    <Archive className="h-4 w-4" />
                                                 </button>
                                             </>
                                         )}
@@ -954,7 +916,7 @@ export const CircularEconomy: React.FC = () => {
                                                     type="button"
                                                     onClick={(e) => handleBuyback(e, item)}
                                                     className="p-1 px-2 text-xs bg-emerald-700/50 text-emerald-300 rounded border border-emerald-600/30 hover:bg-emerald-600/50 transition-colors"
-                                                    title="Revendre à ABS"
+                                                    title="Revendre à P-S"
                                                 >
                                                     <ShoppingBag className="h-3 w-3" />
                                                 </button>
@@ -964,13 +926,6 @@ export const CircularEconomy: React.FC = () => {
                                                     title="Donner"
                                                 >
                                                     <GraduationCap className="h-3 w-3" />
-                                                </button>
-                                                <button
-                                                    onClick={() => setAction(item.id, SurplusAction.STORAGE)}
-                                                    className="p-1 px-2 text-xs bg-indigo-900/50 text-indigo-300 rounded border border-indigo-500/30 hover:bg-indigo-800/50 transition-colors"
-                                                    title="Stocker"
-                                                >
-                                                    <Archive className="h-3 w-3" />
                                                 </button>
                                             </>
                                         )}
