@@ -194,22 +194,15 @@ export const LogisticsWidget: React.FC = () => {
         }
     }, [modalStep, editingRequestId]);
 
-    // Auto-calculate dates and location based on Sequence selection
+    // Auto-calculate dates based on Sequence selection
     React.useEffect(() => {
         if (linkedSequenceId && project.pdtSequences) {
             const seq = project.pdtSequences.find(s => s.id === linkedSequenceId);
             if (seq) {
                 setTargetDate(seq.date);
-                // Auto-fill location from PDT day
-                if (project.pdtDays) {
-                    const pdtDay = project.pdtDays.find(d => d.date === seq.date);
-                    if (pdtDay?.location && !newLocation) {
-                        setNewLocation(pdtDay.location);
-                    }
-                }
             }
         }
-    }, [linkedSequenceId, project.pdtSequences, project.pdtDays]);
+    }, [linkedSequenceId, project.pdtSequences]);
 
     // Auto-fill Dates when Target Date is selected (for Manual or Simple modes)
     React.useEffect(() => {
