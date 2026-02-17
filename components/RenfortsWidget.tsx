@@ -1356,7 +1356,7 @@ export const RenfortsWidget: React.FC = () => {
                     onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setLinkedLocation(''); }}
                 >
                     <div
-                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md p-6 space-y-6"
+                        className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 space-y-6"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="flex justify-between items-center">
