@@ -174,6 +174,7 @@ export const RenfortsWidget: React.FC = () => {
     const [newRole, setNewRole] = useState(''); // Added
     const [linkedSequenceId, setLinkedSequenceId] = useState(''); // Added
     const [linkedLocation, setLinkedLocation] = useState(''); // Added
+    const [locationScope, setLocationScope] = useState<'week' | 'all'>('week');
     // Multi-phase selection state
     const [selectedPhases, setSelectedPhases] = useState<{
         PRELIGHT: boolean;
@@ -221,10 +222,44 @@ export const RenfortsWidget: React.FC = () => {
         let targetEntries: { date: string, offset: number, refPoint: 'START' | 'END', type?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING' }[] = [];
 
         if (linkedLocation && project.pdtDays) {
-            // Find location start/end
-            const locDays = project.pdtDays
+            // Find location days, filtered by scope
+            let locDays = project.pdtDays
                 .filter(d => (d.linkedLocation === linkedLocation || d.location === linkedLocation))
                 .sort((a, b) => a.date.localeCompare(b.date));
+
+            // If scope is 'week', filter to only the consecutive block containing the clicked date
+            if (locationScope === 'week' && inputDateStr && locDays.length > 1) {
+                // Find the consecutive block that includes or is closest to the clicked date
+                const blocks: typeof locDays[] = [];
+                let currentBlock: typeof locDays = [locDays[0]];
+                for (let i = 1; i < locDays.length; i++) {
+                    const prevDate = new Date(locDays[i - 1].date);
+                    const currDate = new Date(locDays[i].date);
+                    const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+                    // Allow gaps of up to 2 days (weekend) to keep blocks together
+                    if (diffDays <= 3) {
+                        currentBlock.push(locDays[i]);
+                    } else {
+                        blocks.push(currentBlock);
+                        currentBlock = [locDays[i]];
+                    }
+                }
+                blocks.push(currentBlock);
+
+                // Find the block containing the clicked date (or closest)
+                const clickedBlock = blocks.find(block =>
+                    block.some(d => d.date === inputDateStr)
+                ) || blocks.find(block => {
+                    const blockStart = new Date(block[0].date);
+                    const blockEnd = new Date(block[block.length - 1].date);
+                    const clicked = new Date(inputDateStr);
+                    // Within 3 days of the block (covers prelight/demontage range)
+                    return clicked >= new Date(blockStart.getTime() - 3 * 86400000) &&
+                        clicked <= new Date(blockEnd.getTime() + 3 * 86400000);
+                }) || blocks[0];
+
+                locDays = clickedBlock;
+            }
 
             if (locDays.length > 0) {
                 const firstDay = new Date(locDays[0].date);
@@ -343,7 +378,7 @@ export const RenfortsWidget: React.FC = () => {
             } else {
                 // Reset All
                 setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole('');
-                setLinkedSequenceId(''); setLinkedLocation('');
+                setLinkedSequenceId(''); setLinkedLocation(''); setLocationScope('week');
                 setSelectedPhases({ PRELIGHT: false, DEMONTAGE: false });
                 setDurations({ PRELIGHT: 1, DEMONTAGE: 1 });
                 setAddingToDate(null);
@@ -1445,6 +1480,46 @@ export const RenfortsWidget: React.FC = () => {
                                             ));
                                     })()}
                                 </select>
+
+                                {/* Scope selector: week vs all */}
+                                {linkedLocation && (() => {
+                                    const allLocDays = (project.pdtDays || []).filter(d =>
+                                        (d.linkedLocation === linkedLocation || d.location === linkedLocation)
+                                    );
+                                    // Only show scope selector if the location appears in multiple non-consecutive blocks
+                                    if (allLocDays.length <= 1) return null;
+                                    const sorted = [...allLocDays].sort((a, b) => a.date.localeCompare(b.date));
+                                    let hasGap = false;
+                                    for (let i = 1; i < sorted.length; i++) {
+                                        const diff = Math.round((new Date(sorted[i].date).getTime() - new Date(sorted[i - 1].date).getTime()) / 86400000);
+                                        if (diff > 3) { hasGap = true; break; }
+                                    }
+                                    if (!hasGap) return null;
+                                    return (
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setLocationScope('week')}
+                                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${locationScope === 'week'
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
+                                                    }`}
+                                            >
+                                                Cette semaine
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setLocationScope('all')}
+                                                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${locationScope === 'all'
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
+                                                    }`}
+                                            >
+                                                Tout le tournage
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {linkedLocation && (
