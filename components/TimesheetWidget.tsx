@@ -9,7 +9,7 @@ import { calculateUSPAGross, calculateEstimatedSalary, getAvailableJobs, calcula
 import { getJobByTitle, USPA_JOBS } from '../data/uspaRates';
 
 export const TimesheetWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, callSheets } = useProject();
+    const { project, updateProjectDetails, user, callSheets, userProfiles } = useProject();
 
     // Form State
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -530,23 +530,64 @@ export const TimesheetWidget: React.FC = () => {
             .sort((a, b) => b.date.localeCompare(a.date));
     }, [project.timeLogs, user]);
 
-    // Team Logs (Grouped by Dept -> User)
+    // Team Structure Logic
     const teamStructure = useMemo(() => {
-        if (!project.timeLogs) return {};
         const structure: Record<string, Record<string, { name: string, lastLog: string }>> = {};
 
-        project.timeLogs.forEach(log => {
-            if (!structure[log.department]) structure[log.department] = {};
-            if (!structure[log.department][log.userId]) {
-                structure[log.department][log.userId] = { name: log.userName, lastLog: log.date };
+        // 1. Identify all project members
+        const projectMembers = userProfiles.filter(profile => {
+            const p = profile as any;
+            if (!project?.id) return false;
+            // Case 1: Active project
+            if (p.currentProjectId === project.id) return true;
+            // Case 2: Project in history
+            if (p.projectHistory && Array.isArray(p.projectHistory)) {
+                if (p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id)) return true;
             }
-            // Update last log date if newer
-            if (log.date > structure[log.department][log.userId].lastLog) {
-                structure[log.department][log.userId].lastLog = log.date;
-            }
+            // Case 3: Explicitly in project members map
+            if (project.members && project.members[profile.id]) return true;
+            return false;
         });
+
+        // 2. Initialize structure with all members
+        projectMembers.forEach(member => {
+            const dept = member.department || 'Non assigné';
+            // Prefer ID for matching, fallback to email if needed, but structure key should be consistent with logs
+            // Logs use userId field. We assume log.userId === member.id OR log.userId === member.email
+            // To be safe, we might need to handle both or canonicalize.
+            // For now, let's use member.id as primary key in structure.
+            // If logs use email, we might have mismatch.
+            // Let's assume logs use 'userId' which is the auth ID.
+            const userId = member.id;
+
+            if (!structure[dept]) structure[dept] = {};
+            structure[dept][userId] = {
+                name: (member.firstName && member.lastName) ? `${member.firstName} ${member.lastName}` : (member as any).name || member.email,
+                lastLog: ''
+            };
+        });
+
+        // 3. Overlay Time Logs
+        if (project.timeLogs) {
+            project.timeLogs.forEach(log => {
+                const dept = log.department || 'Non assigné';
+                if (!structure[dept]) structure[dept] = {};
+
+                // Use the userId from log
+                // If the user was already added by projectMembers loop, we update.
+                // If not (e.g. removed member), we add them now.
+                if (!structure[dept][log.userId]) {
+                    structure[dept][log.userId] = { name: log.userName, lastLog: log.date };
+                } else {
+                    // Update existing entry if newer
+                    if (log.date > structure[dept][log.userId].lastLog) {
+                        structure[dept][log.userId].lastLog = log.date;
+                    }
+                }
+            });
+        }
         return structure;
-    }, [project.timeLogs]);
+    }, [project.timeLogs, userProfiles, project.id, project.members]);
 
     // Active Logs for display (Personal OR Selected User)
     const activeLogs = useMemo(() => {

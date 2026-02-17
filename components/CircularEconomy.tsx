@@ -265,9 +265,10 @@ export const CircularEconomy: React.FC = () => {
         const startedItemsByName: Record<string, any> = {};
 
         items.forEach(item => {
-            const startedQty = item.quantityStarted || 0;
+            const startedQty = Number(item.quantityStarted) || 0;
+            const currentQty = Number(item.quantityCurrent) || 0;
             // Ensure we don't have negative new quantity
-            const newQty = Math.max(0, item.quantityCurrent - startedQty);
+            const newQty = Math.max(0, currentQty - startedQty);
 
             // Handle New Portion
             if (newQty > 0) {

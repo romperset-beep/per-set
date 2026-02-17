@@ -198,7 +198,8 @@ export const AdminDashboard: React.FC = () => {
                 try {
                     const itemRef = doc(db, 'projects', transaction.sellerId, 'items', item.id);
                     await updateDoc(itemRef, {
-                        quantityCurrent: increment(item.quantity)
+                        quantityCurrent: increment(item.quantity),
+                        surplusAction: 'RELEASED_TO_PROD' // Reset status to make it visible in "To Sort"
                     });
                 } catch (e) {
                     console.error("Error restoring stock for item", item.id, e);

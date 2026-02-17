@@ -45,9 +45,16 @@ export const CateringWidget: React.FC = () => {
         const userRows = userProfiles
             .filter(profile => {
                 const p = profile as any;
-                const isCurrent = p.currentProjectId === project.id;
-                const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
-                return isCurrent || isInHistory;
+                // Case 1: Active project (Redundant but keeps UI snappy)
+                if (p.currentProjectId === project.id) return true;
+                // Case 2: Project in history
+                if (p.projectHistory && Array.isArray(p.projectHistory)) {
+                    if (p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id)) return true;
+                }
+                // Case 3: Explicitly in project members map (The "Team Directory" Logic)
+                if (project.members && project.members[profile.id]) return true;
+
+                return false;
             })
             .map(profile => {
                 const log = dailyLogs.find(l => l.userId === profile.email); // Assume email is ID for now
@@ -544,10 +551,11 @@ export const CateringWidget: React.FC = () => {
                                     {(() => {
                                         // Count active team members with profiles for this project
                                         // This matches the logic used in TeamDirectory to avoid ghost members
-                                        const activeMembers = userProfiles.filter(p =>
-                                            p.currentProjectId === project.id ||
-                                            p.projectHistory?.some((h: any) => h.id === project.id)
-                                        );
+                                        const activeMembers = userProfiles.filter(profile => {
+                                            const p = profile as any;
+                                            return p.currentProjectId === project.id ||
+                                                p.projectHistory?.some((h: any) => h.id === project.id);
+                                        });
                                         return activeMembers.length;
                                     })()}
                                 </div>
