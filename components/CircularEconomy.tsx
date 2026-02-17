@@ -82,7 +82,7 @@ export const CircularEconomy: React.FC = () => {
     const executeBuyback = async () => {
         if (!buybackConfirmation) return;
         const { item, quantity } = buybackConfirmation;
-        const buybackPrice = (item.originalPrice || item.price || 0) * 0.5;
+        const buybackPrice = (item.originalPrice || item.price || 0) * 0.6;
         const potentialGain = buybackPrice * quantity;
 
         try {

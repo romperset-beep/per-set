@@ -70,7 +70,30 @@ export const CateringWidget: React.FC = () => {
                 };
             });
 
-        // 2. Manual Guests
+        // 2. Cast Members (From Call Sheet, fallback to PDT)
+        const callSheet = project.callSheets?.find(cs => cs.date === selectedDate);
+        const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+
+        // Prioritize Call Sheet cast, then PDT cast
+        const castSource = callSheet?.cast?.length ? callSheet.cast : (pdtDay?.cast || []);
+
+        const castRows = castSource.map((actor: any, index: number) => {
+            const actorName = actor.actor || `Inconnu ${index + 1}`;
+            const castId = `cast_${actorName.replace(/\s+/g, '_')}`;
+            const log = dailyLogs.find(l => l.userId === castId);
+            return {
+                id: castId,
+                name: actorName,
+                department: 'COMÉDIENS', // Special Dept for grouping
+                diet: 'Standard', // TODO: Add diet to Cast in PDT?
+                hasEaten: log?.hasEaten || false,
+                isVegetarian: log?.isVegetarian || false,
+                isManual: false, // Treated as system user for stability
+                role: actor.role || 'Rôle Inconnu'
+            };
+        });
+
+        // 3. Manual Guests
         const manualRows = dailyLogs.filter(l => l.isManual).map(log => ({
             id: log.id,
             name: log.guestName || 'Invité',
@@ -82,7 +105,7 @@ export const CateringWidget: React.FC = () => {
             role: 'Invité'
         }));
 
-        return [...userRows, ...manualRows].sort((a, b) => {
+        return [...userRows, ...castRows, ...manualRows].sort((a, b) => {
             if (a.department !== b.department) return a.department.localeCompare(b.department);
             return a.name.localeCompare(b.name);
         });
@@ -573,85 +596,136 @@ export const CateringWidget: React.FC = () => {
                                 <div className="text-[10px] uppercase font-bold text-slate-500">Comédiens</div>
                             </div>
 
-                            {/* Figurants (Editable) */}
-                            <div className="text-center">
-                                <div className="relative group">
-                                    <input
-                                        type="number"
-                                        className="w-16 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                        value={(() => {
-                                            // 1. Manual Override?
-                                            if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
-                                                return project.cateringInfos[selectedDate].extrasManual;
-                                            }
-                                            // 2. PDT Value?
-                                            const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
-                                            if (pdtDay?.extras) {
-                                                const match = pdtDay.extras.match(/(\d+)/);
-                                                return match ? parseInt(match[1]) : 0;
-                                            }
-                                            return 0;
-                                        })()}
-                                        onChange={async (e) => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            const newInfos = {
-                                                ...(project.cateringInfos || {}),
-                                                [selectedDate]: {
-                                                    ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                    extrasManual: val
+                            {/* Figurants (Editable + Consumed) */}
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Figurants</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                            placeholder="Prévu"
+                                            title="Prévu"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
+                                                    return project.cateringInfos[selectedDate].extrasManual;
                                                 }
-                                            };
-                                            await updateProjectDetails({ cateringInfos: newInfos });
-                                        }}
-                                    />
-                                    <div className="absolute -top-2 -right-2 hidden group-hover:block text-[8px] bg-slate-700 text-white px-1 rounded pointer-events-none">
-                                        Modifiable
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                if (pdtDay?.extras) {
+                                                    const match = pdtDay.extras.match(/(\d+)/);
+                                                    return match ? parseInt(match[1]) : 0;
+                                                }
+                                                return 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        extrasManual: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600">/</span>
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
+                                            placeholder="Réel"
+                                            title="Validé / Mangé"
+                                            value={project.cateringInfos?.[selectedDate]?.extrasConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        extrasConsumed: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
                                     </div>
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">Figurants</div>
                             </div>
 
-                            {/* Cascadeurs (Editable) */}
-                            <div className="text-center">
-                                <div className="relative group">
-                                    <input
-                                        type="number"
-                                        className="w-16 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                        value={project.cateringInfos?.[selectedDate]?.stunts || 0}
-                                        onChange={async (e) => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            const newInfos = {
-                                                ...(project.cateringInfos || {}),
-                                                [selectedDate]: {
-                                                    ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                    stunts: val
-                                                }
-                                            };
-                                            await updateProjectDetails({ cateringInfos: newInfos });
-                                        }}
-                                    />
+                            {/* Cascadeurs (Editable + Consumed) */}
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Cascadeurs</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                            placeholder="Prévu"
+                                            title="Prévu"
+                                            value={project.cateringInfos?.[selectedDate]?.stunts || 0}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        stunts: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600">/</span>
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
+                                            placeholder="Réel"
+                                            title="Validé / Mangé"
+                                            value={project.cateringInfos?.[selectedDate]?.stuntsConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        stuntsConsumed: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
+                                    </div>
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mt-1">Cascadeurs</div>
                             </div>
 
-                            {/* TOTAL PREVISIONNEL */}
+                            {/* TOTAL PREVISIONNEL vs RÉEL */}
                             <div className="w-px h-10 bg-cinema-700 mx-2 hidden md:block"></div>
 
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-amber-500">
+                            {/* FORECAST TOTAL */}
+                            <div className="text-center opacity-60 hover:opacity-100 transition-opacity">
+                                <div className="text-xl font-bold text-amber-500/80">
                                     {(() => {
                                         // Calculate Total Forecast
-                                        // Use same logic as "Équipe" count to match active members
+                                        // 1. Team (Active Members)
                                         const tech = userProfiles.filter(profile => {
                                             const p = profile as any;
-                                            const isCurrent = p.currentProjectId === project.id;
-                                            const isInHistory = p.projectHistory?.some((h: any) => h.id === project.id);
-                                            return isCurrent || isInHistory;
+                                            return p.currentProjectId === project.id ||
+                                                p.projectHistory?.some((h: any) => h.id === project.id);
                                         }).length;
 
+                                        // 2. Cast
                                         const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
                                         const cast = pdtDay?.cast?.length || 0;
 
+                                        // 3. Extras Forecast
                                         let extras = 0;
                                         if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
                                             extras = project.cateringInfos[selectedDate].extrasManual!;
@@ -660,12 +734,35 @@ export const CateringWidget: React.FC = () => {
                                             extras = match ? parseInt(match[1]) : 0;
                                         }
 
+                                        // 4. Stunts Forecast
                                         const stunts = project.cateringInfos?.[selectedDate]?.stunts || 0;
 
                                         return tech + cast + extras + stunts;
                                     })()}
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-amber-500/70">Total Prévu</div>
+                                <div className="text-[9px] uppercase font-bold text-amber-500/60">Total Prévu</div>
+                            </div>
+
+                            {/* ACTUAL TOTAL (VALIDATED) */}
+                            <div className="text-center bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">
+                                <div className="text-2xl font-bold text-green-400">
+                                    {(() => {
+                                        // Calculate Total Validated
+                                        // 1. Team + Guests (From Actual Logs)
+                                        const teamEaten = dailyLogs.filter(l => l.hasEaten).length;
+
+                                        // 2. Extras Validated (Fallback to Forecast if not set? User asked to validate, so separate)
+                                        // Let's use 0 if not set, or maybe we should default to forecast?
+                                        // Usually "Validé" means confirmed count. If undefined, means 0 confirmed yet.
+                                        const extras = project.cateringInfos?.[selectedDate]?.extrasConsumed || 0;
+
+                                        // 3. Stunts Validated
+                                        const stunts = project.cateringInfos?.[selectedDate]?.stuntsConsumed || 0;
+
+                                        return teamEaten + extras + stunts;
+                                    })()}
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-green-500">Total Validé</div>
                             </div>
 
                         </div>

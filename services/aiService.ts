@@ -28,6 +28,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
+        // Reverting to 2.5-flash as found in geminiService.ts, assuming user has specific access
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
@@ -38,7 +39,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             
             Format de réponse attendu : JSON UNIQUEMENT (pas de markdown, pas de texte avant/après).
             
-            Structure JSON :
+            Structure JSON cible :
             {
                 "date": "YYYY-MM-DD",
                 "callTime": "HH:MM",
@@ -54,87 +55,92 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                 "nearestHospital": "Nom et adresse de l'hôpital",
                 "weather": {
                     "condition": "ex: Ensoleillé, Pluvieux",
-                    "morningTemp": 12 (nombre, degres celsius),
+                    "morningTemp": 12,
                     "afternoonTemp": 15
                 },
-
                 "cast": [
                     { 
-                        "role": "TAMARA", 
-                        "actor": "Camille LOU",
-                        "pickupTime": "20:15",
-                        "hmcTime": "21:00",
-                        "mealTime": "22:30",
-                        "readyTime": "23:30" 
+                        "role": "Nom du Rôle (ex: TAMARA)", 
+                        "actor": "Prénom NOM de l'acteur (ex: Camille LOU)",
+                        "pickupTime": "Heure P-U / PICK UP / Départ",
+                        "hmcTime": "Heure HMC / M-C-H",
+                        "mealTime": "Heure DÎNER / DÉJ",
+                        "readyTime": "Heure PAR / PRÊT / SET" 
                     }
                 ],
+            
+            IMPORTANT POUR LE CASTING (COMÉDIENS) :
+            1. Cherche spécifiquement un tableau avec les en-têtes "RÔLES" (ou "ROLES", "PERSONNAGES") et "INTERPRÈTES" (ou "ACTEURS", "ARTISTES", "COMÉDIENS").
+            2. Extrais CHAQUE ligne de ce tableau.
+            3. IGNORE les "DOUBLURES" ou "CASCADES" sauf si demandé explicitement, concentre-toi sur le CAST PRINCIPAL (HMC COMÉDIENS).
+            4. Si tu trouves les infos dans un tableau "TRANSPORTS", utilise-les pour compléter les horaires, mais la source principale des Noms/Rôles est le tableau "RÔLES / INTERPRÈTES".
                 "extras": [
                     { 
-                        "name": "Policiers (5)", 
-                        "hmcTime": "22:50", 
-                        "readyTime": "23:30"
+                        "name": "Nom du Groupe (ex: Passants)", 
+                        "quantity": 10,
+                        "hmcTime": "HH:MM", 
+                        "readyTime": "HH:MM"
                     }
-
+                ],
                 "transports": [
                     {
-                        "name": "Camille LOU",
-                        "pickupTime": "20h15",
-                        "pickupLocation": "Domicile",
-                        "driver": "Taxi",
-                        "destination": "HMC",
-                        "arrivalTime": "21h00"
+                        "name": "Nom Passager",
+                        "pickupTime": "HH:MM",
+                        "pickupLocation": "Lieu Prise en Charge",
+                        "driver": "Nom Chauffeur / Taxi",
+                        "destination": "Destination",
+                        "arrivalTime": "HH:MM"
                     }
                 ],
                 "sequences": [
                     {
                         "sequenceNumber": "1/1A",
                         "decor": "INT. CUISINE",
-                        "description": "Courte description de l'action",
+                        "description": "Courte description",
                         "characters": ["Jean", "Marie"]
                     }
                 ],
-                "notes": ["Note importante 1", "Note importante 2"],
+                "notes": ["Note 1", "Note 2"],
                 "departmentCallTimes": {
                     "Mise en scène": "08:00",
                     "Caméra": "08:00",
-                    "Régie": "07:00",
-                    "...": "..."
+                    "Régie": "07:00"
                 },
                 "departmentNotes": {
-                    "Mise en scène": ["Note 1", "Note 2"],
-                    "Image": ["Prévoir filtre pola", "Opv sur place"],
-                    "Costume": ["Raccord costume Paul..."]
+                    "Mise en scène": ["Note 1"],
+                    "Image": ["Note 1"]
                 }
             }
 
-            Si une info est introuvable, laisse-la vide ou null.
-            Pour "departmentCallTimes", liste explicitement les horaires de convocation par département trouvés dans le tableau (souvent appelé "Tableau de Service" ou "Convocations").
-            
-            IMPORTANT POUR "departmentNotes" :
-            Trouve toutes les sections spécifiques à chaque département dans le corps de la feuille de service.
-            Cherche des titres en MAJUSCULES ou GRAS comme "IMAGE", "IMAG", "CAMÉRA", "MACHINERIE", "ÉLECTRICITÉ", "SON", "ACCESSOIRES", "M.E.S", "MISE EN SCÈNE", "HMC", etc.
-            Tout texte qui suit ces titres et qui donne des instructions techniques (ex: "Stead, Ronin 2", "Grue", "Prévoir...", "Attention à...") DOIT être ajouté dans "departmentNotes" sous le nom du département correspondant.
-            
-            IMPORTANT: Normalise les clés des départements dans "departmentCallTimes" et "departmentNotes". 
-            Exemple: Si tu trouves "M.E.S" ou "MES", utilise la clé "Mise en Scène". Si tu trouves "Imago" ou "Cam", utilise "Caméra".
-            
-            Pour la date, essaye de déduire l'année si elle n'est pas explicite (nous sommes probablement en ${new Date().getFullYear()}).
+            Règles Importantes:
+            1. Si une info est introuvable, laisse-la vide ("") ou null.
+            2. Pour "departmentCallTimes", cherche le tableau des convocations.
+            3. Pour "departmentNotes", cherche les instructions spécifiques par département (souvent après un titre en GRAS/MAJUSCULES).
+            4. Normalise les clés des départements (ex: "M.E.S" -> "Mise en Scène").
+            5. Déduis l'année si nécessaire (probablement ${new Date().getFullYear()}).
         `;
 
         const imagePart = await fileToGenerativePart(file);
 
+        // Fix: Pass the whole part object, not just the inner data
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const text = response.text();
+        console.log("Raw Gemini Output:", text);
 
-        // Cleanup JSON (remove markdown code blocks if present)
-        const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        // Cleanup JSON - Robust Extraction
+        const jsonStart = text.indexOf('{');
+        const jsonEnd = text.lastIndexOf('}');
 
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error("No JSON found in response");
+        }
+
+        const jsonString = text.substring(jsonStart, jsonEnd + 1);
         const data = JSON.parse(jsonString);
 
-        // Map manual specific fields if necessary or strict validation could go here
-
         return {
+            date: data.date,
             callTime: data.callTime,
             endTime: data.endTime,
             location1: data.location1,
@@ -166,7 +172,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                 readyTime: c.readyTime || c.parTime || null
             })),
             extras: data.extras?.map((e: any) => {
-                if (typeof e === 'string') return { name: e }; // Legacy fallback
+                if (typeof e === 'string') return { name: e };
                 return {
                     name: e.name || "",
                     quantity: e.quantity || null,
@@ -184,11 +190,11 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                 destination: t.destination || null,
                 arrivalTime: t.arrivalTime || t.surPlace || null
             })),
-            isDigital: true // Force Digital mode for AI-pdf
+            isDigital: true
         };
 
     } catch (error) {
         console.error("AI Analysis failed:", error);
-        return {};
+        throw error; // Propagate error to the component
     }
 };

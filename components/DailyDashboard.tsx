@@ -391,7 +391,8 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                                 {(() => {
                                     const isMiseEnScene = (dept?: string) => {
                                         if (!dept) return false;
-                                        return dept.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("mise en scene");
+                                        const d = dept.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                        return d.includes("mise en scene") || d.includes("production") || d.includes("realisation");
                                     };
 
                                     if (isMiseEnScene(effectiveDept)) {
@@ -500,7 +501,8 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
 
                                     const isMiseEnScene = deptInfo.includes("mise") && deptInfo.includes("scene");
                                     const isRegie = deptInfo.includes("regie");
-                                    const isAllowed = isMiseEnScene || isRegie;
+                                    const isProduction = deptInfo.includes("production");
+                                    const isAllowed = isMiseEnScene || isRegie || isProduction;
 
                                     if (isAllowed && todayCallSheet.transports && todayCallSheet.transports.length > 0) {
                                         return (

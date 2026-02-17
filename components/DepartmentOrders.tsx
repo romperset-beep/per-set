@@ -172,21 +172,33 @@ export const DepartmentOrders: React.FC = () => {
         const matches: any[] = [];
 
         (visibleRequests || []).forEach(neededItem => {
-            // Find in marketplace by Name (Case Insensitive) AND ensure it's not our own item
+            // Find in marketplace by Name (Case Insensitive)
+            // Allow if:
+            // 1. Project ID is different (Marketplace from others)
+            // 2. OR it's a BuyBack item (Sold to Per-Set, so available to anyone including origin)
             const marketMatches = marketplaceItems.filter(m =>
                 m.name.toLowerCase().trim() === neededItem.name.toLowerCase().trim() &&
-                m.projectId !== project.id
+                (m.projectId !== project.id || m.surplusAction === SurplusAction.BUYBACK)
             );
 
             if (marketMatches.length > 0) {
-                marketMatches.sort((a: any, b: any) => (a.price || 0) - (b.price || 0));
-                const bestMatch = marketMatches[0];
+                // Calculate effective price: 75% of original for Buyback items, else standard price
+                const matchesWithPrice = marketMatches.map((m: any) => {
+                    let effectivePrice = m.price || 0;
+                    if (m.surplusAction === SurplusAction.BUYBACK) {
+                        effectivePrice = (m.originalPrice || m.price || 0) * 0.75;
+                    }
+                    return { ...m, effectivePrice };
+                });
+
+                matchesWithPrice.sort((a: any, b: any) => a.effectivePrice - b.effectivePrice);
+                const bestMatch = matchesWithPrice[0];
 
                 matches.push({
                     neededItem,
-                    marketItem: bestMatch,
-                    saving: (neededItem.price || 0) - (bestMatch.price || 0),
-                    cost: bestMatch.price || 0
+                    marketItem: { ...bestMatch, price: bestMatch.effectivePrice },
+                    saving: (neededItem.price || 0) - bestMatch.effectivePrice,
+                    cost: bestMatch.effectivePrice
                 });
             }
         });
@@ -433,7 +445,7 @@ export const DepartmentOrders: React.FC = () => {
                             className="px-6 py-2 bg-white text-emerald-900 hover:bg-emerald-100 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all animate-bounce-subtle"
                         >
                             <ShoppingCart className="h-4 w-4" />
-                            Tout Commander ({opportunities.reduce((sum, op) => sum + (op.marketItem.price || 0) * Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent), 0)} €)
+                            Tout Commander ({opportunities.reduce((sum, op) => sum + (op.marketItem.price || 0) * Math.min(op.neededItem.quantityInitial, op.marketItem.quantityCurrent), 0).toFixed(2)} €)
                         </button>
                     </div>
 
@@ -454,7 +466,7 @@ export const DepartmentOrders: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
-                                        <div className="font-bold text-emerald-400 text-lg">{op.marketItem.price} €</div>
+                                        <div className="font-bold text-emerald-400 text-lg">{Number(op.marketItem.price).toFixed(2)} €</div>
                                         <div className="text-xs text-emerald-600">l'unité</div>
                                     </div>
                                     <button

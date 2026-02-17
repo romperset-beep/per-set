@@ -39,8 +39,10 @@ export interface OfflineMember {
 
 export interface CateringDayInfo {
   date: string;
-  stunts?: number; // Cascadeurs
-  extrasManual?: number; // Figurants (Override)
+  stunts?: number; // Cascadeurs (Forecast)
+  extrasManual?: number; // Figurants (Forecast Override)
+  stuntsConsumed?: number; // Cascadeurs (Actual/Validated)
+  extrasConsumed?: number; // Figurants (Actual/Validated)
   notes?: string;
 }
 

@@ -181,9 +181,20 @@ export const CallSheetView: React.FC = () => {
                     setUploadWarning("Certaines données (P.A.T, Lieu) n'ont pas été trouvées. Veuillez compléter manuellement.");
                 }
 
-            } catch (err) {
+            } catch (err: any) {
                 console.warn("Analysis Error", err);
-                setUploadWarning("L'analyse automatique a rencontré un problème.");
+                const errorMsg = err?.message || String(err);
+                if (errorMsg.includes("API key")) {
+                    setUploadWarning("Clé API manquante. L'analyse automatique est désactivée.");
+                } else if (errorMsg.includes("404") || errorMsg.includes("not found")) {
+                    setUploadWarning("Modèle IA non trouvé (404). Contactez le support.");
+                } else if (errorMsg.includes("overloaded") || errorMsg.includes("503")) {
+                    setUploadWarning("Service IA surchargé. Réessayez dans un instant.");
+                } else if (errorMsg.includes("No JSON")) {
+                    setUploadWarning("L'IA n'a pas pu lire le document correctement.");
+                } else {
+                    setUploadWarning(`Erreur d'analyse : ${errorMsg}`);
+                }
             } finally {
                 setIsAnalyzing(false);
             }
@@ -211,7 +222,6 @@ export const CallSheetView: React.FC = () => {
 
             await addCallSheet({
                 id: '',
-                date: uploadDate,
                 uploadDate: new Date().toISOString(),
                 name: uploadName,
                 url: downloadUrl,
@@ -221,6 +231,7 @@ export const CallSheetView: React.FC = () => {
                 ...aiData, // Merge AI data first
 
                 // Overwrite with Manual Inputs (State wins)
+                date: uploadDate, // MOVED HERE: Ensures manual date overrides AI date
                 callTime: callTime || null,
                 endTime: endTime || null,
                 location1: location1 || null,
