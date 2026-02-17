@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext'; // Added
 import { Department, LogisticsRequest, LogisticsType } from '../types';
-import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package } from 'lucide-react';
+import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package, AlertTriangle } from 'lucide-react';
 
 export const LogisticsWidget: React.FC = () => {
     const { project, updateProjectDetails, user, currentDept, setCurrentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
@@ -202,10 +202,12 @@ export const LogisticsWidget: React.FC = () => {
 
             const pickup = new Date(t);
             pickup.setDate(t.getDate() - 1);
+            if (pickup.getDay() === 0) pickup.setDate(pickup.getDate() - 1); // If Sunday, move to Saturday
             setAddingToDate(pickup.toISOString().split('T')[0]);
 
             const ret = new Date(t);
             ret.setDate(t.getDate() + 1);
+            if (ret.getDay() === 0) ret.setDate(ret.getDate() + 1); // If Sunday, move to Monday
             setReturnDate(ret.toISOString().split('T')[0]);
         } catch (e) {
             console.error("Error calculating dates", e);
@@ -254,10 +256,12 @@ export const LogisticsWidget: React.FC = () => {
                         // Pickup = First Day - 2
                         const p = new Date(firstDay);
                         p.setDate(firstDay.getDate() - 2);
+                        if (p.getDay() === 0) p.setDate(p.getDate() - 1); // Sunday -> Saturday
 
                         // Return = Last Day + 1
                         const r = new Date(lastDay);
                         r.setDate(lastDay.getDate() + 1);
+                        if (r.getDay() === 0) r.setDate(r.getDate() + 1); // Sunday -> Monday
 
                         setAddingToDate(p.toISOString().split('T')[0]);
                         setReturnDate(r.toISOString().split('T')[0]);
@@ -406,6 +410,7 @@ export const LogisticsWidget: React.FC = () => {
             // 1. PICKUP (J-1) - Amber
             const pickupDate = new Date(refDate);
             pickupDate.setDate(refDate.getDate() - 1);
+            if (pickupDate.getDay() === 0) pickupDate.setDate(pickupDate.getDate() - 1); // Sunday -> Saturday
 
             const pickupReq: LogisticsRequest = {
                 id: `log_${baseId}_pickup`,
@@ -454,6 +459,7 @@ export const LogisticsWidget: React.FC = () => {
             const dropoffDate = returnDate ? new Date(returnDate) : (() => {
                 const d2 = new Date(refDate);
                 d2.setDate(d2.getDate() + 1);
+                if (d2.getDay() === 0) d2.setDate(d2.getDate() + 1); // Sunday -> Monday
                 return d2;
             })();
 
@@ -570,8 +576,34 @@ export const LogisticsWidget: React.FC = () => {
 
             if (!reqToMove) return;
 
-            // Update the request with the new date
-            const updatedReq = { ...reqToMove, date: targetDateStr };
+            // Updated request base
+            // Use 'let' because we might update properties conditionally
+            let updatedReq = { ...reqToMove, date: targetDateStr };
+
+            // Check if linked to Sequence or Location
+            if (reqToMove.linkedSequenceId || reqToMove.linkedLocation) {
+                const isLinkedSeq = !!reqToMove.linkedSequenceId;
+                const linkName = isLinkedSeq ? `la Séquence ${reqToMove.linkedSequenceId}` : `le Lieu ${reqToMove.linkedLocation}`;
+
+                // Use native confirm (Petite fenetre d'alerte)
+                const confirmed = window.confirm(
+                    `Attention : Cet élément est lié à ${linkName}.\n\n` +
+                    `Voulez-vous le détacher et le déplacer au ${new Date(targetDateStr).toLocaleDateString('fr-FR')} ?\n` +
+                    `Il ne sera plus mis à jour automatiquement en cas de modification du plan de travail.`
+                );
+
+                if (!confirmed) return; // Cancelled by user
+
+                // Validated: Unlink the item
+                updatedReq = {
+                    ...updatedReq,
+                    linkedSequenceId: null,      // Remove Sequence Link
+                    linkedLocation: null,        // Remove Location Link
+                    linkType: null,              // Remove Phase Type
+                    dayOffset: 0,                // Reset Offset
+                    autoUpdateDates: false       // Disable Auto-Update
+                };
+            }
 
             // Atomic update (Upsert)
             await addLogisticsRequest(updatedReq);
@@ -682,7 +714,13 @@ export const LogisticsWidget: React.FC = () => {
                         {creationMode === 'DATE' && (
                             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-amber-300 text-sm font-medium flex items-center gap-2 mb-4">
                                 <Calendar className="h-4 w-4" />
-                                <span className="text-amber-200 mr-2">Date d'Utilisation :</span>
+                                <span className="text-amber-200 mr-2">
+                                    {newType === 'pickup' ? "Date d'Enlèvement :" :
+                                        newType === 'dropoff' ? "Date de Retour :" :
+                                            newType === 'pickup_set' ? "Date d'Enlèvement :" :
+                                                newType === 'dropoff_set' ? "Date de Retour :" :
+                                                    "Date d'Utilisation :"}
+                                </span>
                                 <input
                                     type="date"
                                     value={targetDate}
@@ -948,20 +986,46 @@ export const LogisticsWidget: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex gap-3 justify-end pt-2">
-                            <button
-                                onClick={() => resetForm()}
-                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleAddRequest}
-                                disabled={!newLocation}
-                                className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20"
-                            >
-                                {editingRequestId ? 'Mettre à jour' : 'Valider la Demande'}
-                            </button>
+                        {/* SATURDAY WARNING */}
+                        {((addingToDate && new Date(addingToDate).getDay() === 6) || (returnDate && new Date(returnDate).getDay() === 6)) && (
+                            <div className="bg-amber-500/10 border border-amber-500/50 rounded-lg p-3 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                                <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div className="text-sm text-amber-200">
+                                    <p className="font-bold">Attention : Enlèvement/Retour le Samedi</p>
+                                    <p>
+                                        L'enlèvement ou le retour tombe un samedi. Veuillez vérifier que <span className="font-bold text-white">{newLocation || 'le loueur'}</span> est bien ouvert ce jour-là.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 justify-between pt-2">
+                            {/* DELETE BUTTON (only when editing) */}
+                            {editingRequestId ? (
+                                <button
+                                    onClick={() => { handleDelete(editingRequestId); resetForm(); }}
+                                    className="px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors font-medium flex items-center gap-2"
+                                >
+                                    <X className="h-4 w-4" />
+                                    Supprimer
+                                </button>
+                            ) : <div />}
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => resetForm()}
+                                    className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleAddRequest}
+                                    disabled={!newLocation}
+                                    className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20"
+                                >
+                                    {editingRequestId ? 'Mettre à jour' : 'Valider la Demande'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1034,7 +1098,7 @@ export const LogisticsWidget: React.FC = () => {
                                                         <div
                                                             key={req.id}
                                                             onClick={() => req.type !== 'usage' && openEditModal(req)}
-                                                            className={`bg-cinema-900 p-3 rounded-lg border border-cinema-700 flex items-center justify-between hover:border-amber-500 ${req.type === 'usage' ? 'opacity-70 cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
+                                                            className={`group bg-cinema-900 p-3 rounded-lg border border-cinema-700 flex items-center justify-between hover:border-amber-500 ${req.type === 'usage' ? 'opacity-70 cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
                                                                 req.type === 'dropoff' ? 'border-l-4 border-l-blue-500' :
                                                                     req.type === 'usage' ? 'border-l-4 border-l-emerald-500' : ''
                                                                 }`}
@@ -1046,12 +1110,30 @@ export const LogisticsWidget: React.FC = () => {
                                                                     }`}>
                                                                     {req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : 'Utilisation'}
                                                                 </span>
+
+                                                                {/* SATURDAY WARNING BADGE */}
+                                                                {(new Date(dateStr).getDay() === 6 && (req.type === 'pickup' || req.type === 'dropoff')) && (
+                                                                    <div className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+                                                                        <AlertTriangle className="h-3 w-3" />
+                                                                        <span className="text-[10px] font-bold uppercase hidden md:inline">Samedi</span>
+                                                                    </div>
+                                                                )}
+
                                                                 <span className="text-white font-medium truncate">{req.location}</span>
                                                                 <span className="text-xs text-slate-500 truncate hidden md:inline">{req.description}</span>
                                                             </div>
                                                             <div className="flex items-center gap-3 shrink-0">
                                                                 <span className="text-xs text-slate-600 bg-cinema-800 px-2 py-0.5 rounded font-bold">{req.department}</span>
                                                                 <div className="text-sm font-mono text-slate-400">{req.time}</div>
+
+                                                                {/* DELETE BUTTON */}
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(req.id); }}
+                                                                    className={`p-1 text-slate-500 hover:text-red-400 transition-opacity ${req.type === 'usage' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                                                    title="Supprimer"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1224,6 +1306,15 @@ export const LogisticsWidget: React.FC = () => {
                                                         </span>
                                                         <span className="text-xs font-mono text-slate-400">{req.time}</span>
                                                     </div>
+
+                                                    {/* SATURDAY WARNING BADGE */}
+                                                    {(dateStr && new Date(dateStr).getDay() === 6 && (req.type === 'pickup' || req.type === 'dropoff')) && (
+                                                        <div className="mb-1 flex items-center gap-1.5 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                                            <AlertTriangle className="h-3 w-3" />
+                                                            <span className="text-[10px] font-bold uppercase">Attention : Samedi</span>
+                                                        </div>
+                                                    )}
+
                                                     <div className="font-bold text-white text-sm truncate">{req.location}</div>
                                                     {req.description && (
                                                         <div className="text-xs text-slate-400 truncate mt-0.5">

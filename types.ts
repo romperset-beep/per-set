@@ -116,10 +116,10 @@ export interface LogisticsRequest {
   distanceKm?: number;
 
   // Sequence Linking
-  linkedSequenceId?: string; // ID of the sequence (e.g., "43")
+  linkedSequenceId?: string | null; // ID of the sequence (e.g., "43")
   autoUpdateDates?: boolean; // If true, dates update automatically when sequence moves
-  linkedLocation?: string; // New: Link to PDT Location
-  linkType?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING'; // New
+  linkedLocation?: string | null; // New: Link to PDT Location
+  linkType?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING' | null; // New
   dayOffset?: number; // New
   duration?: number; // New
 }

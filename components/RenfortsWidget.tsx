@@ -346,7 +346,7 @@ export const RenfortsWidget: React.FC = () => {
                 setLinkedSequenceId(''); setLinkedLocation('');
                 setSelectedPhases({ PRELIGHT: false, DEMONTAGE: false });
                 setDurations({ PRELIGHT: 1, DEMONTAGE: 1 });
-                setAddingToDate(null); setIsModalOpen(false);
+                setAddingToDate(null);
             }
 
         } catch (error) {
@@ -1392,6 +1392,7 @@ export const RenfortsWidget: React.FC = () => {
                             >
                                 <option value="">Aucune séquence liée</option>
                                 {(project.pdtSequences || [])
+                                    .filter(seq => seq.date === addingToDate)
                                     .sort((a, b) => {
                                         if (a.date !== b.date) return a.date.localeCompare(b.date);
                                         return a.id.localeCompare(b.id, undefined, { numeric: true });

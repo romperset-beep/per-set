@@ -1565,7 +1565,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const id = request.id || `logistics_${Date.now()}`;
     const docRef = doc(db, 'projects', projectId, 'logistics', id);
 
-    await setDoc(docRef, { ...request, id });
+    // Sanitize undefined values (Firestore rejects undefined)
+    const sanitizedRequest = Object.fromEntries(
+      Object.entries({ ...request, id }).map(([k, v]) => [k, v === undefined ? null : v])
+    );
+
+    await setDoc(docRef, sanitizedRequest);
 
     addNotification(
       `Demande transport (${request.type}) pour ${request.department}`,
