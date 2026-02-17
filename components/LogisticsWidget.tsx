@@ -40,6 +40,19 @@ export const LogisticsWidget: React.FC = () => {
     const [isMultiDay, setIsMultiDay] = useState(false); // New
     const [useFullDuration, setUseFullDuration] = useState(false); // New
 
+    // --- CUSTOM CONFIRM DIALOG STATE ---
+    const [confirmDialog, setConfirmDialog] = useState<{ message: string; onYes: () => void; onNo: () => void } | null>(null);
+
+    const showConfirm = (message: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            setConfirmDialog({
+                message,
+                onYes: () => { setConfirmDialog(null); resolve(true); },
+                onNo: () => { setConfirmDialog(null); resolve(false); }
+            });
+        });
+    };
+
     const navThrottleRef = React.useRef<number>(0);
 
     // Helper: Get Week Info (Relative to Shooting Start or ISO)
@@ -181,15 +194,22 @@ export const LogisticsWidget: React.FC = () => {
         }
     }, [modalStep, editingRequestId]);
 
-    // Auto-calculate dates based on Target Date or Sequence
+    // Auto-calculate dates and location based on Sequence selection
     React.useEffect(() => {
         if (linkedSequenceId && project.pdtSequences) {
             const seq = project.pdtSequences.find(s => s.id === linkedSequenceId);
             if (seq) {
                 setTargetDate(seq.date);
+                // Auto-fill location from PDT day
+                if (project.pdtDays) {
+                    const pdtDay = project.pdtDays.find(d => d.date === seq.date);
+                    if (pdtDay?.location && !newLocation) {
+                        setNewLocation(pdtDay.location);
+                    }
+                }
             }
         }
-    }, [linkedSequenceId, project.pdtSequences]);
+    }, [linkedSequenceId, project.pdtSequences, project.pdtDays]);
 
     // Auto-fill Dates when Target Date is selected (for Manual or Simple modes)
     React.useEffect(() => {
@@ -576,36 +596,79 @@ export const LogisticsWidget: React.FC = () => {
 
             if (!reqToMove) return;
 
-            // Updated request base
-            // Use 'let' because we might update properties conditionally
-            let updatedReq = { ...reqToMove, date: targetDateStr };
+            // Calculate day offset between source and target
+            const sourceDateObj = new Date(sourceDate);
+            const targetDateObj = new Date(targetDateStr);
+            const daysDiff = Math.round((targetDateObj.getTime() - sourceDateObj.getTime()) / (1000 * 60 * 60 * 24));
 
             // Check if linked to Sequence or Location
-            if (reqToMove.linkedSequenceId || reqToMove.linkedLocation) {
+            const isLinked = reqToMove.linkedSequenceId || reqToMove.linkedLocation;
+            let shouldUnlink = false;
+
+            if (isLinked) {
                 const isLinkedSeq = !!reqToMove.linkedSequenceId;
                 const linkName = isLinkedSeq ? `la Séquence ${reqToMove.linkedSequenceId}` : `le Lieu ${reqToMove.linkedLocation}`;
 
-                // Use native confirm (Petite fenetre d'alerte)
-                const confirmed = window.confirm(
-                    `Attention : Cet élément est lié à ${linkName}.\n\n` +
-                    `Voulez-vous le détacher et le déplacer au ${new Date(targetDateStr).toLocaleDateString('fr-FR')} ?\n` +
-                    `Il ne sera plus mis à jour automatiquement en cas de modification du plan de travail.`
+                const confirmed = await showConfirm(
+                    `Attention : Cet élément est lié à ${linkName}.\n\nVoulez-vous le détacher et le déplacer au ${targetDateObj.toLocaleDateString('fr-FR')} ?\nIl ne sera plus mis à jour automatiquement en cas de modification du plan de travail.`
                 );
 
-                if (!confirmed) return; // Cancelled by user
+                if (!confirmed) return;
+                shouldUnlink = true;
+            }
 
-                // Validated: Unlink the item
+            // Find sibling items (same roundtrip group)
+            // IDs follow pattern: log_TIMESTAMP_pickup, log_TIMESTAMP_usage, log_TIMESTAMP_dropoff
+            const idParts = requestId.match(/^(log_\d+)_(pickup|usage|dropoff|pickup_set|dropoff_set)$/);
+            const baseId = idParts ? idParts[1] : null;
+
+            const siblings = baseId
+                ? allRequests.filter(r => r.id.startsWith(baseId + '_') && r.id !== requestId)
+                : [];
+
+            if (siblings.length > 0) {
+                // Confirm cascading move
+                const cascadeMsg = `Ce transport fait partie d'un aller-retour.\n\nVoulez-vous décaler automatiquement les ${siblings.length} autre(s) élément(s) liés de ${daysDiff > 0 ? '+' : ''}${daysDiff} jour(s) ?`;
+
+                const cascadeConfirmed = await showConfirm(cascadeMsg);
+
+                if (cascadeConfirmed) {
+                    // Move all siblings by same offset
+                    for (const sibling of siblings) {
+                        const sibDate = new Date(sibling.date);
+                        sibDate.setDate(sibDate.getDate() + daysDiff);
+                        // Skip Sundays
+                        if (sibDate.getDay() === 0) sibDate.setDate(sibDate.getDate() + (daysDiff > 0 ? 1 : -1));
+
+                        let updatedSibling = { ...sibling, date: sibDate.toISOString().split('T')[0] };
+                        if (shouldUnlink) {
+                            updatedSibling = {
+                                ...updatedSibling,
+                                linkedSequenceId: null,
+                                linkedLocation: null,
+                                linkType: null,
+                                dayOffset: 0,
+                                autoUpdateDates: false
+                            };
+                        }
+                        await addLogisticsRequest(updatedSibling);
+                    }
+                }
+            }
+
+            // Move the dragged item
+            let updatedReq = { ...reqToMove, date: targetDateStr };
+            if (shouldUnlink) {
                 updatedReq = {
                     ...updatedReq,
-                    linkedSequenceId: null,      // Remove Sequence Link
-                    linkedLocation: null,        // Remove Location Link
-                    linkType: null,              // Remove Phase Type
-                    dayOffset: 0,                // Reset Offset
-                    autoUpdateDates: false       // Disable Auto-Update
+                    linkedSequenceId: null,
+                    linkedLocation: null,
+                    linkType: null,
+                    dayOffset: 0,
+                    autoUpdateDates: false
                 };
             }
 
-            // Atomic update (Upsert)
             await addLogisticsRequest(updatedReq);
 
         } catch (error) {
@@ -616,7 +679,7 @@ export const LogisticsWidget: React.FC = () => {
     // --- MODAL CONTENT (Shared between views) ---
     const modalContent = isModalOpen && ( // Use isModalOpen instead of addingToDate check
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => resetForm()}>
-            <div className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-lg p-6 space-y-6 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-lg p-6 space-y-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
 
                 {/* HEADER */}
                 <div className="flex justify-between items-start">
@@ -661,7 +724,7 @@ export const LogisticsWidget: React.FC = () => {
                                 setCreationMode('SEQUENCE');
                                 setModalStep('FORM');
                                 setLinkedSequenceId('');
-                                setTargetDate(''); // Clear target
+                                if (addingToDate) setTargetDate(addingToDate); // Keep calendar day as filter
                             }}
                             className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-4 rounded-xl transition-all group"
                         >
@@ -732,25 +795,49 @@ export const LogisticsWidget: React.FC = () => {
 
                         {/* MODE SEQUENCE HEADER */}
                         {creationMode === 'SEQUENCE' && (
-                            <div className="mb-4 space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Sélectionner la Séquence</label>
-                                <select
-                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
-                                    value={linkedSequenceId}
-                                    onChange={e => setLinkedSequenceId(e.target.value)}
-                                >
-                                    <option value="">-- Choisir une séquence --</option>
-                                    {(project.pdtSequences || [])
-                                        .sort((a, b) => {
-                                            if (a.date !== b.date) return a.date.localeCompare(b.date);
-                                            return a.id.localeCompare(b.id, undefined, { numeric: true });
-                                        })
-                                        .map(seq => (
-                                            <option key={seq.id} value={seq.id}>
-                                                SEQ {seq.id} - {new Date(seq.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ({seq.decor || 'Sans décor'})
-                                            </option>
-                                        ))}
-                                </select>
+                            <div className="mb-4 space-y-3">
+                                {/* Date picker for filtering sequences */}
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-amber-300 text-sm font-medium flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    <span className="text-amber-200 mr-2">Date de Tournage :</span>
+                                    <input
+                                        type="date"
+                                        value={targetDate}
+                                        onChange={(e) => { setTargetDate(e.target.value); setLinkedSequenceId(''); }}
+                                        className="bg-transparent border-none text-amber-300 focus:ring-0 p-0 font-bold"
+                                    />
+                                </div>
+
+                                {targetDate ? (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-300">Sélectionner la Séquence</label>
+                                        <select
+                                            className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                            value={linkedSequenceId}
+                                            onChange={e => setLinkedSequenceId(e.target.value)}
+                                        >
+                                            <option value="">-- Choisir une séquence --</option>
+                                            {(project.pdtSequences || [])
+                                                .filter(seq => seq.date === targetDate)
+                                                .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+                                                .map(seq => (
+                                                    <option key={seq.id} value={seq.id}>
+                                                        SEQ {seq.id} ({seq.decor || 'Sans décor'})
+                                                    </option>
+                                                ))}
+                                            {!(project.pdtSequences || []).some(s => s.date === targetDate) && (
+                                                <option value="" disabled>Aucune séquence ce jour-là</option>
+                                            )}
+                                        </select>
+                                        <p className="text-xs text-slate-500 italic">
+                                            Seules les séquences tournées le {new Date(targetDate).toLocaleDateString('fr-FR')} sont affichées.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 text-slate-500 text-sm">
+                                        Choisissez d'abord une date de tournage pour filtrer les séquences.
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -801,31 +888,7 @@ export const LogisticsWidget: React.FC = () => {
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-300">Phase</label>
-                                                <select
-                                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
-                                                    value={linkType}
-                                                    onChange={e => setLinkType(e.target.value as any)}
-                                                >
-                                                    <option value="SHOOTING">Tournage (Standard)</option>
-                                                    <option value="PRELIGHT">Prépa / Prelight</option>
-                                                    <option value="DEMONTAGE">Démontage</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-300">{useFullDuration ? 'Décalage (Auto)' : 'Décalage (Jours)'}</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={useFullDuration} // Lock if auto
-                                                    className={`w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500 ${useFullDuration ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    value={duration}
-                                                    onChange={e => setDuration(parseInt(e.target.value) || 1)}
-                                                />
-                                            </div>
-                                        </div>
+
                                     </>
                                 )}
                             </div>
@@ -1337,7 +1400,7 @@ export const LogisticsWidget: React.FC = () => {
                                                 </div>
                                             )) : (
                                                 !addingToDate && (
-                                                    <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-amber-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-amber-500/50 rounded-lg p-4 min-h-[100px]">
+                                                    <div onClick={() => { setAddingToDate(dateStr); setModalStep('SELECTION'); setIsModalOpen(true); }} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-amber-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-amber-500/50 rounded-lg p-4 min-h-[100px]">
                                                         <Plus className="h-6 w-6 mb-2" />
                                                         <span className="text-xs font-medium">Demander</span>
                                                     </div>
@@ -1347,7 +1410,7 @@ export const LogisticsWidget: React.FC = () => {
 
                                         {addingToDate !== dateStr && requests.length > 0 && (
                                             <button
-                                                onClick={() => setAddingToDate(dateStr)}
+                                                onClick={() => { setAddingToDate(dateStr); setModalStep('SELECTION'); setIsModalOpen(true); }}
                                                 className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs text-slate-500 hover:text-amber-400 hover:bg-cinema-700/30 rounded-lg transition-colors border border-transparent hover:border-cinema-700"
                                             >
                                                 <Plus className="h-3 w-3" />
@@ -1361,6 +1424,29 @@ export const LogisticsWidget: React.FC = () => {
                     })}
                 </div>
             </div>
+
+            {/* CUSTOM CONFIRM DIALOG */}
+            {confirmDialog && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+                        <p className="text-white whitespace-pre-line text-sm leading-relaxed">{confirmDialog.message}</p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={confirmDialog.onNo}
+                                className="px-5 py-2 rounded-lg bg-cinema-700 text-slate-300 hover:bg-cinema-600 hover:text-white font-medium transition-colors"
+                            >
+                                Non
+                            </button>
+                            <button
+                                onClick={confirmDialog.onYes}
+                                className="px-5 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-500 font-bold transition-colors"
+                            >
+                                Oui
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ADD COMPOSITE MODAL (WIZARD) */}
             {modalContent}
