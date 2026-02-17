@@ -1423,13 +1423,27 @@ export const RenfortsWidget: React.FC = () => {
                                     }}
                                 >
                                     <option value="">-- Aucun lieu lié --</option>
-                                    {Array.from(new Set((project.pdtDays || [])
-                                        .map(d => d.linkedLocation || d.location)
-                                        .filter(l => l && l !== 'OFF' && l !== 'VACANCES')))
-                                        .sort()
-                                        .map(loc => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
+                                    {(() => {
+                                        // Show the location planned for the selected day first
+                                        const dayLoc = addingToDate && project.pdtDays
+                                            ? project.pdtDays.find(d => d.date === addingToDate)
+                                            : null;
+                                        const dayLocation = dayLoc?.linkedLocation || dayLoc?.location;
+
+                                        if (dayLocation && dayLocation !== 'OFF' && dayLocation !== 'VACANCES') {
+                                            // Show only the day's location as suggestion
+                                            return <option key={dayLocation} value={dayLocation}>{dayLocation} (prévu ce jour)</option>;
+                                        }
+
+                                        // Fallback: show all locations if no PDT match for this day
+                                        return Array.from(new Set((project.pdtDays || [])
+                                            .map(d => d.linkedLocation || d.location)
+                                            .filter(l => l && l !== 'OFF' && l !== 'VACANCES')))
+                                            .sort()
+                                            .map(loc => (
+                                                <option key={loc} value={loc}>{loc}</option>
+                                            ));
+                                    })()}
                                 </select>
                             </div>
 
