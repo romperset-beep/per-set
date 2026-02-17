@@ -579,9 +579,24 @@ export const LogisticsWidget: React.FC = () => {
         e.dataTransfer.dropEffect = 'move';
     };
 
+    // Helper: skip Sundays when shifting a date
+    const skipSunday = (date: Date, direction: number): Date => {
+        if (date.getDay() === 0) { // Sunday
+            date.setDate(date.getDate() + (direction >= 0 ? 1 : -1)); // Mon or Sat
+        }
+        return date;
+    };
+
     const handleDropOnDay = async (e: React.DragEvent, targetDateStr: string) => {
         e.preventDefault();
         setIsDragging(false);
+
+        // Block drops on Sunday
+        const targetDay = new Date(targetDateStr).getDay();
+        if (targetDay === 0) {
+            await showConfirm('Impossible de déplacer un transport sur un dimanche.');
+            return;
+        }
 
         const dataStr = e.dataTransfer.getData('application/json');
         if (!dataStr) return;
@@ -627,18 +642,16 @@ export const LogisticsWidget: React.FC = () => {
                 : [];
 
             if (siblings.length > 0) {
-                // Confirm cascading move
                 const cascadeMsg = `Ce transport fait partie d'un aller-retour.\n\nVoulez-vous décaler automatiquement les ${siblings.length} autre(s) élément(s) liés de ${daysDiff > 0 ? '+' : ''}${daysDiff} jour(s) ?`;
 
                 const cascadeConfirmed = await showConfirm(cascadeMsg);
 
                 if (cascadeConfirmed) {
-                    // Move all siblings by same offset
                     for (const sibling of siblings) {
                         const sibDate = new Date(sibling.date);
                         sibDate.setDate(sibDate.getDate() + daysDiff);
-                        // Skip Sundays
-                        if (sibDate.getDay() === 0) sibDate.setDate(sibDate.getDate() + (daysDiff > 0 ? 1 : -1));
+                        // Skip Sunday → shift to Monday (forward) or Saturday (backward)
+                        skipSunday(sibDate, daysDiff);
 
                         let updatedSibling = { ...sibling, date: sibDate.toISOString().split('T')[0] };
                         if (shouldUnlink) {
@@ -656,7 +669,7 @@ export const LogisticsWidget: React.FC = () => {
                 }
             }
 
-            // Move the dragged item
+            // Move the dragged item (already verified not Sunday above)
             let updatedReq = { ...reqToMove, date: targetDateStr };
             if (shouldUnlink) {
                 updatedReq = {
