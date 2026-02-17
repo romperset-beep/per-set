@@ -240,8 +240,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         // console.log("[ProjectSync] Metadata received:", data);
 
         setProject(prev => {
-          // EXCLUDE 'items' from metadata sync. Items are handled by subcollection listener.
-          const { items, ...restData } = data;
+          // EXCLUDE subcollection-managed data from metadata sync.
+          // Items, logistics, and reinforcements are handled by their own subcollection listeners.
+          const { items, logistics, reinforcements, ...restData } = data;
 
           const newProject = {
             ...prev,
