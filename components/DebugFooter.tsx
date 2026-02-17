@@ -22,7 +22,7 @@ export const DebugFooter: React.FC = () => {
     if (!user || !isVisible) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-black/90 p-2 text-[10px] font-mono text-green-400 z-50 border-t border-green-900 flex justify-between items-center opacity-70 hover:opacity-100 transition-opacity">
+        <div className="fixed bottom-0 left-0 w-full bg-black/90 p-2 text-[10px] font-mono text-green-400 z-50 border-t border-green-900 hidden md:flex justify-between items-center opacity-70 hover:opacity-100 transition-opacity">
             <div className="flex gap-4 items-center">
                 <span>
                     <strong className="text-white">UID:</strong> {user.email}
