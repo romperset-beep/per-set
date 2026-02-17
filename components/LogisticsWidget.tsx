@@ -616,10 +616,12 @@ export const LogisticsWidget: React.FC = () => {
             const daysDiff = Math.round((targetDateObj.getTime() - sourceDateObj.getTime()) / (1000 * 60 * 60 * 24));
 
             // Check if linked to Sequence or Location
+            // Only the USAGE item (shooting day) triggers unlinking — pickup/dropoff can move freely
             const isLinked = reqToMove.linkedSequenceId || reqToMove.linkedLocation;
+            const isUsageItem = reqToMove.type === 'usage';
             let shouldUnlink = false;
 
-            if (isLinked) {
+            if (isLinked && isUsageItem) {
                 const isLinkedSeq = !!reqToMove.linkedSequenceId;
                 const linkName = isLinkedSeq ? `la Séquence ${reqToMove.linkedSequenceId}` : `le Lieu ${reqToMove.linkedLocation}`;
 
