@@ -1529,7 +1529,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Use ID as doc ID to prevent duplicates/ensure idempotency
     const docRef = doc(db, 'projects', projectId, 'reinforcements', reinforcement.id);
-    await setDoc(docRef, reinforcement, { merge: true });
+    // Sanitize undefined values (Firestore rejects undefined)
+    const sanitized = Object.fromEntries(
+      Object.entries(reinforcement).filter(([_, v]) => v !== undefined)
+    );
+    await setDoc(docRef, sanitized, { merge: true });
 
     // Notification
     if (user?.department !== 'PRODUCTION' && reinforcement.department) {
@@ -1545,7 +1549,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const projectId = project.id;
     if (!projectId) return;
     const docRef = doc(db, 'projects', projectId, 'reinforcements', reinforcement.id);
-    await updateDoc(docRef, reinforcement);
+    // Sanitize undefined values (Firestore rejects undefined)
+    const sanitized = Object.fromEntries(
+      Object.entries(reinforcement).filter(([_, v]) => v !== undefined)
+    );
+    await updateDoc(docRef, sanitized);
   };
 
   const deleteReinforcement = async (reinforcementId: string) => {
