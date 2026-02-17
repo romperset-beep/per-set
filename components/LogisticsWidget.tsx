@@ -388,9 +388,15 @@ export const LogisticsWidget: React.FC = () => {
         }
 
         // --- CREATE MODE ---
-        const refDateStr = targetDate || addingToDate;
+        let refDateStr = targetDate || addingToDate;
         if (!refDateStr) return;
         const refDate = new Date(refDateStr);
+
+        // Prevent creating on Sunday — shift to Monday
+        if (refDate.getDay() === 0) {
+            refDate.setDate(refDate.getDate() + 1);
+            refDateStr = refDate.toISOString().split('T')[0];
+        }
 
         let dayOffset = 0;
         if (creationMode === 'LOCATION' && linkedLocation && project.pdtDays) {
