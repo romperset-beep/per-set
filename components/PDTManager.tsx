@@ -119,10 +119,30 @@ export const PDTManager: React.FC = () => {
             }
 
             // Auto-Sync Logic: Logistics
-            if (project.logistics && project.logistics.length > 0 && analysisResult.extractedSequences) {
-                const updatedLogistics = project.logistics.map(req => {
-                    if (req.linkedSequenceId && req.autoUpdateDates) {
-                        const relatedSeq = analysisResult.extractedSequences!.find((s: any) => s.id === req.linkedSequenceId);
+            if (project.logistics && project.logistics.length > 0) {
+                // Prepare Map of Location -> {start, end} from NEW pdtDays
+                const locationDates: Record<string, { start: Date, end: Date }> = {};
+                if (updates.pdtDays) {
+                    updates.pdtDays.forEach((d: any) => {
+                        const loc = d.linkedLocation || d.location;
+                        if (!loc) return;
+                        const date = new Date(d.date);
+                        if (!locationDates[loc]) {
+                            locationDates[loc] = { start: date, end: date };
+                        } else {
+                            if (date < locationDates[loc].start) locationDates[loc].start = date;
+                            if (date > locationDates[loc].end) locationDates[loc].end = date;
+                        }
+                    });
+                }
+
+                // Update Logistics
+                updates.logistics = project.logistics.map(req => {
+                    let updatedReq = { ...req };
+
+                    // 1. Sync Sequence
+                    if (req.linkedSequenceId && req.autoUpdateDates && analysisResult.extractedSequences) {
+                        const relatedSeq = analysisResult.extractedSequences.find((s: any) => s.id === req.linkedSequenceId);
                         if (relatedSeq) {
                             const seqDate = new Date(relatedSeq.date);
                             const pickupDate = new Date(seqDate);
@@ -130,20 +150,62 @@ export const PDTManager: React.FC = () => {
                             const returnDate = new Date(seqDate);
                             returnDate.setDate(seqDate.getDate() + 1);
 
-                            return {
-                                ...req,
+                            updatedReq = {
+                                ...updatedReq,
                                 date: pickupDate.toISOString().split('T')[0],
                                 returnDate: returnDate.toISOString().split('T')[0]
                             };
                         }
                     }
-                    return req;
+
+                    // 2. Sync Location
+                    if (req.linkedLocation && locationDates[req.linkedLocation]) {
+                        const { start, end } = locationDates[req.linkedLocation];
+                        let newDate = new Date(start);
+
+                        // Reference Point: Start or End?
+                        // If Pre/Shooting -> Start. If Demontage -> End.
+                        if (req.linkType === 'DEMONTAGE') {
+                            newDate = new Date(end);
+                        }
+
+                        // Apply Offset (days)
+                        // If dayOffset is undefined, assume 0
+                        const offset = req.dayOffset || 0;
+                        newDate.setDate(newDate.getDate() + offset);
+
+                        // For simplicity, we just update the main Date. 
+                        // If it's a Roundtrip, pickup/usage/return are separate requests now (except historic ones).
+                        // If historical roundtrip is single obj with returnDate, we might need logic, 
+                        // but new structure splits them.
+                        updatedReq = {
+                            ...updatedReq,
+                            date: newDate.toISOString().split('T')[0]
+                        };
+                    }
+
+                    return updatedReq;
                 });
-                updates.logistics = updatedLogistics;
             }
 
-            // Auto-Sync Logic: Renforts (Move staff if sequence date changes)
-            if (project.reinforcements && project.reinforcements.length > 0 && analysisResult.extractedSequences) {
+            // Auto-Sync Logic: Renforts (Move staff if sequence OR location date changes)
+            if (project.reinforcements && project.reinforcements.length > 0) {
+                // Prepare Map of Location -> {start, end} (Reuse if possible, but scope...)
+                const locationDates: Record<string, { start: Date, end: Date }> = {};
+                if (updates.pdtDays) {
+                    updates.pdtDays.forEach((d: any) => {
+                        const loc = d.linkedLocation || d.location;
+                        if (!loc) return;
+                        const date = new Date(d.date);
+                        if (!locationDates[loc]) {
+                            locationDates[loc] = { start: date, end: date };
+                        } else {
+                            if (date < locationDates[loc].start) locationDates[loc].start = date;
+                            if (date > locationDates[loc].end) locationDates[loc].end = date;
+                        }
+                    });
+                }
+
                 // 1. Flatten all staff
                 let allStaff: { staff: any, dept: string, date: string }[] = [];
                 project.reinforcements.forEach(r => {
@@ -154,15 +216,43 @@ export const PDTManager: React.FC = () => {
                     }
                 });
 
-                // 2. Update dates based on linked sequences
+                // 2. Update dates
                 let hasRenfortChanges = false;
                 const updatedStaffList = allStaff.map(item => {
-                    if (item.staff.linkedSequenceId) {
-                        const seq = analysisResult.extractedSequences!.find((s: any) => s.id === item.staff.linkedSequenceId);
+                    let newDate = item.date;
+                    let changed = false;
+
+                    // Sync Sequence
+                    if (item.staff.linkedSequenceId && analysisResult.extractedSequences) {
+                        const seq = analysisResult.extractedSequences.find((s: any) => s.id === item.staff.linkedSequenceId);
                         if (seq && seq.date !== item.date) {
-                            hasRenfortChanges = true;
-                            return { ...item, date: seq.date }; // Move to new date
+                            newDate = seq.date;
+                            changed = true;
                         }
+                    }
+
+                    // Sync Location
+                    if (item.staff.linkedLocation && locationDates[item.staff.linkedLocation]) {
+                        const { start, end } = locationDates[item.staff.linkedLocation];
+                        let targetDateObj = new Date(start);
+
+                        if (item.staff.linkType === 'DEMONTAGE') {
+                            targetDateObj = new Date(end);
+                        }
+
+                        const offset = item.staff.dayOffset || 0;
+                        targetDateObj.setDate(targetDateObj.getDate() + offset);
+
+                        const targetDateStr = targetDateObj.toISOString().split('T')[0];
+                        if (targetDateStr !== item.date) {
+                            newDate = targetDateStr;
+                            changed = true;
+                        }
+                    }
+
+                    if (changed) {
+                        hasRenfortChanges = true;
+                        return { ...item, date: newDate };
                     }
                     return item;
                 });

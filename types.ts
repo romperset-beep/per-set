@@ -116,6 +116,10 @@ export interface LogisticsRequest {
   // Sequence Linking
   linkedSequenceId?: string; // ID of the sequence (e.g., "43")
   autoUpdateDates?: boolean; // If true, dates update automatically when sequence moves
+  linkedLocation?: string; // New: Link to PDT Location
+  linkType?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING'; // New
+  dayOffset?: number; // New
+  duration?: number; // New
 }
 
 export interface PDTSequence {
@@ -134,6 +138,7 @@ export interface PDTDay {
   cast?: string[]; // List of Actor Names or IDs
   extras?: string; // e.g. "20 passants"
   notes?: string;
+  linkedLocation?: string; // Canonical location name for linking
 }
 
 export interface EnergyLog {
@@ -203,7 +208,13 @@ export interface ReinforcementDetail {
   email?: string;
   role?: string; // Poste / Fonction
   linkedSequenceId?: string; // Added: Link to PDT Sequence
+  linkedLocation?: string; // New: Link to PDT Location (City/Lieu)
+  linkType?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING'; // New: Type of link
+  dayOffset?: number; // New: Offset from location start/end
+  duration?: number; // New: Duration in days (for prelight/demontage)
+  validationStatus?: 'PENDING' | 'APPROVED'; // New: Validation status
 }
+
 
 export interface Reinforcement {
   id: string; // date_dept_index or similar

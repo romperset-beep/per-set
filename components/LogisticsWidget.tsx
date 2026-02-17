@@ -6,7 +6,7 @@ import { Department, LogisticsRequest, LogisticsType } from '../types';
 import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package } from 'lucide-react';
 
 export const LogisticsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
+    const { project, updateProjectDetails, user, currentDept, setCurrentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
     const { notifications, markAsRead } = useNotification(); // Added
 
     // Auto-clear notifications for Production
@@ -37,6 +37,9 @@ export const LogisticsWidget: React.FC = () => {
 
     // --- DRAG AND DROP STATE ---
     const [isDragging, setIsDragging] = useState(false);
+    const [isMultiDay, setIsMultiDay] = useState(false); // New
+    const [useFullDuration, setUseFullDuration] = useState(false); // New
+
     const navThrottleRef = React.useRef<number>(0);
 
     // Helper: Get Week Info (Relative to Shooting Start or ISO)
@@ -161,7 +164,10 @@ export const LogisticsWidget: React.FC = () => {
     const [newVehicle, setNewVehicle] = useState<'HGV' | 'Truck' | 'Van' | 'Car' | 'Scooter'>('Van');
     // Distance removed as per user request
     const [linkedSequenceId, setLinkedSequenceId] = useState('');
-    const [creationMode, setCreationMode] = useState<'DATE' | 'SEQUENCE'>('DATE'); // New State for Modal Mode
+    const [creationMode, setCreationMode] = useState<'DATE' | 'SEQUENCE' | 'LOCATION'>('DATE'); // Added LOCATION
+    const [linkedLocation, setLinkedLocation] = useState(''); // Added
+    const [linkType, setLinkType] = useState<'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING'>('SHOOTING'); // Added
+    const [duration, setDuration] = useState(1); // Added
     const [modalStep, setModalStep] = useState<'SELECTION' | 'FORM'>('SELECTION'); // Wizard Step
     const [targetDate, setTargetDate] = useState<string>(''); // Utilization/Reference Date
     const [returnDate, setReturnDate] = useState<string>(''); // Explicit Return Date
@@ -185,12 +191,12 @@ export const LogisticsWidget: React.FC = () => {
         }
     }, [linkedSequenceId, project.pdtSequences]);
 
-    // Derive Pickup/Return from Target Date (Core Logic)
+    // Auto-fill Dates when Target Date is selected (for Manual or Simple modes)
     React.useEffect(() => {
         if (!targetDate) return;
+        if (useFullDuration && isMultiDay) return; // SKIP if using full duration logic
 
         try {
-            // Pickup J-1, Return J+1
             const t = new Date(targetDate);
             if (isNaN(t.getTime())) return; // Safety check
 
@@ -205,7 +211,72 @@ export const LogisticsWidget: React.FC = () => {
             console.error("Error calculating dates", e);
         }
 
-    }, [targetDate]); // Only when targetDate (Use Date) changes
+    }, [targetDate, useFullDuration, isMultiDay]); // Only when targetDate (Use Date) changes
+
+    // Auto-calculate dates based on Linked Location
+    React.useEffect(() => {
+        if (creationMode === 'LOCATION' && linkedLocation && project.pdtDays) {
+            const locDays = project.pdtDays
+                .filter(d => (d.linkedLocation === linkedLocation || d.location === linkedLocation))
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            // Detect Multi-Day
+            const multi = locDays.length > 1;
+            setIsMultiDay(multi);
+            if (!multi) setUseFullDuration(false); // Reset if single day
+
+            if (locDays.length > 0) {
+                const firstDay = new Date(locDays[0].date);
+                const lastDay = new Date(locDays[locDays.length - 1].date);
+                let refDateStart = firstDay;
+                let refDateEnd = lastDay;
+
+                if (linkType === 'PRELIGHT') {
+                    // Start D-duration
+                    const d = new Date(firstDay);
+                    d.setDate(d.getDate() - duration);
+                    refDateStart = d;
+                    refDateEnd = d;
+                } else if (linkType === 'DEMONTAGE') {
+                    const d = new Date(lastDay);
+                    d.setDate(d.getDate() + 1);
+                    refDateStart = d;
+                    const e = new Date(d);
+                    e.setDate(e.getDate() + duration - 1);
+                    refDateEnd = e;
+                } else {
+                    // SHOOTING (Standard)
+                    if (useFullDuration && multi) {
+                        // Full Duration Logic: Pickup J-2 (from start), Return J+1 (from end)
+                        // Actually, we set addingToDate and returnDate directly here.
+                        // And we must avoid the targetDate effect overwriting us.
+
+                        // Pickup = First Day - 2
+                        const p = new Date(firstDay);
+                        p.setDate(firstDay.getDate() - 2);
+
+                        // Return = Last Day + 1
+                        const r = new Date(lastDay);
+                        r.setDate(lastDay.getDate() + 1);
+
+                        setAddingToDate(p.toISOString().split('T')[0]);
+                        setReturnDate(r.toISOString().split('T')[0]);
+                        setTargetDate(firstDay.toISOString().split('T')[0]); // Visual Ref
+                        return; // EXIT to avoid falling through or triggering other effects unwantingly
+                    }
+                }
+
+                // Default Logic (Single Day or Range Start)
+                const startStr = refDateStart.toISOString().split('T')[0];
+                const endStr = refDateEnd.toISOString().split('T')[0];
+
+                // If not using full duration, we behave as before (targetDate triggers J-1/J+1)
+                // We set targetDate to startStr.
+                setTargetDate(startStr);
+                // The other effect will see targetDate change and set Pickup J-1, Return J+1.
+            }
+        }
+    }, [creationMode, linkedLocation, linkType, duration, project.pdtDays, useFullDuration]);
 
     const getRequests = (dateStr: string, dept: string) => {
         return (project.logistics || []).filter(r => r.date === dateStr && r.department === dept);
@@ -220,6 +291,9 @@ export const LogisticsWidget: React.FC = () => {
         setNewTime('09:00');
         // Contact removed
         setLinkedSequenceId('');
+        setLinkedLocation('');
+        setLinkType('SHOOTING');
+        setDuration(1);
         setEditingRequestId(null);
         setModalStep('SELECTION');
         setTargetDate('');
@@ -267,6 +341,10 @@ export const LogisticsWidget: React.FC = () => {
                 if (r.id === editingRequestId) {
                     return {
                         ...r,
+                        linkedLocation: linkedLocation || undefined, // Add linking to update
+                        linkType: linkedLocation ? linkType : undefined,
+                        dayOffset: dayOffset, // Edit mode doesn't recalculate offset yet, simplistic for now
+                        duration: duration,
                         date: addingToDate!, // Allow changing date
                         type: newType,
                         time: newTime || '09:00',
@@ -297,6 +375,30 @@ export const LogisticsWidget: React.FC = () => {
         if (!refDateStr) return;
         const refDate = new Date(refDateStr);
 
+        let dayOffset = 0;
+        if (creationMode === 'LOCATION' && linkedLocation && project.pdtDays) {
+            // Calculate Day Offset relative to Location Start (or End for Demontage)
+            const locDays = project.pdtDays
+                .filter(d => (d.linkedLocation === linkedLocation || d.location === linkedLocation))
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            if (locDays.length > 0) {
+                const firstDay = new Date(locDays[0].date);
+                const lastDay = new Date(locDays[locDays.length - 1].date);
+                const refDateObj = new Date(refDateStr);
+
+                if (linkType === 'DEMONTAGE') {
+                    // Offset from End
+                    const diffTime = refDateObj.getTime() - lastDay.getTime();
+                    dayOffset = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                } else {
+                    // Offset from Start (Shooting or Prelight)
+                    const diffTime = refDateObj.getTime() - firstDay.getTime();
+                    dayOffset = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                }
+            }
+        }
+
         const newRequests: LogisticsRequest[] = [];
         const baseId = Date.now();
 
@@ -313,11 +415,15 @@ export const LogisticsWidget: React.FC = () => {
                 time: newTime || '09:00',
                 location: newLocation,
                 description: `${newDescription} (ENLÈVEMENT)`,
-                contact: user?.name || '', // Default to user if needed by type, but ideally removed
+                // Contact removed
                 vehicleType: newVehicle,
                 distanceKm: 0,
                 linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
+                linkedLocation: linkedLocation || undefined,
+                linkType: linkedLocation ? linkType : undefined,
+                dayOffset: dayOffset,
+                duration: duration,
                 status: 'PENDING'
             };
             newRequests.push(pickupReq);
@@ -331,37 +437,45 @@ export const LogisticsWidget: React.FC = () => {
                 time: '08:00', // Default start of day
                 location: 'SUR PLATEAU', // Usage is on set
                 description: `${newDescription} (UTILISATION)`,
-                contact: user?.name || '',
+                // Contact removed
                 vehicleType: newVehicle,
                 distanceKm: 0,
                 linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
+                linkedLocation: linkedLocation || undefined,
+                linkType: linkedLocation ? linkType : undefined,
+                dayOffset: dayOffset,
+                duration: duration,
                 status: 'PENDING'
             };
             newRequests.push(usageReq);
 
-            // 3. RETURN (J+1) - Blue
-            // Use explicit return date if user selected one manually, otherwise default to J+1
-            let retDateStr = returnDate;
-            if (!retDateStr) {
-                const d = new Date(refDate);
-                d.setDate(refDate.getDate() + 1);
-                retDateStr = d.toISOString().split('T')[0];
-            }
+            // 3. RETURN (Date de fin / Dropoff) - Red
+            const dropoffDate = returnDate ? new Date(returnDate) : (() => {
+                const d2 = new Date(refDate);
+                d2.setDate(d2.getDate() + 1);
+                return d2;
+            })();
 
             const returnReq: LogisticsRequest = {
-                id: `log_${baseId}_return`,
-                date: retDateStr,
+                id: `log_${baseId}_dropoff`,
+                date: dropoffDate.toISOString().split('T')[0],
                 department: targetDept as any,
                 type: 'dropoff',
-                time: newTime || '09:00',
-                location: newLocation, // Return to same location
-                description: `${newDescription} (RESTITUTION)`,
-                contact: user?.name || '',
+                time: '18:00',
+                location: newLocation,
+                description: `${newDescription} (RETOUR)`,
+                // Contact removed
                 vehicleType: newVehicle,
                 distanceKm: 0,
                 linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
+                linkedLocation: linkedLocation || undefined,
+                // Anchor return to the end of the location's duration by using DEMONTAGE type if linked
+                linkType: linkedLocation ? 'DEMONTAGE' : undefined,
+                // Offset 1 day from the end of the location's duration
+                dayOffset: linkedLocation ? 1 : 0,
+                duration: duration,
                 status: 'PENDING'
             };
             newRequests.push(returnReq);
@@ -376,11 +490,15 @@ export const LogisticsWidget: React.FC = () => {
                 time: newTime || '09:00',
                 location: newLocation,
                 description: newDescription,
-                contact: user?.name || '',
+                // Contact removed
                 vehicleType: newVehicle,
                 distanceKm: 0,
                 linkedSequenceId: linkedSequenceId || null,
                 autoUpdateDates: !!linkedSequenceId,
+                linkedLocation: linkedLocation || undefined,
+                linkType: linkedLocation ? linkType : undefined,
+                dayOffset: dayOffset,
+                duration: duration,
                 status: 'PENDING'
             };
             newRequests.push(req);
@@ -469,30 +587,40 @@ export const LogisticsWidget: React.FC = () => {
             <div className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-lg p-6 space-y-6 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
 
                 {/* HEADER */}
-                <h3 className="text-xl font-bold text-white">
-                    {editingRequestId ? 'Modifier le Transport' : (modalStep === 'SELECTION' ? 'Nouveau Transport' : 'Détails de la demande')}
-                </h3>
-                <button onClick={() => resetForm()} className="text-slate-400 hover:text-white">
-                    <X className="h-6 w-6" />
-                </button>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-xl font-bold text-white">
+                            {editingRequestId ? 'Modifier le Transport' : (modalStep === 'SELECTION' ? 'Nouveau Transport' : 'Détails de la demande')}
+                        </h3>
+                        {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
+                            <div className="text-xs font-bold text-amber-500 mt-1 uppercase tracking-wider">
+                                Pour : {currentDept}
+                            </div>
+                        )}
+                    </div>
+                    <button onClick={() => resetForm()} className="text-slate-400 hover:text-white">
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
 
                 {/* STEP 1: SELECTION */}
+                {/* STEP 1: SELECTION */}
                 {modalStep === 'SELECTION' && (
-                    <div className="grid grid-cols-2 gap-4 py-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-8">
                         <button
                             onClick={() => {
                                 setCreationMode('DATE');
                                 setModalStep('FORM');
                                 if (addingToDate) setTargetDate(addingToDate); // Initialize target with current grid selection
                             }}
-                            className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-6 rounded-xl transition-all group"
+                            className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-4 rounded-xl transition-all group"
                         >
                             <div className="p-4 bg-cinema-800 rounded-full group-hover:scale-110 transition-transform">
                                 <Calendar className="h-8 w-8 text-amber-500" />
                             </div>
                             <div className="text-center">
                                 <div className="font-bold text-white">Par Date</div>
-                                <div className="text-xs text-slate-500 mt-1">Choisir un jour, voir les séquences</div>
+                                <div className="text-xs text-slate-500 mt-1">Choisir un jour</div>
                             </div>
                         </button>
 
@@ -503,7 +631,7 @@ export const LogisticsWidget: React.FC = () => {
                                 setLinkedSequenceId('');
                                 setTargetDate(''); // Clear target
                             }}
-                            className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-6 rounded-xl transition-all group"
+                            className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-4 rounded-xl transition-all group"
                         >
                             <div className="p-4 bg-cinema-800 rounded-full group-hover:scale-110 transition-transform">
                                 <div className="flex items-center justify-center h-8 w-8 font-bold text-amber-500 border-2 border-amber-500 rounded text-xs">
@@ -512,12 +640,32 @@ export const LogisticsWidget: React.FC = () => {
                             </div>
                             <div className="text-center">
                                 <div className="font-bold text-white">Par Séquence</div>
-                                <div className="text-xs text-slate-500 mt-1">Choisir une séquence, date auto</div>
+                                <div className="text-xs text-slate-500 mt-1">Lier à une séquence</div>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setCreationMode('LOCATION');
+                                setModalStep('FORM');
+                                setLinkedSequenceId('');
+                                setLinkedLocation('');
+                                setTargetDate('');
+                            }}
+                            className="flex flex-col items-center justify-center gap-4 bg-cinema-900 border-2 border-cinema-700 hover:border-amber-500 hover:bg-cinema-800 p-4 rounded-xl transition-all group"
+                        >
+                            <div className="p-4 bg-cinema-800 rounded-full group-hover:scale-110 transition-transform">
+                                <div className="flex items-center justify-center h-8 w-8 font-bold text-amber-500 border-2 border-amber-500 rounded-full">
+                                    <MapPin className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <div className="font-bold text-white">Par Lieu</div>
+                                <div className="text-xs text-slate-500 mt-1">Lier à un décor</div>
                             </div>
                         </button>
                     </div>
                 )}
-
                 {/* STEP 2: FORM */}
                 {modalStep === 'FORM' && (
                     <div className="animate-in slide-in-from-right-4 fade-in duration-200">
@@ -565,6 +713,83 @@ export const LogisticsWidget: React.FC = () => {
                                             </option>
                                         ))}
                                 </select>
+                            </div>
+                        )}
+
+                        {/* MODE LOCATION HEADER */}
+                        {creationMode === 'LOCATION' && (
+                            <div className="mb-4 space-y-4 bg-cinema-900/50 p-3 rounded-lg border border-cinema-700">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Lieu (PDT)</label>
+                                    <select
+                                        className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                        value={linkedLocation}
+                                        onChange={e => setLinkedLocation(e.target.value)}
+                                    >
+                                        <option value="">-- Choisir un lieu --</option>
+                                        {Array.from(new Set((project.pdtDays || [])
+                                            .map(d => d.linkedLocation || d.location)
+                                            .filter(l => l && l !== 'OFF' && l !== 'VACANCES')))
+                                            .sort()
+                                            .map(loc => (
+                                                <option key={loc} value={loc}>{loc}</option>
+                                            ))}
+                                    </select>
+                                </div>
+
+                                {linkedLocation && (
+                                    <>
+                                        {isMultiDay && linkType === 'SHOOTING' && (
+                                            <div className="flex items-center gap-4 bg-cinema-800 p-2 rounded-lg border border-cinema-700">
+                                                <div className="text-sm font-bold text-amber-500">Durée :</div>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        checked={!useFullDuration}
+                                                        onChange={() => setUseFullDuration(false)}
+                                                        className="text-amber-500 focus:ring-amber-500"
+                                                    />
+                                                    <span className="text-sm text-white">1er Jour (Standard)</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        checked={useFullDuration}
+                                                        onChange={() => setUseFullDuration(true)}
+                                                        className="text-amber-500 focus:ring-amber-500"
+                                                    />
+                                                    <span className="text-sm text-white">Toute la période</span>
+                                                </label>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-300">Phase</label>
+                                                <select
+                                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                                                    value={linkType}
+                                                    onChange={e => setLinkType(e.target.value as any)}
+                                                >
+                                                    <option value="SHOOTING">Tournage (Standard)</option>
+                                                    <option value="PRELIGHT">Prépa / Prelight</option>
+                                                    <option value="DEMONTAGE">Démontage</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-300">{useFullDuration ? 'Décalage (Auto)' : 'Décalage (Jours)'}</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    disabled={useFullDuration} // Lock if auto
+                                                    className={`w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-amber-500 ${useFullDuration ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    value={duration}
+                                                    onChange={e => setDuration(parseInt(e.target.value) || 1)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -743,6 +968,7 @@ export const LogisticsWidget: React.FC = () => {
             </div>
         </div>
     );
+
     // 1. PRODUCTION OVERVIEW
     if (user?.department === 'PRODUCTION' && viewMode === 'OVERVIEW') {
         const sortedWeeks = Object.keys(groupedByWeek).sort();
@@ -858,13 +1084,30 @@ export const LogisticsWidget: React.FC = () => {
                     <div>
                         <h2 className="text-2xl font-bold text-white">Aller-Retour Matériel</h2>
                         <p className="text-slate-400">
-                            {user?.department === 'PRODUCTION' ? 'Mes Transports' : `${currentDept} - Demandes de transport`}
+                            {(user?.department === 'PRODUCTION' && currentDept === 'PRODUCTION') ? 'Mes Transports' : `${currentDept} - Demandes de transport`}
                         </p>
                     </div>
                 </div>
 
                 {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
                     <div className="flex gap-2">
+                        {/* Department Selector for Production */}
+                        {user?.department === 'PRODUCTION' && (
+                            <div className="relative">
+                                <select
+                                    className="bg-cinema-900 text-white border border-cinema-700 rounded-lg pl-3 pr-8 py-2 appearance-none focus:outline-none focus:border-amber-500 cursor-pointer font-bold"
+                                    value={currentDept} // Controlled by global context
+                                    onChange={(e) => setCurrentDept(e.target.value)}
+                                >
+                                    <option value="PRODUCTION">PRODUCTION</option>
+                                    {Object.values(Department).map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="h-4 w-4 text-slate-400 absolute right-2 top-3 pointer-events-none" />
+                            </div>
+                        )}
+
                         <button
                             onClick={() => {
                                 setAddingToDate(new Date().toISOString().split('T')[0]);
@@ -874,14 +1117,15 @@ export const LogisticsWidget: React.FC = () => {
                             className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-lg shadow-amber-500/20"
                         >
                             <Plus className="h-4 w-4" />
-                            Nouvelle Demande
+                            <span className="hidden md:inline">Nouvelle Demande</span>
+                            <span className="md:hidden">+</span>
                         </button>
                         <button
                             onClick={() => setViewMode('OVERVIEW')}
                             className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
                         >
                             <Truck className="h-4 w-4" />
-                            Vue Globale
+                            <span className="hidden md:inline">Vue Globale</span>
                         </button>
                     </div>
                 )}

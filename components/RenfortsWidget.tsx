@@ -3,7 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext'; // Added
 import { Department, Reinforcement, ReinforcementDetail } from '../types';
-import { Users, ChevronLeft, ChevronRight, UserPlus, X, Calendar, Phone, Mail, User, ChevronDown, ChevronUp, ArrowRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, MapPin, User, Truck, Phone, Mail, X, Trash2, Edit2, AlertCircle, Users, UserPlus, ChevronDown, Download, Check, ShieldCheck } from "lucide-react";
+import toast from 'react-hot-toast';
 
 export const RenfortsWidget: React.FC = () => {
     const { project, updateProjectDetails, user, currentDept, addNotification, addReinforcement, updateReinforcement, deleteReinforcement } = useProject();
@@ -41,7 +42,16 @@ export const RenfortsWidget: React.FC = () => {
     const [prodSelectedWeek, setProdSelectedWeek] = useState<string | null>(null); // 'YYYY-Wxx'
     const [prodExpandedDays, setProdExpandedDays] = useState<string[]>([]); // Date Strings
     const [prodExpandedDepts, setProdExpandedDepts] = useState<string[]>([]); // 'YYYY-MM-DD_DEPT'
-    const [viewMode, setViewMode] = useState<'OVERVIEW' | 'MY_TEAM'>('OVERVIEW');
+    const [viewMode, setViewMode] = useState<'OVERVIEW' | 'MY_TEAM' | 'VALIDATION'>('OVERVIEW');
+
+    // Calculate Pending Validations
+    const pendingValidationCount = useMemo(() => {
+        if (!project.reinforcements) return 0;
+        return (project.reinforcements || []).reduce((acc, r) => {
+            const staff = getStaffList(r);
+            return acc + staff.filter(s => s.validationStatus === 'PENDING').length;
+        }, 0);
+    }, [project.reinforcements]);
 
     // --- DRAG AND DROP STATE (Moved to top level) ---
     const [isDragging, setIsDragging] = useState(false);
@@ -163,6 +173,16 @@ export const RenfortsWidget: React.FC = () => {
     const [newEmail, setNewEmail] = useState('');
     const [newRole, setNewRole] = useState(''); // Added
     const [linkedSequenceId, setLinkedSequenceId] = useState(''); // Added
+    const [linkedLocation, setLinkedLocation] = useState(''); // Added
+    // Multi-phase selection state
+    const [selectedPhases, setSelectedPhases] = useState<{
+        PRELIGHT: boolean;
+        DEMONTAGE: boolean;
+    }>({ PRELIGHT: false, DEMONTAGE: false });
+    const [durations, setDurations] = useState<{
+        PRELIGHT: number;
+        DEMONTAGE: number;
+    }>({ PRELIGHT: 1, DEMONTAGE: 1 });
     const [addingToDate, setAddingToDate] = useState<string | null>(null);
 
     const getReinforcements = (dateStr: string, dept: string) => {
@@ -175,42 +195,160 @@ export const RenfortsWidget: React.FC = () => {
         return (project.reinforcements || []).filter(r => r.date === dateStr && r.department === dept);
     };
 
-    const handleAddReinforcement = async (dateStr: string) => {
+    const handleValidate = async (dateStr: string, dept: string, staffId: string) => {
+        const rein = (project.reinforcements || []).find(r => r.date === dateStr && r.department === dept);
+        if (!rein) return;
+
+        const updatedStaff = getStaffList(rein).map(s => {
+            if (s.id === staffId) {
+                return { ...s, validationStatus: 'APPROVED' as const };
+            }
+            return s;
+        });
+
+        const updatedRein = { ...rein, staff: updatedStaff };
+        if ((updatedRein as any).names) delete (updatedRein as any).names; // Normalize
+        await updateReinforcement(updatedRein);
+        toast.success("Renfort validé");
+    };
+
+    const handleAddReinforcement = async (inputDateStr: string | null, keepOpen: boolean = false) => {
         if (!newName.trim()) return;
         const targetDept = user?.department === 'PRODUCTION' ? currentDept : user?.department;
         if (!targetDept) return;
 
-        const existing = (project.reinforcements || []).find(r => r.date === dateStr && r.department === targetDept);
+        // 1. Resolve Dates & Offsets
+        let targetEntries: { date: string, offset: number, refPoint: 'START' | 'END', type?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING' }[] = [];
 
-        const newStaff: ReinforcementDetail = {
-            id: `staff_${Date.now()} `,
-            name: newName.trim(),
-            phone: newPhone.trim(),
-            email: newEmail.trim(),
-            role: newRole.trim(),
-            linkedSequenceId: linkedSequenceId || null
-        };
+        if (linkedLocation && project.pdtDays) {
+            // Find location start/end
+            const locDays = project.pdtDays
+                .filter(d => (d.linkedLocation === linkedLocation || d.location === linkedLocation))
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            if (locDays.length > 0) {
+                const firstDay = new Date(locDays[0].date);
+                const lastDay = new Date(locDays[locDays.length - 1].date);
+
+                // 1. Handle PRELIGHT
+                if (selectedPhases.PRELIGHT) {
+                    const dur = durations.PRELIGHT || 1;
+                    for (let i = dur; i > 0; i--) {
+                        const d = new Date(firstDay);
+                        d.setDate(d.getDate() - i);
+                        targetEntries.push({
+                            date: d.toISOString().split('T')[0],
+                            offset: -i,
+                            refPoint: 'START',
+                            type: 'PRELIGHT'
+                        });
+                    }
+                }
+
+                // 2. Handle DEMONTAGE
+                if (selectedPhases.DEMONTAGE) {
+                    const dur = durations.DEMONTAGE || 1;
+                    for (let i = 1; i <= dur; i++) {
+                        const d = new Date(lastDay);
+                        d.setDate(d.getDate() + i);
+                        targetEntries.push({
+                            date: d.toISOString().split('T')[0],
+                            offset: i,
+                            refPoint: 'END',
+                            type: 'DEMONTAGE'
+                        });
+                    }
+                }
+
+                // If NO phases selected (or just Location linking generally implies Shooting support?)
+                // The user request was about Prelight OR Demontage OR Both.
+                // If neither is selected, maybe they just want to link to the location generally (Shooting)?
+                // Let's assume if neither is checked, we default to adding to the specific date clicked but linked (Shooting).
+                if (!selectedPhases.PRELIGHT && !selectedPhases.DEMONTAGE) {
+                    // SHOOTING - Default behavior if nothing checked but location linked
+                    if (inputDateStr) {
+                        const d = new Date(inputDateStr);
+                        const diffTime = d.getTime() - firstDay.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        targetEntries.push({
+                            date: inputDateStr,
+                            offset: diffDays,
+                            refPoint: 'START',
+                            type: 'SHOOTING'
+                        });
+                    }
+                }
+
+            } else if (inputDateStr) {
+                targetEntries.push({ date: inputDateStr, offset: 0, refPoint: 'START', type: 'SHOOTING' });
+            }
+        } else {
+            if (inputDateStr) targetEntries.push({ date: inputDateStr, offset: 0, refPoint: 'START', type: 'SHOOTING' });
+        }
+
+        // Fallback
+        if (targetEntries.length === 0 && inputDateStr) {
+            targetEntries.push({ date: inputDateStr, offset: 0, refPoint: 'START', type: 'SHOOTING' });
+        }
+
+        // 2. Resolve Names (Comma Separated)
+        const namesToAdd = newName.split(',').map(n => n.trim()).filter(n => n.length > 0);
 
         try {
-            if (existing) {
-                const currentStaff = getStaffList(existing);
-                const updated = { ...existing, staff: [...currentStaff, newStaff] };
-                if (updated.names) delete (updated as any).names;
-                await updateReinforcement(updated);
-            } else {
-                const newR: Reinforcement = {
-                    id: `${dateStr}_${targetDept}`,
-                    date: dateStr,
-                    department: targetDept as any,
-                    staff: [newStaff]
-                };
-                await addReinforcement(newR);
+            for (const entry of targetEntries) {
+                const dateStr = entry.date;
+                // Find existing reinforcement for this date/dept
+                const existing = (project.reinforcements || []).find(r => r.date === dateStr && r.department === targetDept);
+                let currentStaff = existing ? getStaffList(existing) : [];
+
+                const newStaffEntries: ReinforcementDetail[] = namesToAdd.map(name => ({
+                    id: `staff_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    name: name,
+                    phone: newPhone.trim(),
+                    email: newEmail.trim(),
+                    role: newRole.trim(),
+                    linkedSequenceId: linkedSequenceId || null,
+                    linkedLocation: linkedLocation || undefined,
+                    linkType: entry.type,
+                    dayOffset: entry.offset,
+                    duration: (entry.type === 'PRELIGHT' ? durations.PRELIGHT : (entry.type === 'DEMONTAGE' ? durations.DEMONTAGE : 1)),
+                    validationStatus: (user?.department === 'PRODUCTION' ? 'APPROVED' : 'PENDING') as 'APPROVED' | 'PENDING' // Auto-approve Production, otherwise pending
+                    // Note: refPoint isn't in interface yet, we infer from linkType: PRELIGHT/SHOOTING -> Start, DEMO -> End.
+                }));
+
+                if (existing) {
+                    const updated = { ...existing, staff: [...currentStaff, ...newStaffEntries] };
+                    if (updated.names) delete (updated as any).names;
+                    await updateReinforcement(updated);
+                } else {
+                    const newR: Reinforcement = {
+                        id: `${dateStr}_${targetDept}`,
+                        date: dateStr,
+                        department: targetDept as any,
+                        staff: newStaffEntries
+                    };
+                    await addReinforcement(newR);
+                }
             }
 
-            if (user?.department !== 'PRODUCTION') {
-                /* Notification handled by context or commented out per existing code */
+            toast.success(keepOpen ? "Renfort ajouté ! Prêt pour le suivant..." : "Renfort ajouté avec succès");
+
+            if (keepOpen) {
+                // Keep context (Location, Phases, Durations) but clear personal info
+                setNewName('');
+                setNewPhone('');
+                setNewEmail('');
+                setNewRole('');
+                // Do NOT clear linkedLocation, selectedPhases, durations, linkedSequenceId, addingToDate
+            } else {
+                // Reset All
+                setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole('');
+                setLinkedSequenceId(''); setLinkedLocation('');
+                setSelectedPhases({ PRELIGHT: false, DEMONTAGE: false });
+                setDurations({ PRELIGHT: 1, DEMONTAGE: 1 });
+                setAddingToDate(null); setIsModalOpen(false);
             }
-            setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setLinkedSequenceId(''); setAddingToDate(null);
+
         } catch (error) {
             console.error("Error adding reinforcement", error);
             alert("Erreur lors de l'ajout.");
@@ -335,6 +473,18 @@ export const RenfortsWidget: React.FC = () => {
                             <span className="hidden md:inline">Export CSV</span>
                         </button>
                         <button
+                            onClick={() => setViewMode('VALIDATION')}
+                            className="relative bg-cinema-900 border border-cinema-700 hover:bg-cinema-700 text-orange-400 font-bold px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            <ShieldCheck className="h-4 w-4" />
+                            <span className="hidden md:inline">À Valider</span>
+                            {pendingValidationCount > 0 && (
+                                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-cinema-800">
+                                    {pendingValidationCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
                             onClick={() => setViewMode('MY_TEAM')}
                             className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
@@ -437,30 +587,147 @@ export const RenfortsWidget: React.FC = () => {
                                                                                         </div>
                                                                                     </button>
 
-                                                                                    {/* Level 4: Names (Contacts) - UPDATED: Clickable, High Contrast */}
+                                                                                    {/* Level 4: Names (Contacts) - UPDATED: Clickable, High Contrast, Grouped by Phase */}
                                                                                     {isDeptExpanded && (
                                                                                         <div className="px-3 pb-3 pt-0 grid gap-2">
-                                                                                            {staff.map(s => (
-                                                                                                <div
-                                                                                                    key={s.id}
-                                                                                                    onClick={() => setViewingStaff(s)}
-                                                                                                    className="bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer flex items-center justify-between shadow-sm group/card"
-                                                                                                >
-                                                                                                    <div className="flex items-center gap-3 min-w-0">
-                                                                                                        <User className="h-4 w-4 text-indigo-300 shrink-0" />
-                                                                                                        <div className="flex flex-col min-w-0">
-                                                                                                            <span className="font-semibold text-white truncate">{s.name}</span>
-                                                                                                            {s.role && <span className="text-xs text-slate-400 truncate">{s.role}</span>}
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                    <button
-                                                                                                        onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
-                                                                                                        className="p-1.5 text-slate-400 hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                                                                                                    >
-                                                                                                        <X className="h-4 w-4" />
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            ))}
+                                                                                            {(() => {
+                                                                                                // Group by linkType
+                                                                                                const grouped = {
+                                                                                                    PRELIGHT: staff.filter(s => s.linkType === 'PRELIGHT'),
+                                                                                                    SHOOTING: staff.filter(s => !s.linkType || s.linkType === 'SHOOTING'),
+                                                                                                    DEMONTAGE: staff.filter(s => s.linkType === 'DEMONTAGE')
+                                                                                                };
+
+                                                                                                return (
+                                                                                                    <>
+                                                                                                        {/* PRELIGHT Group */}
+                                                                                                        {grouped.PRELIGHT.length > 0 && (
+                                                                                                            <div className="space-y-1.5">
+                                                                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-2 py-0.5 bg-amber-500/10 rounded inline-block">
+                                                                                                                    Prépa
+                                                                                                                </div>
+                                                                                                                {grouped.PRELIGHT.map(s => (
+                                                                                                                    <div
+                                                                                                                        key={s.id}
+                                                                                                                        onClick={() => setViewingStaff(s)}
+                                                                                                                        className="bg-amber-900/20 border-amber-700/50 px-3 py-2 rounded-lg border hover:border-amber-600 hover:bg-amber-900/30 transition-colors cursor-pointer flex items-center justify-between shadow-sm group/card"
+                                                                                                                    >
+                                                                                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                                                                            <User className="h-4 w-4 text-amber-300 shrink-0" />
+                                                                                                                            <div className="flex flex-col min-w-0">
+                                                                                                                                <div className="flex items-center gap-2">
+                                                                                                                                    <span className="font-semibold text-amber-100 truncate">{s.name}</span>
+                                                                                                                                    {s.validationStatus === 'PENDING' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                                                                            À valider
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                    {s.validationStatus === 'APPROVED' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                                                                            Validé
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                </div>
+                                                                                                                                {s.role && <span className="text-xs text-amber-400/70 truncate">{s.role}</span>}
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        <button
+                                                                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
+                                                                                                                            className="p-1.5 text-amber-400/50 hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                                                                                                        >
+                                                                                                                            <X className="h-4 w-4" />
+                                                                                                                        </button>
+                                                                                                                    </div>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        )}
+
+                                                                                                        {/* SHOOTING Group */}
+                                                                                                        {grouped.SHOOTING.length > 0 && (
+                                                                                                            <div className="space-y-1.5">
+                                                                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 px-2 py-0.5 bg-indigo-500/10 rounded inline-block">
+                                                                                                                    Renfort
+                                                                                                                </div>
+                                                                                                                {grouped.SHOOTING.map(s => (
+                                                                                                                    <div
+                                                                                                                        key={s.id}
+                                                                                                                        onClick={() => setViewingStaff(s)}
+                                                                                                                        className="bg-slate-700 px-3 py-2 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer flex items-center justify-between shadow-sm group/card"
+                                                                                                                    >
+                                                                                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                                                                            <User className="h-4 w-4 text-indigo-300 shrink-0" />
+                                                                                                                            <div className="flex flex-col min-w-0">
+                                                                                                                                <div className="flex items-center gap-2">
+                                                                                                                                    <span className="font-semibold text-white truncate">{s.name}</span>
+                                                                                                                                    {s.validationStatus === 'PENDING' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                                                                            À valider
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                    {s.validationStatus === 'APPROVED' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                                                                            Validé
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                </div>
+                                                                                                                                {s.role && <span className="text-xs text-slate-400 truncate">{s.role}</span>}
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        <button
+                                                                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
+                                                                                                                            className="p-1.5 text-slate-400 hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                                                                                                        >
+                                                                                                                            <X className="h-4 w-4" />
+                                                                                                                        </button>
+                                                                                                                    </div>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        )}
+
+                                                                                                        {/* DEMONTAGE Group */}
+                                                                                                        {grouped.DEMONTAGE.length > 0 && (
+                                                                                                            <div className="space-y-1.5">
+                                                                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-red-400 px-2 py-0.5 bg-red-500/10 rounded inline-block">
+                                                                                                                    Démontage
+                                                                                                                </div>
+                                                                                                                {grouped.DEMONTAGE.map(s => (
+                                                                                                                    <div
+                                                                                                                        key={s.id}
+                                                                                                                        onClick={() => setViewingStaff(s)}
+                                                                                                                        className="bg-red-900/20 border-red-700/50 px-3 py-2 rounded-lg border hover:border-red-600 hover:bg-red-900/30 transition-colors cursor-pointer flex items-center justify-between shadow-sm group/card"
+                                                                                                                    >
+                                                                                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                                                                            <User className="h-4 w-4 text-red-300 shrink-0" />
+                                                                                                                            <div className="flex flex-col min-w-0">
+                                                                                                                                <div className="flex items-center gap-2">
+                                                                                                                                    <span className="font-semibold text-red-100 truncate">{s.name}</span>
+                                                                                                                                    {s.validationStatus === 'PENDING' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                                                                            À valider
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                    {s.validationStatus === 'APPROVED' && (
+                                                                                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                                                                            Validé
+                                                                                                                                        </span>
+                                                                                                                                    )}
+                                                                                                                                </div>
+                                                                                                                                {s.role && <span className="text-xs text-red-400/70 truncate">{s.role}</span>}
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        <button
+                                                                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, dept as string, s.id); }}
+                                                                                                                            className="p-1.5 text-red-400/50 hover:text-red-400 opacity-0 group-hover/card:opacity-100 transition-opacity"
+                                                                                                                        >
+                                                                                                                            <X className="h-4 w-4" />
+                                                                                                                        </button>
+                                                                                                                    </div>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        )}
+                                                                                                    </>
+                                                                                                );
+                                                                                            })()}
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -664,6 +931,87 @@ export const RenfortsWidget: React.FC = () => {
     };
 
 
+    // 2. VALIDATION VIEW
+    if (user?.department === 'PRODUCTION' && viewMode === 'VALIDATION') {
+        const pendingItems: { rein: Reinforcement, staff: ReinforcementDetail }[] = [];
+        (project.reinforcements || []).forEach(r => {
+            getStaffList(r).forEach(s => {
+                if (s.validationStatus === 'PENDING') {
+                    pendingItems.push({ rein: r, staff: s });
+                }
+            });
+        });
+
+        // Group by Date for clarity
+        const groupedPending = pendingItems.reduce((acc, item) => {
+            if (!acc[item.rein.date]) acc[item.rein.date] = [];
+            acc[item.rein.date].push(item);
+            return acc;
+        }, {} as Record<string, typeof pendingItems>);
+
+        return (
+            <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-8">
+                {/* Header with Back button */}
+                <div className="flex items-center gap-4 bg-cinema-800 p-6 rounded-xl border border-cinema-700">
+                    <button onClick={() => setViewMode('OVERVIEW')} className="p-2 hover:bg-cinema-700 rounded-full transition-colors">
+                        <ChevronLeft className="h-6 w-6 text-slate-400" />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">À Valider</h2>
+                        <p className="text-slate-400">{pendingItems.length} renfort(s) en attente</p>
+                    </div>
+                </div>
+
+                {/* List */}
+                <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
+                    {pendingItems.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                            <ShieldCheck className="h-12 w-12 mb-4 opacity-50" />
+                            <p className="text-lg">Aucun renfort en attente de validation.</p>
+                            <button onClick={() => setViewMode('OVERVIEW')} className="mt-4 text-indigo-400 hover:text-indigo-300 font-medium">Retour à l'overview</button>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-cinema-700">
+                            {Object.entries(groupedPending).sort().map(([dateStr, items]) => (
+                                <div key={dateStr} className="p-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Calendar className="h-4 w-4 text-slate-400" />
+                                        <span className="font-bold text-slate-300">{new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {items.map(({ rein, staff }) => (
+                                            <div key={staff.id} className="flex items-center justify-between bg-cinema-900/50 p-3 rounded-lg border border-cinema-700 hover:border-cinema-600 transition-colors">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold">
+                                                        {staff.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-white">{staff.name}</div>
+                                                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                            <span className="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300">{rein.department}</span>
+                                                            <span>{staff.role || 'N/A'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleValidate(rein.date, rein.department as string, staff.id)}
+                                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-green-900/20"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                    Valider
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     // 2. DEPARTMENT VIEW (Original Matrix) - UPDATED
     return (
         <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
@@ -762,36 +1110,152 @@ export const RenfortsWidget: React.FC = () => {
                                                 const items = getReinforcements(dateStr, targetDept as string);
                                                 const staffList = items.length ? getStaffList(items[0]) : [];
 
-                                                return staffList.length > 0 ? (
-                                                    staffList.map((s) => (
-                                                        <div
-                                                            key={s.id}
-                                                            draggable
-                                                            onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
-                                                            onDragEnd={handleDragEndGlobal}
-                                                            onClick={() => setViewingStaff(s)}
-                                                            className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
-                                                        >
-                                                            <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
-                                                                <div className="text-sm text-white font-bold truncate">{s.name}</div>
-                                                                {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
-                                                            </div>
+                                                // Group by linkType
+                                                const grouped = {
+                                                    PRELIGHT: staffList.filter(s => s.linkType === 'PRELIGHT'),
+                                                    SHOOTING: staffList.filter(s => !s.linkType || s.linkType === 'SHOOTING'),
+                                                    DEMONTAGE: staffList.filter(s => s.linkType === 'DEMONTAGE')
+                                                };
 
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
-                                                                className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    !addingToDate && (
+                                                const hasAny = staffList.length > 0;
+
+                                                if (!hasAny) {
+                                                    return !addingToDate && (
                                                         <div onClick={() => setAddingToDate(dateStr)} className="h-full flex flex-col items-center justify-center text-slate-600 hover:text-indigo-400 cursor-pointer transition-colors border-2 border-dashed border-cinema-700 hover:border-indigo-500/50 rounded-lg p-4 min-h-[100px]">
                                                             <UserPlus className="h-6 w-6 mb-2" />
                                                             <span className="text-xs font-medium">Ajouter</span>
                                                         </div>
-                                                    )
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div className="space-y-3">
+                                                        {/* PRELIGHT Group */}
+                                                        {grouped.PRELIGHT.length > 0 && (
+                                                            <div className="space-y-1.5">
+                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 px-2 py-0.5 bg-amber-500/10 rounded inline-block">
+                                                                    Prépa
+                                                                </div>
+                                                                {grouped.PRELIGHT.map(s => (
+                                                                    <div
+                                                                        key={s.id}
+                                                                        draggable
+                                                                        onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
+                                                                        onDragEnd={handleDragEndGlobal}
+                                                                        onClick={() => setViewingStaff(s)}
+                                                                        className="bg-amber-900/20 border-amber-700/50 px-3 py-3 rounded-lg flex justify-between items-center border hover:border-amber-600 hover:bg-amber-900/30 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                                    >
+                                                                        <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="text-sm text-amber-100 font-bold truncate">{s.name}</div>
+                                                                                {s.validationStatus === 'PENDING' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                        À valider
+                                                                                    </span>
+                                                                                )}
+                                                                                {s.validationStatus === 'APPROVED' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                        Validé
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {s.role && <div className="text-xs text-amber-400/70 truncate">{s.role}</div>}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                                            className="text-amber-400/50 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* SHOOTING Group */}
+                                                        {grouped.SHOOTING.length > 0 && (
+                                                            <div className="space-y-1.5">
+                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 px-2 py-0.5 bg-indigo-500/10 rounded inline-block">
+                                                                    Renfort
+                                                                </div>
+                                                                {grouped.SHOOTING.map(s => (
+                                                                    <div
+                                                                        key={s.id}
+                                                                        draggable
+                                                                        onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
+                                                                        onDragEnd={handleDragEndGlobal}
+                                                                        onClick={() => setViewingStaff(s)}
+                                                                        className="bg-slate-700 px-3 py-3 rounded-lg flex justify-between items-center border border-slate-600 hover:border-slate-500 hover:bg-slate-600 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                                    >
+                                                                        <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="text-sm text-white font-bold truncate">{s.name}</div>
+                                                                                {s.validationStatus === 'PENDING' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                        À valider
+                                                                                    </span>
+                                                                                )}
+                                                                                {s.validationStatus === 'APPROVED' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                        Validé
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {s.role && <div className="text-xs text-slate-400 truncate">{s.role}</div>}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                                            className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* DEMONTAGE Group */}
+                                                        {grouped.DEMONTAGE.length > 0 && (
+                                                            <div className="space-y-1.5">
+                                                                <div className="text-[10px] font-bold uppercase tracking-wider text-red-400 px-2 py-0.5 bg-red-500/10 rounded inline-block">
+                                                                    Démontage
+                                                                </div>
+                                                                {grouped.DEMONTAGE.map(s => (
+                                                                    <div
+                                                                        key={s.id}
+                                                                        draggable
+                                                                        onDragStart={(e) => handleDragStart(e, s, dateStr, targetDept as string)}
+                                                                        onDragEnd={handleDragEndGlobal}
+                                                                        onClick={() => setViewingStaff(s)}
+                                                                        className="bg-red-900/20 border-red-700/50 px-3 py-3 rounded-lg flex justify-between items-center border hover:border-red-600 hover:bg-red-900/30 transition-colors cursor-pointer shadow-sm group active:cursor-grabbing cursor-grab"
+                                                                    >
+                                                                        <div className="flex flex-col min-w-0 pr-2 pointer-events-none">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="text-sm text-red-100 font-bold truncate">{s.name}</div>
+                                                                                {s.validationStatus === 'PENDING' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded border border-orange-500/30">
+                                                                                        À valider
+                                                                                    </span>
+                                                                                )}
+                                                                                {s.validationStatus === 'APPROVED' && (
+                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-green-500/20 text-green-300 rounded border border-green-500/30">
+                                                                                        Validé
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {s.role && <div className="text-xs text-red-400/70 truncate">{s.role}</div>}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleRemoveReinforcement(dateStr, targetDept as string, s.id); }}
+                                                                            className="text-red-400/50 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 );
                                             })()}
                                         </div>
@@ -889,7 +1353,7 @@ export const RenfortsWidget: React.FC = () => {
             {/* Modal for Adding Renfort */}
             {addingToDate && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                    onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }}
+                    onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setLinkedLocation(''); }}
                 >
                     <div
                         className="bg-cinema-800 rounded-xl border border-cinema-700 shadow-2xl w-full max-w-md p-6 space-y-6"
@@ -897,7 +1361,7 @@ export const RenfortsWidget: React.FC = () => {
                     >
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-bold text-white">Ajouter un Renfort</h3>
-                            <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); }} className="text-slate-400 hover:text-white">
+                            <button onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setLinkedLocation(''); }} className="text-slate-400 hover:text-white">
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
@@ -945,6 +1409,93 @@ export const RenfortsWidget: React.FC = () => {
                             )}
                         </div>
 
+                        {/* Location Link (New) */}
+                        <div className="space-y-4 bg-cinema-900/50 p-3 rounded-lg border border-cinema-700">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Lier à un Lieu (PDT)</label>
+                                <select
+                                    className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                                    value={linkedLocation}
+                                    onChange={e => {
+                                        setLinkedLocation(e.target.value);
+                                        setLinkedSequenceId(''); // Reset seq if location selected
+                                    }}
+                                >
+                                    <option value="">-- Aucun lieu lié --</option>
+                                    {Array.from(new Set((project.pdtDays || [])
+                                        .map(d => d.linkedLocation || d.location)
+                                        .filter(l => l && l !== 'OFF' && l !== 'VACANCES')))
+                                        .sort()
+                                        .map(loc => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                </select>
+                            </div>
+
+                            {linkedLocation && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                    <label className="text-sm font-medium text-slate-300">Phase(s) à ajouter</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* PRELIGHT CHECKBOX */}
+                                        <div className={`p-3 rounded-lg border transition-all ${selectedPhases.PRELIGHT ? 'bg-amber-500/10 border-amber-500' : 'bg-cinema-900 border-cinema-700'}`}>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="phase-prelight"
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                                                    checked={selectedPhases.PRELIGHT}
+                                                    onChange={e => setSelectedPhases(prev => ({ ...prev, PRELIGHT: e.target.checked }))}
+                                                />
+                                                <label htmlFor="phase-prelight" className="text-sm font-bold text-white cursor-pointer select-none">
+                                                    Prépa / Prelight
+                                                </label>
+                                            </div>
+                                            {selectedPhases.PRELIGHT && (
+                                                <div className="pl-7">
+                                                    <label className="text-xs text-slate-400 block mb-1">Durée (Jours avant)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        className="w-full bg-cinema-800 border border-cinema-600 rounded px-2 py-1 text-white text-sm focus:border-amber-500 outline-none"
+                                                        value={durations.PRELIGHT}
+                                                        onChange={e => setDurations(prev => ({ ...prev, PRELIGHT: parseInt(e.target.value) || 1 }))}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* DEMONTAGE CHECKBOX */}
+                                        <div className={`p-3 rounded-lg border transition-all ${selectedPhases.DEMONTAGE ? 'bg-red-500/10 border-red-500' : 'bg-cinema-900 border-cinema-700'}`}>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="phase-demontage"
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500"
+                                                    checked={selectedPhases.DEMONTAGE}
+                                                    onChange={e => setSelectedPhases(prev => ({ ...prev, DEMONTAGE: e.target.checked }))}
+                                                />
+                                                <label htmlFor="phase-demontage" className="text-sm font-bold text-white cursor-pointer select-none">
+                                                    Démontage
+                                                </label>
+                                            </div>
+                                            {selectedPhases.DEMONTAGE && (
+                                                <div className="pl-7">
+                                                    <label className="text-xs text-slate-400 block mb-1">Durée (Jours après)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        className="w-full bg-cinema-800 border border-cinema-600 rounded px-2 py-1 text-white text-sm focus:border-red-500 outline-none"
+                                                        value={durations.DEMONTAGE}
+                                                        onChange={e => setDurations(prev => ({ ...prev, DEMONTAGE: parseInt(e.target.value) || 1 }))}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-300">Nom Complet <span className="text-red-400">*</span></label>
@@ -953,11 +1504,12 @@ export const RenfortsWidget: React.FC = () => {
                                     <input
                                         autoFocus
                                         type="text"
-                                        placeholder="Ex: Thomas Dubreuil"
+                                        placeholder="Ex: Thomas Dubreuil, Marie..."
                                         className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-4 py-2.5 pl-10 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600"
                                         value={newName}
                                         onChange={e => setNewName(e.target.value)}
                                     />
+                                    <p className="text-xs text-slate-500 mt-1">Séparez les noms par une virgule pour en ajouter plusieurs.</p>
                                 </div>
                             </div>
 
@@ -1009,7 +1561,7 @@ export const RenfortsWidget: React.FC = () => {
 
                         <div className="flex gap-3 justify-end pt-2">
                             <button
-                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); }}
+                                onClick={() => { setAddingToDate(null); setNewName(''); setNewPhone(''); setNewEmail(''); setNewRole(''); setLinkedLocation(''); }}
                                 className="px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium"
                             >
                                 Annuler
@@ -1020,6 +1572,15 @@ export const RenfortsWidget: React.FC = () => {
                                 className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
                             >
                                 Valider le Renfort
+                            </button>
+                            <button
+                                onClick={() => handleAddReinforcement(addingToDate, true)}
+                                disabled={!newName.trim()}
+                                className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 px-4 py-2 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                title="Sauvegarder et garder le formulaire ouvert pour ajouter une autre personne"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span>Ajouter (+)</span>
                             </button>
                         </div>
                     </div>
