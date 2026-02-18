@@ -122,6 +122,7 @@ export interface LogisticsRequest {
   linkType?: 'PRELIGHT' | 'DEMONTAGE' | 'SHOOTING' | null; // New
   dayOffset?: number; // New
   duration?: number; // New
+  pendingDate?: string | null; // Proposed new date awaiting department validation (YYYY-MM-DD)
 }
 
 export interface PDTSequence {

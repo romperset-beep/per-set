@@ -171,7 +171,8 @@ export const PDTManager: React.FC = () => {
 
                             const newDateStr = newDate.toISOString().split('T')[0];
                             if (newDateStr !== req.date) {
-                                updatedReq = { ...updatedReq, date: newDateStr };
+                                // Store as PENDING proposal, don't change actual date
+                                updatedReq = { ...updatedReq, pendingDate: newDateStr };
                                 changed = true;
                             }
                         }
@@ -189,22 +190,21 @@ export const PDTManager: React.FC = () => {
 
                         const newDateStr = newDate.toISOString().split('T')[0];
                         if (newDateStr !== req.date) {
-                            updatedReq = { ...updatedReq, date: newDateStr };
+                            // Store as PENDING proposal, don't change actual date
+                            updatedReq = { ...updatedReq, pendingDate: newDateStr };
                             changed = true;
                         }
                     }
 
                     if (changed) {
-                        // Set status to PENDING for department validation
-                        updatedReq = { ...updatedReq, status: 'PENDING' as const };
                         await addLogisticsRequest(updatedReq);
 
-                        // Notify the owning department
+                        // Notify the owning department about the proposed change
                         const oldDateDisplay = new Date(req.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
-                        const newDateDisplay = new Date(updatedReq.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+                        const newDateDisplay = new Date(updatedReq.pendingDate!).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
                         const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
                         await addNotification(
-                            `📦 Transport déplacé : ${typeLabel} "${req.description}" du ${oldDateDisplay} → ${newDateDisplay} (PDT mis à jour)`,
+                            `📦 Déplacement proposé : ${typeLabel} "${req.description}" du ${oldDateDisplay} → ${newDateDisplay} — Validation requise`,
                             'LOGISTICS',
                             req.department,
                             req.id

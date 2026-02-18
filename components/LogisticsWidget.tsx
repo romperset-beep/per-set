@@ -27,18 +27,33 @@ export const LogisticsWidget: React.FC = () => {
     const [collapsedWeeks, setCollapsedWeeks] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false); // New explicit visibility state
 
-    // Handle transport validation (PENDING → APPROVED) + notify Régie
+    // Handle transport validation: ACCEPT proposed date change → notify Régie
     const handleValidateTransport = async (req: LogisticsRequest) => {
-        const updatedReq = { ...req, status: 'APPROVED' as const };
+        if (!req.pendingDate) return;
+        const updatedReq: LogisticsRequest = {
+            ...req,
+            date: req.pendingDate, // Apply the proposed date
+            pendingDate: null,     // Clear pending
+            status: 'APPROVED' as const
+        };
         await addLogisticsRequest(updatedReq);
-        const dateDisplay = new Date(req.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+        const dateDisplay = new Date(updatedReq.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
         const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
         await addNotification(
-            `✅ Transport validé par ${req.department} : ${typeLabel} "${req.description}" le ${dateDisplay}`,
+            `✅ Transport validé par ${req.department} : ${typeLabel} "${req.description}" déplacé au ${dateDisplay}`,
             'LOGISTICS',
             'Régie' as any,
             req.id
         );
+    };
+
+    // Handle transport rejection: REJECT proposed date change → keep original date
+    const handleRejectTransport = async (req: LogisticsRequest) => {
+        const updatedReq: LogisticsRequest = {
+            ...req,
+            pendingDate: null // Clear pending, keep original date
+        };
+        await addLogisticsRequest(updatedReq);
     };
 
     const toggleWeek = (weekKey: string) => {
@@ -1188,55 +1203,79 @@ export const LogisticsWidget: React.FC = () => {
                                                     {dayRequests.map(req => (
                                                         <div
                                                             key={req.id}
-                                                            onClick={() => req.type !== 'usage' && openEditModal(req)}
-                                                            className={`group bg-cinema-900 p-3 rounded-lg border flex items-center justify-between hover:border-amber-500 ${req.status === 'PENDING' ? 'border-amber-500/50 bg-amber-500/5' : 'border-cinema-700'} ${req.type === 'usage' ? 'opacity-70 cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
+                                                            onClick={() => req.type !== 'usage' && !req.pendingDate && openEditModal(req)}
+                                                            className={`group bg-cinema-900 rounded-lg border flex flex-col hover:border-amber-500 ${req.pendingDate ? 'border-amber-500/50 bg-amber-500/5' : 'border-cinema-700'} ${req.type === 'usage' ? 'opacity-70 cursor-default' : req.pendingDate ? 'cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
                                                                 req.type === 'dropoff' ? 'border-l-4 border-l-blue-500' :
                                                                     req.type === 'usage' ? 'border-l-4 border-l-emerald-500' : ''
                                                                 }`}
                                                         >
-                                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0 ${req.type === 'pickup' ? 'bg-amber-500/20 text-amber-500' :
-                                                                    req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
-                                                                        'bg-emerald-500/20 text-emerald-500'
-                                                                    }`}>
-                                                                    {req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : 'Utilisation'}
-                                                                </span>
+                                                            <div className="p-3 flex items-center justify-between">
+                                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0 ${req.type === 'pickup' ? 'bg-amber-500/20 text-amber-500' :
+                                                                        req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
+                                                                            'bg-emerald-500/20 text-emerald-500'
+                                                                        }`}>
+                                                                        {req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : 'Utilisation'}
+                                                                    </span>
 
-                                                                {/* SATURDAY WARNING BADGE */}
-                                                                {(new Date(dateStr).getDay() === 6 && (req.type === 'pickup' || req.type === 'dropoff')) && (
-                                                                    <div className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
-                                                                        <AlertTriangle className="h-3 w-3" />
-                                                                        <span className="text-[10px] font-bold uppercase hidden md:inline">Samedi</span>
+                                                                    {/* SATURDAY WARNING BADGE */}
+                                                                    {(new Date(dateStr).getDay() === 6 && (req.type === 'pickup' || req.type === 'dropoff')) && (
+                                                                        <div className="flex items-center gap-1.5 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+                                                                            <AlertTriangle className="h-3 w-3" />
+                                                                            <span className="text-[10px] font-bold uppercase hidden md:inline">Samedi</span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <span className="text-white font-medium truncate">{req.location}</span>
+                                                                    <span className="text-xs text-slate-500 truncate hidden md:inline">{req.description}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-3 shrink-0">
+                                                                    <span className="text-xs text-slate-600 bg-cinema-800 px-2 py-0.5 rounded font-bold">{req.department}</span>
+                                                                    <div className="text-sm font-mono text-slate-400">{req.time}</div>
+
+                                                                    {/* DELETE BUTTON */}
+                                                                    {!req.pendingDate && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleDelete(req.id); }}
+                                                                            className={`p-1 text-slate-500 hover:text-red-400 transition-opacity ${req.type === 'usage' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* PENDING DATE CHANGE BANNER */}
+                                                            {req.pendingDate && (user?.department === req.department || user?.department === 'PRODUCTION') && (
+                                                                <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-amber-500/20 pt-2 mt-0">
+                                                                    <div className="flex items-center gap-2 text-xs">
+                                                                        <span className="text-amber-400 font-bold animate-pulse">⚠️ Déplacement proposé</span>
+                                                                        <span className="text-slate-400">→</span>
+                                                                        <span className="text-white font-bold bg-amber-500/20 px-2 py-0.5 rounded">
+                                                                            {new Date(req.pendingDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                                                        </span>
                                                                     </div>
-                                                                )}
-
-                                                                <span className="text-white font-medium truncate">{req.location}</span>
-                                                                <span className="text-xs text-slate-500 truncate hidden md:inline">{req.description}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 shrink-0">
-                                                                <span className="text-xs text-slate-600 bg-cinema-800 px-2 py-0.5 rounded font-bold">{req.department}</span>
-                                                                <div className="text-sm font-mono text-slate-400">{req.time}</div>
-
-                                                                {/* PENDING VALIDATION BUTTON */}
-                                                                {req.status === 'PENDING' && (user?.department === req.department || user?.department === 'PRODUCTION') && (
-                                                                    <button
-                                                                        onClick={(e) => { e.stopPropagation(); handleValidateTransport(req); }}
-                                                                        className="p-1.5 bg-amber-500/20 text-amber-400 hover:bg-green-500/20 hover:text-green-400 rounded-md transition-all animate-pulse"
-                                                                        title="Valider le déplacement"
-                                                                    >
-                                                                        <Check className="h-4 w-4" />
-                                                                    </button>
-                                                                )}
-
-                                                                {/* DELETE BUTTON */}
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(req.id); }}
-                                                                    className={`p-1 text-slate-500 hover:text-red-400 transition-opacity ${req.type === 'usage' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                                                                    title="Supprimer"
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleValidateTransport(req); }}
+                                                                            className="flex items-center gap-1 px-2.5 py-1 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-md transition-all text-xs font-bold"
+                                                                            title="Accepter le déplacement"
+                                                                        >
+                                                                            <Check className="h-3.5 w-3.5" />
+                                                                            Valider
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleRejectTransport(req); }}
+                                                                            className="flex items-center gap-1 px-2.5 py-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-md transition-all text-xs font-bold"
+                                                                            title="Refuser le déplacement"
+                                                                        >
+                                                                            <X className="h-3.5 w-3.5" />
+                                                                            Refuser
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
