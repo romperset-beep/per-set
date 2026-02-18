@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext'; // Added
 import { Department, LogisticsRequest, LogisticsType } from '../types';
-import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package, AlertTriangle } from 'lucide-react';
+import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package, AlertTriangle, Check } from 'lucide-react';
 
 export const LogisticsWidget: React.FC = () => {
     const { project, updateProjectDetails, user, currentDept, setCurrentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
@@ -26,6 +26,20 @@ export const LogisticsWidget: React.FC = () => {
     const [viewMode, setViewMode] = useState<'OVERVIEW' | 'MY_REQUESTS'>('OVERVIEW');
     const [collapsedWeeks, setCollapsedWeeks] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false); // New explicit visibility state
+
+    // Handle transport validation (PENDING → APPROVED) + notify Régie
+    const handleValidateTransport = async (req: LogisticsRequest) => {
+        const updatedReq = { ...req, status: 'APPROVED' as const };
+        await addLogisticsRequest(updatedReq);
+        const dateDisplay = new Date(req.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+        const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
+        await addNotification(
+            `✅ Transport validé par ${req.department} : ${typeLabel} "${req.description}" le ${dateDisplay}`,
+            'LOGISTICS',
+            'Régie' as any,
+            req.id
+        );
+    };
 
     const toggleWeek = (weekKey: string) => {
         setCollapsedWeeks(prev =>
@@ -1175,7 +1189,7 @@ export const LogisticsWidget: React.FC = () => {
                                                         <div
                                                             key={req.id}
                                                             onClick={() => req.type !== 'usage' && openEditModal(req)}
-                                                            className={`group bg-cinema-900 p-3 rounded-lg border border-cinema-700 flex items-center justify-between hover:border-amber-500 ${req.type === 'usage' ? 'opacity-70 cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
+                                                            className={`group bg-cinema-900 p-3 rounded-lg border flex items-center justify-between hover:border-amber-500 ${req.status === 'PENDING' ? 'border-amber-500/50 bg-amber-500/5' : 'border-cinema-700'} ${req.type === 'usage' ? 'opacity-70 cursor-default' : 'cursor-pointer'} ${req.type === 'pickup' ? 'border-l-4 border-l-amber-500' :
                                                                 req.type === 'dropoff' ? 'border-l-4 border-l-blue-500' :
                                                                     req.type === 'usage' ? 'border-l-4 border-l-emerald-500' : ''
                                                                 }`}
@@ -1202,6 +1216,17 @@ export const LogisticsWidget: React.FC = () => {
                                                             <div className="flex items-center gap-3 shrink-0">
                                                                 <span className="text-xs text-slate-600 bg-cinema-800 px-2 py-0.5 rounded font-bold">{req.department}</span>
                                                                 <div className="text-sm font-mono text-slate-400">{req.time}</div>
+
+                                                                {/* PENDING VALIDATION BUTTON */}
+                                                                {req.status === 'PENDING' && (user?.department === req.department || user?.department === 'PRODUCTION') && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleValidateTransport(req); }}
+                                                                        className="p-1.5 bg-amber-500/20 text-amber-400 hover:bg-green-500/20 hover:text-green-400 rounded-md transition-all animate-pulse"
+                                                                        title="Valider le déplacement"
+                                                                    >
+                                                                        <Check className="h-4 w-4" />
+                                                                    </button>
+                                                                )}
 
                                                                 {/* DELETE BUTTON */}
                                                                 <button
