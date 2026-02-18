@@ -31,7 +31,7 @@ export const PDTManager: React.FC = () => {
     const logisticsChangesPreview = useMemo(() => {
         if (!analysisResult || !project.logistics || project.logistics.length === 0) return [];
 
-        const changes: { req: any; oldDate: string; newDate: string; typeLabel: string }[] = [];
+        const changes: { req: any; oldDate: string; newDate: string; seqId: string }[] = [];
 
         // Build location dates from pdtDays
         const locationDates: Record<string, { start: Date; end: Date }> = {};
@@ -81,8 +81,8 @@ export const PDTManager: React.FC = () => {
             }
 
             if (newDateStr) {
-                const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
-                changes.push({ req, oldDate: req.date, newDate: newDateStr, typeLabel });
+                const seqId = req.linkedSequenceId || req.linkedLocation || '?';
+                changes.push({ req, oldDate: req.date, newDate: newDateStr, seqId });
             }
         }
 
@@ -798,23 +798,10 @@ export const PDTManager: React.FC = () => {
                                 <AlertTriangle className="w-4 h-4 text-amber-400" />
                                 <h4 className="text-sm font-bold text-amber-400">Changements logistiques détectés ({logisticsChangesPreview.length})</h4>
                             </div>
-                            <p className="text-xs text-slate-400 mb-3">Les transports suivants seront proposés au déplacement. Le département demandeur devra valider chaque changement.</p>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                 {logisticsChangesPreview.map((change, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-cinema-900/80 rounded-lg px-3 py-2 border border-amber-500/10">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${change.req.type === 'pickup' ? 'bg-amber-500/20 text-amber-500' :
-                                                    change.req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
-                                                        'bg-emerald-500/20 text-emerald-500'
-                                                }`}>{change.typeLabel}</span>
-                                            <span className="text-white text-xs font-medium">{change.req.description}</span>
-                                            <span className="text-xs text-slate-500">{change.req.department}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs">
-                                            <span className="text-red-400 line-through">{new Date(change.oldDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
-                                            <span className="text-slate-500">→</span>
-                                            <span className="text-green-400 font-bold">{new Date(change.newDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
-                                        </div>
+                                    <div key={idx} className="text-xs text-slate-300 bg-cinema-900/80 rounded-lg px-3 py-2 border border-amber-500/10">
+                                        Séquence ({change.seqId}) anciennement <span className="text-red-400">({new Date(change.oldDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span> déplacée <span className="text-green-400 font-bold">({new Date(change.newDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span>
                                     </div>
                                 ))}
                             </div>
