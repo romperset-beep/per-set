@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, Download } from 'lucide-react';
 import { Project, PDTAnalysisResult, User, PDTSequence, PDTDay } from '../types';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext';
 import { useToast } from '../hooks/useToast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { parsePDT } from '../services/pdtService';
@@ -11,6 +12,7 @@ import * as XLSX from 'xlsx';
 
 export const PDTManager: React.FC = () => {
     const { project, updateProjectDetails, addLogisticsRequest, addReinforcement } = useProject();
+    const { addNotification } = useNotification();
     const toast = useToast();
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
@@ -193,7 +195,20 @@ export const PDTManager: React.FC = () => {
                     }
 
                     if (changed) {
+                        // Set status to PENDING for department validation
+                        updatedReq = { ...updatedReq, status: 'PENDING' as const };
                         await addLogisticsRequest(updatedReq);
+
+                        // Notify the owning department
+                        const oldDateDisplay = new Date(req.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+                        const newDateDisplay = new Date(updatedReq.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+                        const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
+                        await addNotification(
+                            `📦 Transport déplacé : ${typeLabel} "${req.description}" du ${oldDateDisplay} → ${newDateDisplay} (PDT mis à jour)`,
+                            'LOGISTICS',
+                            req.department,
+                            req.id
+                        );
                     }
                 }
             }

@@ -18,7 +18,7 @@ export enum Department {
 export interface Notification {
   id: string;
   message: string;
-  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR' | 'ORDER' | 'STOCK_MOVE' | 'RENFORT';
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR' | 'ORDER' | 'STOCK_MOVE' | 'RENFORT' | 'LOGISTICS';
   date: Date;
   read: boolean;
   targetDept?: Department | 'PRODUCTION';
