@@ -202,7 +202,8 @@ export const PDTManager: React.FC = () => {
                             const newDateStr = newDate.toISOString().split('T')[0];
                             if (newDateStr !== req.date) {
                                 // Store as PENDING proposal, don't change actual date
-                                updatedReq = { ...updatedReq, pendingDate: newDateStr };
+                                // Also store the actual sequence date for the explanatory phrase
+                                updatedReq = { ...updatedReq, pendingDate: newDateStr, pendingSequenceDate: relatedSeq.date };
                                 changed = true;
                             }
                         }

@@ -1257,7 +1257,7 @@ export const LogisticsWidget: React.FC = () => {
                                                                         </span>
                                                                         {req.linkedSequenceId && (
                                                                             <span className="text-slate-500 italic text-[10px] ml-1">
-                                                                                seq:{req.linkedSequenceId} déplacée au {new Date(req.pendingDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                                                seq:{req.linkedSequenceId} déplacée au {new Date(req.pendingSequenceDate || req.pendingDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                                             </span>
                                                                         )}
                                                                     </div>

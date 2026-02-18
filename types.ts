@@ -123,6 +123,7 @@ export interface LogisticsRequest {
   dayOffset?: number; // New
   duration?: number; // New
   pendingDate?: string | null; // Proposed new date awaiting department validation (YYYY-MM-DD)
+  pendingSequenceDate?: string | null; // The actual sequence date that triggered this change
 }
 
 export interface PDTSequence {
