@@ -148,24 +148,22 @@ export const PDTManager: React.FC = () => {
                             const seqDate = new Date(relatedSeq.date);
 
                             // Calculate correct date based on item type
+                            // NOTE: dayOffset is for LOCATION links, not sequence links.
+                            // For sequence links, pickup = J-1, usage = J, dropoff = J+1 (hardcoded).
                             let newDate = new Date(seqDate);
                             if (req.type === 'pickup' || req.type === 'pickup_set') {
-                                const offset = req.dayOffset !== undefined ? req.dayOffset : -1;
-                                newDate.setDate(seqDate.getDate() + offset);
+                                newDate.setDate(seqDate.getDate() - 1); // Always J-1
                             } else if (req.type === 'dropoff' || req.type === 'dropoff_set') {
-                                const offset = req.dayOffset !== undefined ? req.dayOffset : 1;
-                                newDate.setDate(seqDate.getDate() + offset);
-                            } else {
-                                const offset = req.dayOffset || 0;
-                                newDate.setDate(seqDate.getDate() + offset);
+                                newDate.setDate(seqDate.getDate() + 1); // Always J+1
                             }
+                            // else: usage stays on seqDate (J)
 
                             // Skip Sundays
                             if (newDate.getDay() === 0) {
                                 if (req.type === 'pickup' || req.type === 'pickup_set') {
-                                    newDate.setDate(newDate.getDate() - 1);
+                                    newDate.setDate(newDate.getDate() - 1); // Saturday
                                 } else {
-                                    newDate.setDate(newDate.getDate() + 1);
+                                    newDate.setDate(newDate.getDate() + 1); // Monday
                                 }
                             }
 
