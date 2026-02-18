@@ -1139,8 +1139,8 @@ export const LogisticsWidget: React.FC = () => {
         </div>
     );
 
-    // 1. PRODUCTION OVERVIEW
-    if (user?.department === 'PRODUCTION' && viewMode === 'OVERVIEW') {
+    // 1. GLOBAL OVERVIEW (Accessible to all, filtered by dept)
+    if (viewMode === 'OVERVIEW') {
         const sortedWeeks = Object.keys(groupedByWeek).sort();
 
         return (
@@ -1152,7 +1152,7 @@ export const LogisticsWidget: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-white">Logistique & Transports</h2>
-                            <p className="text-slate-400">Vue d'ensemble Production</p>
+                            <p className="text-slate-400">Vue d'ensemble {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? 'Production' : user?.department}</p>
                         </div>
                     </div>
 
@@ -1192,7 +1192,15 @@ export const LogisticsWidget: React.FC = () => {
                                 {!isCollapsed && (
                                     <div className="p-4 space-y-4 border-t border-cinema-800 animate-in slide-in-from-top-2 duration-200">
                                         {(groupedByWeek[weekKey].days || []).sort().map(dateStr => {
-                                            const dayRequests = (project.logistics || []).filter(r => r.date === dateStr);
+                                            const dayRequests = (project.logistics || [])
+                                                .filter(r => r.date === dateStr)
+                                                // FILTER: Production/Regie see everything (or filtered by something else if we added a filter dropdown here too, but for now they see everything in this list view is implied or we should filter?)
+                                                // Actually `groupedByWeek` contains ALL logistics. We must filter here to show only what the user is allowed to see.
+                                                .filter(r => {
+                                                    if (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) return true;
+                                                    return r.department === user?.department;
+                                                });
+
                                             if (dayRequests.length === 0) return null;
 
                                             return (
@@ -1317,46 +1325,44 @@ export const LogisticsWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
-                    <div className="flex gap-2">
-                        {/* Department Selector for Production */}
-                        {user?.department === 'PRODUCTION' && (
-                            <div className="relative">
-                                <select
-                                    className="bg-cinema-900 text-white border border-cinema-700 rounded-lg pl-3 pr-8 py-2 appearance-none focus:outline-none focus:border-amber-500 cursor-pointer font-bold"
-                                    value={currentDept} // Controlled by global context
-                                    onChange={(e) => setCurrentDept(e.target.value)}
-                                >
-                                    <option value="PRODUCTION">PRODUCTION</option>
-                                    {Object.values(Department).map(dept => (
-                                        <option key={dept} value={dept}>{dept}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="h-4 w-4 text-slate-400 absolute right-2 top-3 pointer-events-none" />
-                            </div>
-                        )}
+                <div className="flex gap-2">
+                    {/* Department Selector for Production/Régie */}
+                    {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
+                        <div className="relative">
+                            <select
+                                className="bg-cinema-900 text-white border border-cinema-700 rounded-lg pl-3 pr-8 py-2 appearance-none focus:outline-none focus:border-amber-500 cursor-pointer font-bold"
+                                value={currentDept} // Controlled by global context
+                                onChange={(e) => setCurrentDept(e.target.value)}
+                            >
+                                <option value="PRODUCTION">PRODUCTION</option>
+                                {Object.values(Department).map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="h-4 w-4 text-slate-400 absolute right-2 top-3 pointer-events-none" />
+                        </div>
+                    )}
 
-                        <button
-                            onClick={() => {
-                                setAddingToDate(new Date().toISOString().split('T')[0]);
-                                setModalStep('SELECTION');
-                                setIsModalOpen(true);
-                            }}
-                            className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-lg shadow-amber-500/20"
-                        >
-                            <Plus className="h-4 w-4" />
-                            <span className="hidden md:inline">Nouvelle Demande</span>
-                            <span className="md:hidden">+</span>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('OVERVIEW')}
-                            className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-                        >
-                            <Truck className="h-4 w-4" />
-                            <span className="hidden md:inline">Vue Globale</span>
-                        </button>
-                    </div>
-                )}
+                    <button
+                        onClick={() => {
+                            setAddingToDate(new Date().toISOString().split('T')[0]);
+                            setModalStep('SELECTION');
+                            setIsModalOpen(true);
+                        }}
+                        className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden md:inline">Nouvelle Demande</span>
+                        <span className="md:hidden">+</span>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('OVERVIEW')}
+                        className="bg-cinema-700 hover:bg-cinema-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Truck className="h-4 w-4" />
+                        <span className="hidden md:inline">Vue Globale</span>
+                    </button>
+                </div>
 
                 <div className="flex items-center gap-4 bg-cinema-900 rounded-lg p-1 border border-cinema-700">
                     <button onClick={() => changeWeek('prev')} className="p-2 text-slate-400 hover:text-white transition-colors">
@@ -1399,6 +1405,18 @@ export const LogisticsWidget: React.FC = () => {
                         const isToday = new Date().toISOString().split('T')[0] === dateStr;
                         const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                         const requests = getRequests(dateStr, (user?.department === 'PRODUCTION' || user?.department === Department.REGIE) ? currentDept : user?.department || '');
+                        // If user is not Production/Regie, filtering is already done by passing user.department as 'dept' to getRequests.
+                        // However, getRequests logic above matches EXACTLY 'dept'.
+                        // For Global View in Production mode (matrix), it filters by `currentDept` which can be everything?
+                        // Actually the matrix view above (Calendar View) is ALREADY filtered correctly because it passes `currentDept` or `user.department`.
+                        // The issue is the "Overview" view below.
+
+                        // Wait, I am editing the Calendar view here. The prompt is about Global View (Overview).
+                        // The user said "Global View" but they might mean the Matrix/Calendar view seen by everyone?
+                        // "n'a pas lue global... ce serait bien que tout les départements aient la vue globale"
+                        // The button I enabled above switches `viewMode` to 'OVERVIEW'.
+                        // So I need to modify the block that HANDLES `viewMode === 'OVERVIEW'`.
+
 
                         return (
                             <div
