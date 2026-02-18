@@ -10,7 +10,7 @@ import { generatePDTTemplate, parsePDTMatrix } from '../services/matrixService';
 import * as XLSX from 'xlsx';
 
 export const PDTManager: React.FC = () => {
-    const { project, updateProjectDetails } = useProject();
+    const { project, updateProjectDetails, addLogisticsRequest, addReinforcement } = useProject();
     const toast = useToast();
     const [isDragging, setIsDragging] = useState(false);
     const [file, setFile] = useState<File | null>(null);
@@ -118,7 +118,7 @@ export const PDTManager: React.FC = () => {
                 updates.pdtDays = analysisResult.pdtDays;
             }
 
-            // Auto-Sync Logic: Logistics
+            // Auto-Sync Logic: Logistics (write to subcollection)
             if (project.logistics && project.logistics.length > 0) {
                 // Prepare Map of Location -> {start, end} from NEW pdtDays
                 const locationDates: Record<string, { start: Date, end: Date }> = {};
@@ -136,25 +136,44 @@ export const PDTManager: React.FC = () => {
                     });
                 }
 
-                // Update Logistics
-                updates.logistics = project.logistics.map(req => {
+                // Update Logistics — write each changed item to subcollection
+                for (const req of project.logistics) {
                     let updatedReq = { ...req };
+                    let changed = false;
 
                     // 1. Sync Sequence
                     if (req.linkedSequenceId && req.autoUpdateDates && analysisResult.extractedSequences) {
                         const relatedSeq = analysisResult.extractedSequences.find((s: any) => s.id === req.linkedSequenceId);
                         if (relatedSeq) {
                             const seqDate = new Date(relatedSeq.date);
-                            const pickupDate = new Date(seqDate);
-                            pickupDate.setDate(seqDate.getDate() - 1);
-                            const returnDate = new Date(seqDate);
-                            returnDate.setDate(seqDate.getDate() + 1);
 
-                            updatedReq = {
-                                ...updatedReq,
-                                date: pickupDate.toISOString().split('T')[0],
-                                returnDate: returnDate.toISOString().split('T')[0]
-                            };
+                            // Calculate correct date based on item type
+                            let newDate = new Date(seqDate);
+                            if (req.type === 'pickup' || req.type === 'pickup_set') {
+                                const offset = req.dayOffset !== undefined ? req.dayOffset : -1;
+                                newDate.setDate(seqDate.getDate() + offset);
+                            } else if (req.type === 'dropoff' || req.type === 'dropoff_set') {
+                                const offset = req.dayOffset !== undefined ? req.dayOffset : 1;
+                                newDate.setDate(seqDate.getDate() + offset);
+                            } else {
+                                const offset = req.dayOffset || 0;
+                                newDate.setDate(seqDate.getDate() + offset);
+                            }
+
+                            // Skip Sundays
+                            if (newDate.getDay() === 0) {
+                                if (req.type === 'pickup' || req.type === 'pickup_set') {
+                                    newDate.setDate(newDate.getDate() - 1);
+                                } else {
+                                    newDate.setDate(newDate.getDate() + 1);
+                                }
+                            }
+
+                            const newDateStr = newDate.toISOString().split('T')[0];
+                            if (newDateStr !== req.date) {
+                                updatedReq = { ...updatedReq, date: newDateStr };
+                                changed = true;
+                            }
                         }
                     }
 
@@ -162,35 +181,27 @@ export const PDTManager: React.FC = () => {
                     if (req.linkedLocation && locationDates[req.linkedLocation]) {
                         const { start, end } = locationDates[req.linkedLocation];
                         let newDate = new Date(start);
-
-                        // Reference Point: Start or End?
-                        // If Pre/Shooting -> Start. If Demontage -> End.
                         if (req.linkType === 'DEMONTAGE') {
                             newDate = new Date(end);
                         }
-
-                        // Apply Offset (days)
-                        // If dayOffset is undefined, assume 0
                         const offset = req.dayOffset || 0;
                         newDate.setDate(newDate.getDate() + offset);
 
-                        // For simplicity, we just update the main Date. 
-                        // If it's a Roundtrip, pickup/usage/return are separate requests now (except historic ones).
-                        // If historical roundtrip is single obj with returnDate, we might need logic, 
-                        // but new structure splits them.
-                        updatedReq = {
-                            ...updatedReq,
-                            date: newDate.toISOString().split('T')[0]
-                        };
+                        const newDateStr = newDate.toISOString().split('T')[0];
+                        if (newDateStr !== req.date) {
+                            updatedReq = { ...updatedReq, date: newDateStr };
+                            changed = true;
+                        }
                     }
 
-                    return updatedReq;
-                });
+                    if (changed) {
+                        await addLogisticsRequest(updatedReq);
+                    }
+                }
             }
 
-            // Auto-Sync Logic: Renforts (Move staff if sequence OR location date changes)
+            // Auto-Sync Logic: Renforts (write to subcollection)
             if (project.reinforcements && project.reinforcements.length > 0) {
-                // Prepare Map of Location -> {start, end} (Reuse if possible, but scope...)
                 const locationDates: Record<string, { start: Date, end: Date }> = {};
                 if (updates.pdtDays) {
                     updates.pdtDays.forEach((d: any) => {
@@ -206,7 +217,7 @@ export const PDTManager: React.FC = () => {
                     });
                 }
 
-                // 1. Flatten all staff
+                // Flatten, update dates, regroup, and write changed reinforcements
                 let allStaff: { staff: any, dept: string, date: string }[] = [];
                 project.reinforcements.forEach(r => {
                     if (r.staff) {
@@ -216,13 +227,11 @@ export const PDTManager: React.FC = () => {
                     }
                 });
 
-                // 2. Update dates
                 let hasRenfortChanges = false;
                 const updatedStaffList = allStaff.map(item => {
                     let newDate = item.date;
                     let changed = false;
 
-                    // Sync Sequence
                     if (item.staff.linkedSequenceId && analysisResult.extractedSequences) {
                         const seq = analysisResult.extractedSequences.find((s: any) => s.id === item.staff.linkedSequenceId);
                         if (seq && seq.date !== item.date) {
@@ -231,18 +240,14 @@ export const PDTManager: React.FC = () => {
                         }
                     }
 
-                    // Sync Location
                     if (item.staff.linkedLocation && locationDates[item.staff.linkedLocation]) {
                         const { start, end } = locationDates[item.staff.linkedLocation];
                         let targetDateObj = new Date(start);
-
                         if (item.staff.linkType === 'DEMONTAGE') {
                             targetDateObj = new Date(end);
                         }
-
                         const offset = item.staff.dayOffset || 0;
                         targetDateObj.setDate(targetDateObj.getDate() + offset);
-
                         const targetDateStr = targetDateObj.toISOString().split('T')[0];
                         if (targetDateStr !== item.date) {
                             newDate = targetDateStr;
@@ -257,7 +262,6 @@ export const PDTManager: React.FC = () => {
                     return item;
                 });
 
-                // 3. Re-group into Reinforcement objects
                 if (hasRenfortChanges) {
                     const newReinforcementsMap: Record<string, any> = {};
                     updatedStaffList.forEach(item => {
@@ -272,7 +276,11 @@ export const PDTManager: React.FC = () => {
                         }
                         newReinforcementsMap[key].staff.push(item.staff);
                     });
-                    updates.reinforcements = Object.values(newReinforcementsMap);
+
+                    // Write each updated reinforcement to subcollection
+                    for (const reinforcement of Object.values(newReinforcementsMap)) {
+                        await addReinforcement(reinforcement);
+                    }
                 }
             }
 
