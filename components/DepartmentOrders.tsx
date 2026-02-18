@@ -208,7 +208,7 @@ export const DepartmentOrders: React.FC = () => {
 
     const handleDirectOrder = async (op: { neededItem: any, marketItem: any }) => {
         if (!user) return;
-        const confirmMsg = `Voulez-vous commander "${op.marketItem.name}" à ${op.marketItem.productionName} pour ${op.marketItem.price} € ?`;
+        const confirmMsg = `Voulez-vous commander "${op.marketItem.name}" à ${op.marketItem.productionName} pour ${Number(op.marketItem.price).toFixed(2)} € ?`;
         if (!window.confirm(confirmMsg)) return;
 
         try {
