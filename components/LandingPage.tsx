@@ -173,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 <img
                     src="/logo.png"
                     alt="Per-Set Logo"
-                    className="h-32 w-32 object-contain rounded-2xl shadow-2xl mb-4"
+                    className="h-32 w-32 object-contain rounded-2xl shadow-2xl mb-4 mx-auto"
                 />
                 <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
                     {t.title}
