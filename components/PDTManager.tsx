@@ -27,67 +27,35 @@ export const PDTManager: React.FC = () => {
     const [editStartDate, setEditStartDate] = useState<string>('');
     const [editEndDate, setEditEndDate] = useState<string>('');
 
-    // Compute logistics changes preview when analysis result is available
+    // Compute logistics changes preview: one line per sequence (not per item type)
     const logisticsChangesPreview = useMemo(() => {
         if (!analysisResult || !project.logistics || project.logistics.length === 0) return [];
 
-        const changes: { req: any; oldDate: string; newDate: string; seqId: string }[] = [];
-
-        // Build location dates from pdtDays
-        const locationDates: Record<string, { start: Date; end: Date }> = {};
-        if (analysisResult.pdtDays) {
-            analysisResult.pdtDays.forEach((d: any) => {
-                const loc = d.linkedLocation || d.location;
-                if (!loc) return;
-                const date = new Date(d.date);
-                if (!locationDates[loc]) {
-                    locationDates[loc] = { start: date, end: date };
-                } else {
-                    if (date < locationDates[loc].start) locationDates[loc].start = date;
-                    if (date > locationDates[loc].end) locationDates[loc].end = date;
-                }
-            });
-        }
+        // Deduplicate: one line per sequence showing the sequence date change
+        const seenSequences = new Set<string>();
+        const changes: { seqId: string; oldSeqDate: string; newSeqDate: string }[] = [];
 
         for (const req of project.logistics) {
-            let newDateStr: string | null = null;
+            // Only consider sequence-linked items, skip duplicates
+            if (!req.linkedSequenceId || !req.autoUpdateDates || !analysisResult.extractedSequences) continue;
+            if (seenSequences.has(req.linkedSequenceId)) continue;
 
-            // 1. Sequence sync
-            if (req.linkedSequenceId && req.autoUpdateDates && analysisResult.extractedSequences) {
-                const relatedSeq = analysisResult.extractedSequences.find((s: any) => s.id === req.linkedSequenceId);
-                if (relatedSeq) {
-                    const seqDate = new Date(relatedSeq.date);
-                    let newDate = new Date(seqDate);
-                    if (req.type === 'pickup' || req.type === 'pickup_set') newDate.setDate(seqDate.getDate() - 1);
-                    else if (req.type === 'dropoff' || req.type === 'dropoff_set') newDate.setDate(seqDate.getDate() + 1);
-                    if (newDate.getDay() === 0) {
-                        if (req.type === 'pickup' || req.type === 'pickup_set') newDate.setDate(newDate.getDate() - 1);
-                        else newDate.setDate(newDate.getDate() + 1);
-                    }
-                    const dateStr = newDate.toISOString().split('T')[0];
-                    if (dateStr !== req.date) newDateStr = dateStr;
-                }
-            }
+            const relatedSeq = analysisResult.extractedSequences.find((s: any) => s.id === req.linkedSequenceId);
+            if (!relatedSeq) continue;
 
-            // 2. Location sync
-            if (!newDateStr && req.linkedLocation && locationDates[req.linkedLocation]) {
-                const { start, end } = locationDates[req.linkedLocation];
-                let newDate = new Date(start);
-                if (req.linkType === 'DEMONTAGE') newDate = new Date(end);
-                const offset = req.dayOffset || 0;
-                newDate.setDate(newDate.getDate() + offset);
-                const dateStr = newDate.toISOString().split('T')[0];
-                if (dateStr !== req.date) newDateStr = dateStr;
-            }
+            // Find the current sequence date from existing PDT data
+            const oldSeq = project.pdtSequences?.find((s: any) => s.id === req.linkedSequenceId);
+            const oldSeqDate = oldSeq?.date || req.date;
+            const newSeqDate = relatedSeq.date;
 
-            if (newDateStr) {
-                const seqId = req.linkedSequenceId || req.linkedLocation || '?';
-                changes.push({ req, oldDate: req.date, newDate: newDateStr, seqId });
+            if (oldSeqDate !== newSeqDate) {
+                seenSequences.add(req.linkedSequenceId);
+                changes.push({ seqId: req.linkedSequenceId, oldSeqDate, newSeqDate });
             }
         }
 
         return changes;
-    }, [analysisResult, project.logistics]);
+    }, [analysisResult, project.logistics, project.pdtSequences]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -801,7 +769,7 @@ export const PDTManager: React.FC = () => {
                             <div className="space-y-1.5 max-h-48 overflow-y-auto">
                                 {logisticsChangesPreview.map((change, idx) => (
                                     <div key={idx} className="text-xs text-slate-300 bg-cinema-900/80 rounded-lg px-3 py-2 border border-amber-500/10">
-                                        Séquence ({change.seqId}) anciennement <span className="text-red-400">({new Date(change.oldDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span> déplacée <span className="text-green-400 font-bold">({new Date(change.newDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span>
+                                        Séquence ({change.seqId}) anciennement <span className="text-red-400">({new Date(change.oldSeqDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span> déplacée <span className="text-green-400 font-bold">({new Date(change.newSeqDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })})</span>
                                     </div>
                                 ))}
                             </div>
