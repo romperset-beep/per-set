@@ -170,13 +170,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
             {/* Header */}
             <div className="text-center mb-12 space-y-4">
-                <div className="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-emerald-900/80 to-cinema-800 border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/20 mb-4">
-                    <img
-                        src="/logo.png"
-                        alt="Per-Set Logo"
-                        className="h-28 w-28 object-contain rounded-full"
-                    />
-                </div>
+                <img
+                    src="/logo.png"
+                    alt="Per-Set Logo"
+                    className="h-32 w-32 object-contain rounded-2xl shadow-2xl mb-4"
+                />
                 <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
                     {t.title}
                 </h1>
