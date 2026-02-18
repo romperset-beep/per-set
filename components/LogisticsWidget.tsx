@@ -1255,6 +1255,11 @@ export const LogisticsWidget: React.FC = () => {
                                                                         <span className="text-white font-bold bg-amber-500/20 px-2 py-0.5 rounded">
                                                                             {new Date(req.pendingDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
                                                                         </span>
+                                                                        {req.linkedSequenceId && (
+                                                                            <span className="text-slate-500 italic text-[10px] ml-1">
+                                                                                seq:{req.linkedSequenceId} déplacée au {new Date(req.pendingDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <button
