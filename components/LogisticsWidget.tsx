@@ -655,7 +655,7 @@ export const LogisticsWidget: React.FC = () => {
                 const linkName = isLinkedSeq ? `la Séquence ${reqToMove.linkedSequenceId}` : `le Lieu ${reqToMove.linkedLocation}`;
 
                 const confirmed = await showConfirm(
-                    `Attention : Cet élément est lié à ${linkName}.\n\nVoulez-vous le détacher et le déplacer au ${targetDateObj.toLocaleDateString('fr-FR')} ?\nIl ne sera plus mis à jour automatiquement en cas de modification du plan de travail.`
+                    `⚠️ Attention : Cet élément est lié à ${linkName}.\n\nEn le déplaçant au ${targetDateObj.toLocaleDateString('fr-FR')}, il sera DÉTACHÉ de cette séquence.\n\nIl ne sera plus mis à jour automatiquement si le plan de travail change.\nVoulez-vous continuer ?`
                 );
 
                 if (!confirmed) return;
@@ -1236,6 +1236,14 @@ export const LogisticsWidget: React.FC = () => {
 
                                                                     <span className="text-white font-medium truncate">{req.location}</span>
                                                                     <span className="text-xs text-slate-500 truncate hidden md:inline">{req.description}</span>
+
+                                                                    {/* LINKED SEQUENCE BADGE */}
+                                                                    {req.linkedSequenceId && (
+                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 shrink-0">
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                                            SEQ {req.linkedSequenceId}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                                 <div className="flex items-center gap-3 shrink-0">
                                                                     <span className="text-xs text-slate-600 bg-cinema-800 px-2 py-0.5 rounded font-bold">{req.department}</span>
