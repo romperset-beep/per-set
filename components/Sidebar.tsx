@@ -185,6 +185,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
                         return acc + staff.filter((s: any) => s.validationStatus === 'PENDING').length;
                       }, 0);
                     }
+                    // Logistics badge: count items needing current department's attention
+                    if (item.id === 'logistics' && project?.logistics) {
+                      if (currentDept === 'REGIE' || currentDept === 'Régie') {
+                        // Régie sees count of recently approved items (validated by dept, awaiting Régie acknowledgment)
+                        badgeCount = project.logistics.filter((r: any) => r.status === 'APPROVED').length;
+                      } else {
+                        // Other departments see count of items with pendingDate needing their validation
+                        badgeCount = project.logistics.filter((r: any) => r.pendingDate && r.department === currentDept).length;
+                      }
+                    }
 
                     return (
                       <button

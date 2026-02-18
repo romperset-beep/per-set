@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, Download } from 'lucide-react';
 import { Project, PDTAnalysisResult, User, PDTSequence, PDTDay } from '../types';
 import { useProject } from '../context/ProjectContext';
@@ -26,6 +26,68 @@ export const PDTManager: React.FC = () => {
     const [editSequences, setEditSequences] = useState<number>(0);
     const [editStartDate, setEditStartDate] = useState<string>('');
     const [editEndDate, setEditEndDate] = useState<string>('');
+
+    // Compute logistics changes preview when analysis result is available
+    const logisticsChangesPreview = useMemo(() => {
+        if (!analysisResult || !project.logistics || project.logistics.length === 0) return [];
+
+        const changes: { req: any; oldDate: string; newDate: string; typeLabel: string }[] = [];
+
+        // Build location dates from pdtDays
+        const locationDates: Record<string, { start: Date; end: Date }> = {};
+        if (analysisResult.pdtDays) {
+            analysisResult.pdtDays.forEach((d: any) => {
+                const loc = d.linkedLocation || d.location;
+                if (!loc) return;
+                const date = new Date(d.date);
+                if (!locationDates[loc]) {
+                    locationDates[loc] = { start: date, end: date };
+                } else {
+                    if (date < locationDates[loc].start) locationDates[loc].start = date;
+                    if (date > locationDates[loc].end) locationDates[loc].end = date;
+                }
+            });
+        }
+
+        for (const req of project.logistics) {
+            let newDateStr: string | null = null;
+
+            // 1. Sequence sync
+            if (req.linkedSequenceId && req.autoUpdateDates && analysisResult.extractedSequences) {
+                const relatedSeq = analysisResult.extractedSequences.find((s: any) => s.id === req.linkedSequenceId);
+                if (relatedSeq) {
+                    const seqDate = new Date(relatedSeq.date);
+                    let newDate = new Date(seqDate);
+                    if (req.type === 'pickup' || req.type === 'pickup_set') newDate.setDate(seqDate.getDate() - 1);
+                    else if (req.type === 'dropoff' || req.type === 'dropoff_set') newDate.setDate(seqDate.getDate() + 1);
+                    if (newDate.getDay() === 0) {
+                        if (req.type === 'pickup' || req.type === 'pickup_set') newDate.setDate(newDate.getDate() - 1);
+                        else newDate.setDate(newDate.getDate() + 1);
+                    }
+                    const dateStr = newDate.toISOString().split('T')[0];
+                    if (dateStr !== req.date) newDateStr = dateStr;
+                }
+            }
+
+            // 2. Location sync
+            if (!newDateStr && req.linkedLocation && locationDates[req.linkedLocation]) {
+                const { start, end } = locationDates[req.linkedLocation];
+                let newDate = new Date(start);
+                if (req.linkType === 'DEMONTAGE') newDate = new Date(end);
+                const offset = req.dayOffset || 0;
+                newDate.setDate(newDate.getDate() + offset);
+                const dateStr = newDate.toISOString().split('T')[0];
+                if (dateStr !== req.date) newDateStr = dateStr;
+            }
+
+            if (newDateStr) {
+                const typeLabel = req.type === 'pickup' ? 'Enlèvement' : req.type === 'dropoff' ? 'Retour' : req.type === 'usage' ? 'Utilisation' : req.type;
+                changes.push({ req, oldDate: req.date, newDate: newDateStr, typeLabel });
+            }
+        }
+
+        return changes;
+    }, [analysisResult, project.logistics]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -725,6 +787,36 @@ export const PDTManager: React.FC = () => {
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* LOGISTICS CHANGES PREVIEW */}
+                    {logisticsChangesPreview.length > 0 && (
+                        <div className="p-4 border-t border-amber-500/20 bg-amber-900/10">
+                            <div className="flex items-center gap-2 mb-3">
+                                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                <h4 className="text-sm font-bold text-amber-400">Changements logistiques détectés ({logisticsChangesPreview.length})</h4>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-3">Les transports suivants seront proposés au déplacement. Le département demandeur devra valider chaque changement.</p>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {logisticsChangesPreview.map((change, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-cinema-900/80 rounded-lg px-3 py-2 border border-amber-500/10">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${change.req.type === 'pickup' ? 'bg-amber-500/20 text-amber-500' :
+                                                    change.req.type === 'dropoff' ? 'bg-blue-500/20 text-blue-400' :
+                                                        'bg-emerald-500/20 text-emerald-500'
+                                                }`}>{change.typeLabel}</span>
+                                            <span className="text-white text-xs font-medium">{change.req.description}</span>
+                                            <span className="text-xs text-slate-500">{change.req.department}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <span className="text-red-400 line-through">{new Date(change.oldDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                                            <span className="text-slate-500">→</span>
+                                            <span className="text-green-400 font-bold">{new Date(change.newDate).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
