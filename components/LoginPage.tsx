@@ -85,11 +85,13 @@ export const LoginPage: React.FC = () => {
                 <div className="flex flex-col items-center w-full">
                     <div className="text-center mb-8">
                         <div className="flex justify-center mb-4">
-                            <img
-                                src="/logo.png"
-                                alt="Per-Set Logo"
-                                className="h-32 w-auto object-contain"
-                            />
+                            <div className="inline-flex items-center justify-center w-36 h-36 rounded-full bg-gradient-to-br from-emerald-900/80 to-cinema-800 border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/20">
+                                <img
+                                    src="/logo.png"
+                                    alt="Per-Set Logo"
+                                    className="h-24 w-24 object-contain rounded-full"
+                                />
+                            </div>
                         </div>
                         <h1 className="text-2xl font-bold text-white tracking-tight">Per-Set</h1>
                     </div>
