@@ -32,25 +32,28 @@ import { useSwipeable } from 'react-swipeable'; // Added
 import { DailyCallSheetSummary } from './components/DailyCallSheetSummary'; // Added
 
 // Lazy imports - Heavy components loaded on demand
-const MyListsWidget = lazy(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
-const CateringWidget = lazy(() => import('./components/CateringWidget').then(m => ({ default: m.CateringWidget })));
-const TimesheetWidget = lazy(() => import('./components/TimesheetWidget').then(m => ({ default: m.TimesheetWidget })));
-const RenfortsWidget = lazy(() => import('./components/RenfortsWidget').then(m => ({ default: m.RenfortsWidget })));
-const LogisticsWidget = lazy(() => import('./components/LogisticsWidget').then(m => ({ default: m.LogisticsWidget })));
-const EnergyTracker = lazy(() => import('./components/EnergyTracker').then(m => ({ default: m.EnergyTracker })));
-const CircularEconomy = lazy(() => import('./components/CircularEconomy').then(m => ({ default: m.CircularEconomy })));
-const ImpactReport = lazy(() => import('./components/ImpactReport').then(m => ({ default: m.ImpactReport })));
-const GlobalStock = lazy(() => import('./components/GlobalStock').then(m => ({ default: m.GlobalStock })));
-const ExpenseReports = lazy(() => import('./components/ExpenseReports').then(m => ({ default: m.ExpenseReports })));
-const BuyBackMarketplace = lazy(() => import('./components/BuyBackMarketplace').then(m => ({ default: m.BuyBackMarketplace })));
-const UserProfilePage = lazy(() => import('./components/UserProfilePage').then(m => ({ default: m.UserProfilePage })));
-const TeamDirectory = lazy(() => import('./components/TeamDirectory').then(m => ({ default: m.TeamDirectory })));
-const CallSheetView = lazy(() => import('./components/CallSheetView').then(m => ({ default: m.CallSheetView })));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const MarketplacePage = lazy(() => import('./components/MarketplacePage').then(m => ({ default: m.MarketplacePage })));
-const DepartmentOrders = lazy(() => import('./components/DepartmentOrders').then(m => ({ default: m.DepartmentOrders })));
-const SuperAdminStats = lazy(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
-const PDTManager = lazy(() => import('./components/PDTManager').then(m => ({ default: m.PDTManager })));
+// Use lazyImport wrapper to handle chunk load errors (reload page once)
+import { lazyImport } from './components/LazyImport';
+
+const MyListsWidget = lazyImport(() => import('./components/MyListsWidget').then(m => ({ default: m.MyListsWidget })));
+const CateringWidget = lazyImport(() => import('./components/CateringWidget').then(m => ({ default: m.CateringWidget })));
+const TimesheetWidget = lazyImport(() => import('./components/TimesheetWidget').then(m => ({ default: m.TimesheetWidget })));
+const RenfortsWidget = lazyImport(() => import('./components/RenfortsWidget').then(m => ({ default: m.RenfortsWidget })));
+const LogisticsWidget = lazyImport(() => import('./components/LogisticsWidget').then(m => ({ default: m.LogisticsWidget })));
+const EnergyTracker = lazyImport(() => import('./components/EnergyTracker').then(m => ({ default: m.EnergyTracker })));
+const CircularEconomy = lazyImport(() => import('./components/CircularEconomy').then(m => ({ default: m.CircularEconomy })));
+const ImpactReport = lazyImport(() => import('./components/ImpactReport').then(m => ({ default: m.ImpactReport })));
+const GlobalStock = lazyImport(() => import('./components/GlobalStock').then(m => ({ default: m.GlobalStock })));
+const ExpenseReports = lazyImport(() => import('./components/ExpenseReports').then(m => ({ default: m.ExpenseReports })));
+const BuyBackMarketplace = lazyImport(() => import('./components/BuyBackMarketplace').then(m => ({ default: m.BuyBackMarketplace })));
+const UserProfilePage = lazyImport(() => import('./components/UserProfilePage').then(m => ({ default: m.UserProfilePage })));
+const TeamDirectory = lazyImport(() => import('./components/TeamDirectory').then(m => ({ default: m.TeamDirectory })));
+const CallSheetView = lazyImport(() => import('./components/CallSheetView').then(m => ({ default: m.CallSheetView })));
+const AdminDashboard = lazyImport(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const MarketplacePage = lazyImport(() => import('./components/MarketplacePage').then(m => ({ default: m.MarketplacePage })));
+const DepartmentOrders = lazyImport(() => import('./components/DepartmentOrders').then(m => ({ default: m.DepartmentOrders })));
+const SuperAdminStats = lazyImport(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
+const PDTManager = lazyImport(() => import('./components/PDTManager').then(m => ({ default: m.PDTManager })));
 
 import { BetaTestBadge } from './components/BetaTestBadge';
 
