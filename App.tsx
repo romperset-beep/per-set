@@ -331,8 +331,8 @@ const AppContent: React.FC = () => {
     return <LoginPage />;
   }
 
-  // Security: Block Pending or Rejected Users
-  if (user.status === 'pending' || user.status === 'rejected') {
+  // Security: Block Pending, Rejected, or Users with NO status (Undefined)
+  if (user.status !== 'approved' && !user.isAdmin) {
     return <PendingApprovalScreen />;
   }
 

@@ -124,6 +124,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
                     if (docSnap.exists()) {
                         const userData = docSnap.data() as User;
+                        // SELF HEALING: Fix users with missing status (bypass bug)
+                        if (!userData.status && userData.email !== 'romperset@gmail.com') {
+                            console.log('[Auth] User has no status, setting to PENDING to prevent bypass');
+                            userData.status = 'pending';
+                            await setDoc(docRef, { status: 'pending' }, { merge: true });
+                        }
+
                         const fullUser = { ...userData, id: firebaseUser.uid };
                         setUser(fullUser);
                         localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
@@ -148,7 +155,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             firstName: '', // Empty - will trigger MissingProfileDetailsModal
                             lastName: '',  // Empty - will trigger MissingProfileDetailsModal
                             phone: '',     // Empty - will trigger MissingProfileDetailsModal
-                            department: 'PRODUCTION',
+                            department: 'PRODUCTION', // Default, user can change later or be assigned
                             role: isSuperAdmin ? 'ADMIN' : 'USER',
                             productionName: '', // Empty - user will fill this when joining a project
                             filmTitle: '', // Empty - user will fill this when joining a project
@@ -156,6 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             status: isSuperAdmin ? 'approved' : 'pending', // Auto-approve super admin
                             hasAcceptedSaaSTerms: false,
                             isAdmin: isSuperAdmin, // Set admin flag for super admin
+                            projectHistory: []
                         };
 
                         await setDoc(docRef, newUser);
@@ -238,7 +246,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 role: 'USER', // Default
                 productionName: '',
                 filmTitle: '',
-                projectHistory: []
+                projectHistory: [],
+                status: 'pending' // Enforce pending status
             };
 
             await setDoc(doc(db, 'users', uid), newUser);
@@ -387,7 +396,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         role: user.role || 'USER',
                         phone: user.phone || '',
                         currentProjectId: user.currentProjectId,
-                        projectHistory: user.projectHistory
+                        projectHistory: user.projectHistory,
+                        // Required UserProfile fields defaults
+                        address: '',
+                        postalCode: '',
+                        city: '',
+                        familyStatus: '',
+                        emergencyContactName: '',
+                        emergencyContactPhone: '',
+                        isRetired: false,
+                        congeSpectacleNumber: '',
+                        lastMedicalVisit: '',
+                        ssn: '',
+                        birthPlace: '',
+                        birthDate: '',
+                        birthDepartment: '',
+                        birthCountry: '',
+                        nationality: '',
+                        socialSecurityCenterAddress: ''
                     } as UserProfile);
                 }
 

@@ -26,79 +26,137 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, ite
             const { jsPDF } = await import('jspdf');
             const doc = new jsPDF();
 
+            // Load Logo
+            const logoUrl = '/logo.png';
+            let logoData: string | null = null;
+            try {
+                const response = await fetch(logoUrl);
+                const blob = await response.blob();
+                logoData = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.warn("Could not load logo for PDF", e);
+            }
+
             // Colors
             const primaryColor = '#1a1a1a';
             const accentColor = '#eab308'; // Yellow-500
+            const lightGray = '#f3f4f6';
 
-            // Header
+            // --- Header ---
+            if (logoData) {
+                // Keep aspect ratio
+                doc.addImage(logoData, 'PNG', 20, 10, 30, 30);
+            }
+
             doc.setFontSize(24);
             doc.setTextColor(primaryColor);
-            doc.text("FACTURE", 105, 20, { align: 'center' });
+            doc.setFont("helvetica", "bold");
+            doc.text("FACTURE", 190, 25, { align: 'right' });
+
+            const invoiceNum = `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.setFont("helvetica", "normal");
+            doc.text(`N°: ${invoiceNum}`, 190, 32, { align: 'right' });
+            doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 190, 37, { align: 'right' });
+
+            // --- Parties (Two Columns) ---
+            const yStart = 60;
+
+            // Seller (Left)
+            doc.setFontSize(10);
+            doc.setTextColor(150);
+            doc.text("VENDEUR", 20, yStart);
+
+            doc.setFontSize(12);
+            doc.setTextColor(primaryColor);
+            doc.setFont("helvetica", "bold");
+            doc.text(sellerName, 20, yStart + 7);
 
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
+            doc.setFont("helvetica", "normal");
+            doc.text("Production Audiovisuelle", 20, yStart + 13);
+            doc.text("Gestion via Per-Set", 20, yStart + 18);
 
-            // Production Info
-            doc.setFontSize(14);
+            // Buyer (Right)
+            doc.setTextColor(150);
+            doc.text("ACHETEUR", 120, yStart);
+
+            doc.setFontSize(12);
             doc.setTextColor(primaryColor);
-            doc.text("Production", 20, 50);
+            doc.setFont("helvetica", "bold");
+            doc.text(buyerName, 120, yStart + 7);
 
-            doc.setFontSize(11);
-            doc.setTextColor(60);
-            doc.text(`Film: ${sellerName}`, 20, 60);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.setFont("helvetica", "normal");
+            doc.text("Membre de l'équipe", 120, yStart + 13);
 
-            // Transaction Info
-            doc.setFontSize(14);
-            doc.setTextColor(primaryColor);
-            doc.text("Détails de la transaction", 20, 80);
+            // --- Item Table ---
+            let y = 100;
 
-            doc.setFontSize(11);
-            doc.setTextColor(60);
-            doc.text(`Vendu par: ${sellerName}`, 20, 90);
-            doc.text(`À: ${buyerName}`, 20, 96);
-
-            // Table Header
-            let y = 110;
-            doc.setFillColor(240, 240, 240);
+            // Header
+            doc.setFillColor(245, 245, 245);
             doc.rect(20, y, 170, 10, 'F');
             doc.setFontSize(10);
             doc.setTextColor(primaryColor);
             doc.setFont("helvetica", "bold");
-            doc.text("Désignation", 25, y + 7);
-            doc.text("Prix HT", 160, y + 7, { align: 'right' });
+            doc.text("Description", 25, y + 7);
+            doc.text("Ref", 120, y + 7); // Added Ref column
+            doc.text("Prix HT", 185, y + 7, { align: 'right' });
 
-            // Item
+            // Row 1
             y += 20;
             doc.setFont("helvetica", "normal");
             doc.text(item.name, 25, y);
-            doc.text(`${price.toFixed(2)} €`, 160, y, { align: 'right' });
+            doc.text(item.id.substring(0, 8).toUpperCase(), 120, y);
+            doc.text(`${price.toFixed(2)} €`, 185, y, { align: 'right' });
 
-            // Calculations
-            y += 20;
+            // Line
+            y += 5;
+            doc.setDrawColor(230);
             doc.line(20, y, 190, y);
 
+            // --- Totals ---
             y += 15;
-            doc.text("Total HT:", 130, y);
-            doc.text(`${price.toFixed(2)} €`, 180, y, { align: 'right' });
+            const xLabel = 140;
+            const xValue = 185;
 
+            doc.text("Total HT:", xLabel, y);
+            doc.text(`${price.toFixed(2)} €`, xValue, y, { align: 'right' });
+
+            y += 8;
+            doc.text(`TVA (${vatRate}%):`, xLabel, y);
+            doc.text(`${vatAmount.toFixed(2)} €`, xValue, y, { align: 'right' });
+
+            // Net APayer Box
             y += 10;
-            doc.text(`TVA (${vatRate}%):`, 130, y);
-            doc.text(`${vatAmount.toFixed(2)} €`, 180, y, { align: 'right' });
-
-            y += 15;
+            doc.setFillColor(accentColor);
+            doc.rect(xLabel - 25, y - 6, 80, 10, 'F'); // Background box
+            doc.setTextColor(255, 255, 255); // White text
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.text("NET À PAYER:", 130, y);
-            doc.text(`${total.toFixed(2)} €`, 180, y, { align: 'right' });
+            doc.text("NET À PAYER", xLabel - 20, y + 1);
+            doc.text(`${total.toFixed(2)} €`, xValue - 2, y + 1, { align: 'right' });
 
-            // Footer
-            doc.setFont("helvetica", "italic");
-            doc.setFontSize(9);
+            // --- Footer ---
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(8);
             doc.setTextColor(150);
-            doc.text("Document généré automatiquement via Per-Set", 105, 280, { align: 'center' });
+            doc.setFont("helvetica", "italic");
 
+            // Legal
+            doc.text("Conditions de paiement : Paiement à réception. En cas de retard, une pénalité s'applique.", 105, pageHeight - 20, { align: 'center' });
+            doc.text("Document généré automatiquement le " + new Date().toLocaleString('fr-FR') + " via la plateforme Per-Set.", 105, pageHeight - 15, { align: 'center' });
+            doc.text("Per-Set SaaS - Gestion de production éco-responsable.", 105, pageHeight - 10, { align: 'center' });
+
+            // Save
             doc.save(`Facture_${item.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
         } catch (error) {
             console.error("PDF Generation Error:", error);
             alert("Erreur lors de la génération du PDF. Veuillez réessayer.");
