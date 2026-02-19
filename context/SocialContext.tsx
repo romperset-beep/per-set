@@ -85,7 +85,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 posts.push({
                     id: doc.id,
                     ...data,
-                    date: data.date?.toDate ? data.date.toDate() : new Date(data.date)
+                    date: data.date?.toDate ? data.date.toDate().toISOString() : new Date(data.date).toISOString()
                 } as SocialPost);
             });
             setSocialPosts(posts);

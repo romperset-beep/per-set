@@ -12,7 +12,8 @@ export const SocialFeed: React.FC = () => {
         socialPosts, addSocialPost, deleteSocialPost, markSocialAsRead,
         socialAudience: targetAudience, setSocialAudience: setTargetAudience,
         socialTargetDept: targetDept, setSocialTargetDept: setTargetDept,
-        socialTargetUserId: targetUserId, setSocialTargetUserId: setTargetUserId
+        socialTargetUserId: targetUserId, setSocialTargetUserId: setTargetUserId,
+        error // Added error
     } = useSocial(); // Use New Context
 
     // Mark as read when entering the feed
@@ -204,11 +205,12 @@ export const SocialFeed: React.FC = () => {
         e.preventDefault();
         if ((!newPostContent.trim() && !photo) || isProcessing) return;
 
-        const myProfile = userProfiles.find(p => p.email === user?.email);
+        // Use user.id directly for robustness
+        const authorId = user?.id;
 
         const newPost: SocialPost = {
             id: `post_${Date.now()}`,
-            authorId: myProfile?.id,
+            authorId: authorId,
             authorName: user?.name || 'Anonyme',
             authorDepartment: user?.department || 'PRODUCTION',
             content: newPostContent,
@@ -272,6 +274,11 @@ export const SocialFeed: React.FC = () => {
     return (
         <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500">
             <header className="text-center space-y-4">
+                {error && (
+                    <div className="bg-red-500/20 text-red-200 border border-red-500/50 p-4 rounded-xl mb-4 animate-pulse">
+                        ⚠️ {error}
+                    </div>
+                )}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     {/* Recent Discussions Toggle */}
                     <button
