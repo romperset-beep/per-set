@@ -335,7 +335,9 @@ const AppContent: React.FC = () => {
   }
 
   // Security: Block Pending, Rejected, or Users with NO status (Undefined)
-  if (user.status !== 'approved' && !user.isAdmin) {
+  // Super admin (romperset@gmail.com) is always allowed through
+  const isSuperAdmin = user.email === 'romperset@gmail.com';
+  if (user.status !== 'approved' && !user.isAdmin && !isSuperAdmin) {
     return <PendingApprovalScreen />;
   }
 

@@ -131,6 +131,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             await setDoc(docRef, { status: 'pending' }, { merge: true });
                         }
 
+                        // SUPER ADMIN GUARD: Ensure super admin is always approved
+                        if (userData.email === 'romperset@gmail.com' && (userData.status !== 'approved' || !userData.isAdmin)) {
+                            console.log('[Auth] Super admin status corrected to approved');
+                            userData.status = 'approved';
+                            userData.isAdmin = true;
+                            await setDoc(docRef, { status: 'approved', isAdmin: true }, { merge: true });
+                        }
+
                         const fullUser = { ...userData, id: firebaseUser.uid };
                         setUser(fullUser);
                         localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
