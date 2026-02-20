@@ -48,7 +48,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
             const reportRef = doc(db, 'projects', projectId, 'expenses', report.id);
 
             const { id, receiptFile, ...reportData } = report;
-            let finalReportData: any = { ...reportData };
+            let finalReportData: Record<string, unknown> = { ...reportData };
 
             if (receiptFile) {
                 try {
@@ -63,14 +63,14 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
                 }
             }
 
-            const sanitizeData = (data: any): any => {
+            const sanitizeData = (data: unknown): unknown => {
                 if (data === undefined) return null;
                 if (data === null) return null;
                 if (data instanceof Date) return data;
                 if (Array.isArray(data)) return data.map(sanitizeData);
                 if (typeof data === 'object') {
-                    const sanitized: any = {};
-                    for (const [key, value] of Object.entries(data)) {
+                    const sanitized: Record<string, unknown> = {};
+                    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
                         sanitized[key] = sanitizeData(value);
                     }
                     return sanitized;
@@ -86,7 +86,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
                 'INFO',
                 'PRODUCTION'
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error adding expense report:", err);
             throw err;
         }
@@ -99,7 +99,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
 
             const reportRef = doc(db, 'projects', projectId, 'expenses', id);
             await updateDoc(reportRef, { status });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error updating expense status:", err);
             // Optional: Error notification
             // addNotification(`Erreur mise à jour status: ${err.message}`, 'ERROR');
@@ -126,7 +126,7 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
             }
 
             addNotification("Note de frais supprimée", "INFO", "PRODUCTION");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error deleting expense report:", err);
             throw err;
         }

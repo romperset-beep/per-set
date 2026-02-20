@@ -109,10 +109,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 try {
                     // MIGRATION: Check for legacy localStorage data
                     const legacyUser = localStorage.getItem('cineStockUser');
-                    let legacyData: any = null;
+                    let legacyData: Record<string, unknown> | null = null;
                     if (legacyUser) {
                         try {
-                            legacyData = JSON.parse(legacyUser);
+                            legacyData = JSON.parse(legacyUser) as Record<string, unknown>;
                             console.log('[Auth] Found legacy cineStockUser data, will migrate if needed');
                         } catch (e) {
                             console.warn('[Auth] Failed to parse legacy user data');
@@ -211,7 +211,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(fullUser);
                 localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Refresh User Failed", e);
         }
     };
@@ -227,12 +227,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // onAuthStateChanged will handle the rest
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Login Error", err);
             // Map Firebase errors to French
-            if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+            const firebaseErr = err as any;
+            if (firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/user-not-found' || firebaseErr.code === 'auth/invalid-credential') {
                 throw new Error("Email ou mot de passe incorrect.");
-            } else if (err.code === 'auth/too-many-requests') {
+            } else if (firebaseErr.code === 'auth/too-many-requests') {
                 throw new Error("Trop de tentatives. Veuillez réessayer plus tard.");
             }
             throw err;
@@ -266,11 +267,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Note: We might want to sign them out immediately or let them see a "Verify Email" screen.
             // Current logic implies they are logged in but blocked by the check in onAuthStateChanged until verified.
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Register Error", err);
-            if (err.code === 'auth/email-already-in-use') {
+            const firebaseErr = err as any;
+            if (firebaseErr.code === 'auth/email-already-in-use') {
                 throw new Error("Cet email est déjà utilisé.");
-            } else if (err.code === 'auth/weak-password') {
+            } else if (firebaseErr.code === 'auth/weak-password') {
                 throw new Error("Le mot de passe doit faire au moins 6 caractères.");
             }
             throw err;
@@ -283,7 +285,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(null);
             localStorage.removeItem('aBetterSetUser');
             // Clearing project state should be handled by ProjectContext interpreting null user
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Logout Error", err);
             throw err;
         }
@@ -292,7 +294,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const resetPassword = async (email: string) => {
         try {
             await sendPasswordResetEmail(auth, email);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Reset Password Error", err);
             throw err;
         }
@@ -313,7 +315,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 p.id === auth.currentUser!.uid ? { ...p, ...data } as UserProfile : p
             ));
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Update User Error", err);
             throw err;
         }
@@ -329,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }, { merge: true });
             // Refresh list handled below or by caller?
             // For now, simple update.
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Update User Profile Error", err);
             throw err;
         }
@@ -351,7 +353,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await auth.currentUser.delete();
             setUser(null);
             localStorage.removeItem('aBetterSetUser');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Delete Account Error", err);
             throw err;
         }

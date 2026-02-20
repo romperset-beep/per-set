@@ -19,7 +19,8 @@ import {
   CatalogItem,
   LogisticsRequest, // Added
   UserTemplate, // Added
-  OfflineMember // Added
+  OfflineMember, // Added
+  Reinforcement // Added
 } from '../types';
 import { TRANSLATIONS } from './translations';
 import { db } from '../services/firebase';
@@ -39,7 +40,9 @@ import {
   getDocs,
   deleteDoc,
   where, // Added
-  startAfter // Added
+  startAfter, // Added
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore';
 
 import { getStorage, ref, deleteObject, uploadString, getDownloadURL, uploadBytes } from 'firebase/storage';
@@ -99,7 +102,7 @@ interface ProjectContextType {
   loadMoreItems: () => Promise<void>;
 
   // Personal Templates
-  saveUserTemplate: (name: string, items: any[], type?: 'CONSUMABLE' | 'MATERIAL') => Promise<void>;
+  saveUserTemplate: (name: string, items: Partial<ConsumableItem>[], type?: 'CONSUMABLE' | 'MATERIAL') => Promise<void>;
   getUserTemplates: () => Promise<UserTemplate[]>;
   deleteUserTemplate: (templateId: string) => Promise<void>;
 
@@ -118,8 +121,8 @@ interface ProjectContextType {
   deleteMyAccount: () => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   deleteAllData: () => Promise<void>;
-  addReinforcement: (reinforcement: any) => Promise<void>; // Added
-  updateReinforcement: (reinforcement: any) => Promise<void>; // Added
+  addReinforcement: (reinforcement: Reinforcement) => Promise<void>; // Added
+  updateReinforcement: (reinforcement: Reinforcement) => Promise<void>; // Added
   deleteReinforcement: (id: string) => Promise<void>; // Added
 
   // Logistics
@@ -245,7 +248,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [project.id]);
 
   // Sync Project Items with Pagination
-  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData, DocumentData> | null>(null);
   const [hasMoreItems, setHasMoreItems] = useState(true);
   const ITEMS_PER_PAGE = 50;
 
@@ -351,7 +354,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       await setDoc(projectRef, safeUpdates, { merge: true });
       console.log("[ProjectSync] Updated successfully:", safeUpdates);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[ProjectSync] Error updating project:", err);
       throw err; // Re-throw to allow caller to handle error
     }
@@ -373,10 +376,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setProject(prev => ({ ...prev, ecoprodChecklist: sanitizedChecklist }));
 
       await setDoc(projectRef, { ecoprodChecklist: sanitizedChecklist }, { merge: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating Ecoprod checklist:", err);
       // Don't set global error to avoid blocking UI, just log
-      // setError(`Erreur sauvegarde audit: ${err.message}`);
+      // setError(`Erreur sauvegarde audit: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -403,8 +406,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         return;
       }
       setDebugStatus("REST API OK ✅. 2. Test SDK (Timeout 5s)...");
-    } catch (restErr: any) {
-      setDebugStatus(`ÉCHEC RÉSEAU REST ❌: ${restErr.message}`);
+    } catch (restErr: unknown) {
+      setDebugStatus(`ÉCHEC RÉSEAU REST ❌: ${restErr instanceof Error ? restErr.message : String(restErr)}`);
       return;
     }
 
@@ -430,10 +433,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       ]);
 
       setDebugStatus("SUCCÈS TOTAL (REST + SDK ÉCRITURE) ! 🎉");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("SDK Error:", err);
-      setDebugStatus(`REST OK mais SDK ÉCRITURE ÉCHEC : ${err.message}`);
-      setError(err.message);
+      setDebugStatus(`REST OK mais SDK ÉCRITURE ÉCHEC : ${err instanceof Error ? err.message : String(err)}`);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -477,7 +480,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (projectId !== 'default-project') {
         // alert(`Erreur de connexion : ${error.message}`);
       }
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     });
 
     return () => unsubscribe();
@@ -520,7 +523,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         'INFO',
         'PRODUCTION'
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error adding call sheet:", err);
       throw err;
     }
@@ -550,9 +553,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       addNotification("Feuille de service supprimée", "INFO", "PRODUCTION");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error deleting call sheet:", err);
-      setError(`Erreur suppression: ${err.message}`);
+      setError(`Erreur suppression: ${err instanceof Error ? err.message : String(err)}`);
       throw err;
     }
   };
@@ -611,10 +614,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         );
         */
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[AddItem] Error:", err);
-      setLastLog(`[AddItem] ERREUR: ${err.message}`);
-      setError(`Erreur d'ajout : ${err.message}`);
+      setLastLog(`[AddItem] ERREUR: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Erreur d'ajout : ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -636,7 +639,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         items: prev.items.filter(i => i.id !== itemId)
       }));
       addNotification('Article supprimé', 'SUCCESS', currentDept as Department);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting item:", error);
       addNotification("Erreur lors de la suppression", 'ERROR');
     }
@@ -826,7 +829,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // addNotification("Projet supprimé définitivement", "SUCCESS", "PRODUCTION");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[deleteProject] Error:", err);
       throw err;
     }
@@ -846,7 +849,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // updateUser helper takes Partial<User>.
       await updateUser({ projectHistory: updatedHistory });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[removeProjectFromHistory] Error:", err);
       throw err;
     }
@@ -909,9 +912,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // addNotification("Système remis à zéro avec succès.", "SUCCESS", "PRODUCTION");
       console.log("✅ GLOBAL RESET COMPLETED");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("FATAL ERROR during Global Reset:", err);
-      setError(`ECHEC RESET: ${err.message}`);
+      setError(`ECHEC RESET: ${err instanceof Error ? err.message : String(err)}`);
       throw err;
     }
   };
@@ -1018,9 +1021,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         'INFO',
         'PRODUCTION'
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error adding expense report:", err);
-      setError(`Erreur sauvegarde note de frais: ${err.message}`);
+      setError(`Erreur sauvegarde note de frais: ${err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)}`);
       throw err;
     }
   };
@@ -1030,9 +1033,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const projectId = project.id;
       const reportRef = doc(db, 'projects', projectId, 'expenses', id);
       await updateDoc(reportRef, { status });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating expense status:", err);
-      setError(`Erreur mise à jour status: ${err.message}`);
+      setError(`Erreur mise à jour status: ${err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)}`);
     }
   };
 
@@ -1062,25 +1065,25 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log("[Expenses] Report deleted successfully");
       addNotification("Note de frais supprimée", "INFO", "PRODUCTION");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error deleting expense report:", err);
-      setError(`Erreur suppression note de frais: ${err.message}`);
+      setError(`Erreur suppression note de frais: ${err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)}`);
       throw err;
     }
   };
 
   // --- User Templates ---
-  const saveUserTemplate = async (name: string, items: any[], type: 'CONSUMABLE' | 'MATERIAL' = 'CONSUMABLE') => {
+  const saveUserTemplate = async (name: string, items: Partial<ConsumableItem>[], type: 'CONSUMABLE' | 'MATERIAL' = 'CONSUMABLE') => {
     if (!user?.id) throw new Error("Utilisateur non connecté");
 
     const newTemplate: UserTemplate = {
       id: `template_${Date.now()}`,
       userId: user.id, // Fixed: Use user.id to match getUserTemplates query
       name,
-      department: currentDept as any,
+      department: currentDept as Department | 'PRODUCTION',
       items: items.map(i => ({
-        name: i.name,
-        quantity: i.quantityCurrent || i.quantity || 0,
+        name: i.name!,
+        quantity: i.quantityCurrent || (i as any).quantity || 0,
         unit: i.unit || 'unités'
       })),
       type, // Added
@@ -1088,7 +1091,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     await setDoc(doc(db, 'user_templates', newTemplate.id), newTemplate);
-    addNotification(`Modèle "${name}" sauvegardé !`, 'SUCCESS', currentDept as any);
+    addNotification(`Modèle "${name}" sauvegardé !`, 'SUCCESS', currentDept as Department | 'PRODUCTION');
   };
 
   const getUserTemplates = async (): Promise<UserTemplate[]> => {
@@ -1131,7 +1134,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.log('Social posts synced (handled by SocialContext)');
     }, (err) => {
       console.error("[SocialWall] Listener Error:", err);
-      setError(`Social Wall Sync Error: ${err.message}`);
+      setError(`Social Wall Sync Error: ${err instanceof Error ? err.message : String(err)}`);
     });
 
     return () => unsubscribe();
@@ -1149,7 +1152,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     // A. SYNC REINFORCEMENTS
     const renfortsRef = collection(db, 'projects', projectId, 'reinforcements');
     const unsubRenforts = onSnapshot(renfortsRef, (snapshot) => {
-      const reinforcements = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
+      const reinforcements = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reinforcement));
       setProject(prev => {
         if (JSON.stringify(prev.reinforcements) === JSON.stringify(reinforcements)) return prev;
         return { ...prev, reinforcements };
@@ -1189,10 +1192,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         'INFO',
         'PRODUCTION'
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[SocialWall] Add Error:", err);
-      setError(`Erreur d'envoi : ${err.message}`);
-      // alert(`Erreur d'envoi : ${err.message}`);
+      setError(`Erreur d'envoi : ${err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)}`);
+      // alert(`Erreur d'envoi : ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -1237,7 +1240,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
           return;
         }
 
-        const updates: Record<string, any> = {};
+        const updates: Record<string, unknown> = {};
 
         snap.forEach(docSnap => {
           const uData = docSnap.data();
@@ -1321,14 +1324,14 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       // But removing the Firestore doc effectively removes them from the app logic.
 
       addNotification("Utilisateur supprimé (Données locales).", "INFO", "PRODUCTION");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[ProjectContext] Delete User Error:", err);
       throw err;
     }
   };
 
   // --- RENFORTS (Atomic Subcollection Updates) ---
-  const addReinforcement = async (reinforcement: any) => {
+  const addReinforcement = async (reinforcement: Reinforcement) => {
     const projectId = project.id;
     if (!projectId) return;
 
@@ -1350,7 +1353,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const updateReinforcement = async (reinforcement: any) => {
+  const updateReinforcement = async (reinforcement: Reinforcement) => {
     const projectId = project.id;
     if (!projectId) return;
     const docRef = doc(db, 'projects', projectId, 'reinforcements', reinforcement.id);

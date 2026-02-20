@@ -14,7 +14,9 @@ import {
     getDocs,
     collectionGroup,
     where,
-    getDoc
+    getDoc,
+    QuerySnapshot,
+    DocumentData
 } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, auth } from '../services/firebase';
@@ -150,9 +152,9 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
                 date: new Date().toISOString()
             });
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[BuyBack] Add Error:", err);
-            setError(`Erreur ajout vente: ${err.message}`);
+            setError(`Erreur ajout vente: ${err instanceof Error ? err.message : String(err)}`);
             throw err;
         }
     };
@@ -182,9 +184,9 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
                 reservedByUserId: newReservedByUserId
             });
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[BuyBack] Reserve Error:", err);
-            setError(`Erreur réservation: ${err.message}`);
+            setError(`Erreur réservation: ${err instanceof Error ? err.message : String(err)}`);
         }
     };
 
@@ -197,10 +199,10 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
             await updateDoc(itemRef, {
                 status: 'SOLD'
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[BuyBack] Confirm Error:", err);
-            setError(`Erreur confirmation: ${err.message}`);
-            alert(`Erreur lors de la confirmation : ${err.message}`);
+            setError(`Erreur confirmation: ${err instanceof Error ? err.message : String(err)}`);
+            alert(`Erreur lors de la confirmation : ${err instanceof Error ? err.message : String(err)}`);
         }
     };
 
@@ -211,10 +213,10 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
 
             const itemRef = doc(db, 'projects', projectId, 'buyBackItems', itemId);
             await deleteDoc(itemRef);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[BuyBack] Delete Error:", err);
-            setError(`Erreur suppression: ${err.message}`);
-            alert(`Erreur lors de la suppression : ${err.message}`);
+            setError(`Erreur suppression: ${err instanceof Error ? err.message : String(err)}`);
+            alert(`Erreur lors de la suppression : ${err instanceof Error ? err.message : String(err)}`);
         }
     };
 
@@ -238,8 +240,8 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
                 const rawItems: { item: ConsumableItem, pid: string }[] = [];
                 const projectIds = new Set<string>();
 
-                const processSnap = (snap: any) => {
-                    snap.forEach((itemDoc: any) => {
+                const processSnap = (snap: QuerySnapshot<DocumentData, DocumentData>) => {
+                    snap.forEach((itemDoc) => {
                         const data = itemDoc.data() as ConsumableItem;
                         if (data.quantityCurrent > 0) {
                             const pid = itemDoc.ref.parent.parent?.id;
@@ -279,9 +281,9 @@ export const MarketplaceProvider: React.FC<{ children: ReactNode }> = ({ childre
 
                 return results;
 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error("Failed to fetch Global Surplus:", error);
-                setError(`Erreur Marketplace: ${error.message}`);
+                setError(`Erreur Marketplace: ${error instanceof Error ? error.message : String(error)}`);
                 return [];
             }
         } catch (err) {

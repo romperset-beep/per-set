@@ -197,7 +197,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
             // State will update via snapshot, but we can optimistically clear
             setNotifications([]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error clearing notifications:", err);
         }
     };

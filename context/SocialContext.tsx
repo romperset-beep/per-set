@@ -141,7 +141,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             // Optional: Local notification or rely on snapshot
             // addNotification(...) is handled by the component or another listener usually, 
             // but we can trigger a success log.
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[SocialContext] Add Error:", err);
             setError(`Erreur d'envoi: ${err.message}`);
             throw err;
@@ -166,7 +166,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     console.warn("[SocialContext] Failed to delete photo:", storageErr);
                 }
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("[SocialContext] Delete Error:", err);
             setError(`Erreur de suppression: ${err.message}`);
             throw err;
