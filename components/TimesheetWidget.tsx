@@ -39,6 +39,7 @@ export const TimesheetWidget: React.FC = () => {
 
     // Salary Estimation State
     const [selectedJob, setSelectedJob] = useState<any>(null);
+    const [saveAsDefaultJob, setSaveAsDefaultJob] = useState(false);
 
     // Dynamic Job List based on Convention
     const availableJobs = useMemo(() => {
@@ -187,6 +188,10 @@ export const TimesheetWidget: React.FC = () => {
                         if (data.defaultFiscalPower) setFiscalPower(data.defaultFiscalPower);
                         if (data.defaultCommuteDistanceKm) setCommuteDistanceKm(data.defaultCommuteDistanceKm);
                         if (data.savedRoutes) setSavedRoutes(data.savedRoutes);
+                        if (data.defaultJobTitle && !selectedJob) {
+                            const match = availableJobs.find(j => j.title === data.defaultJobTitle);
+                            if (match) setSelectedJob(match);
+                        }
                     }
                 } catch (err) {
                     console.error("Error fetching user profile for timesheet:", err);
@@ -384,6 +389,30 @@ export const TimesheetWidget: React.FC = () => {
         const newLogs = [...otherLogs, newLog];
 
         await updateProjectDetails({ timeLogs: newLogs });
+
+        // Save defaults to User Profile if indicated
+        if ((saveAsDefaultTransport || saveAsDefaultJob) && auth.currentUser) {
+            try {
+                const updates: any = {};
+                if (saveAsDefaultTransport) {
+                    updates.defaultTransportMode = transportMode;
+                    if (transportMode === 'VEHICULE_PERSO') {
+                        updates.defaultVehicleType = vehicleType;
+                        updates.defaultFiscalPower = fiscalPower;
+                        updates.defaultCommuteDistanceKm = commuteDistanceKm;
+                    }
+                }
+                if (saveAsDefaultJob && selectedJob) {
+                    updates.defaultJobTitle = selectedJob.title;
+                }
+
+                await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
+                if (saveAsDefaultTransport) setSaveAsDefaultTransport(false);
+                if (saveAsDefaultJob) setSaveAsDefaultJob(false);
+            } catch (err) {
+                console.error("Error saving user defaults:", err);
+            }
+        }
 
         // Reset Form
         setCallTime('');
@@ -1263,6 +1292,17 @@ export const TimesheetWidget: React.FC = () => {
                                                                     <ChevronDown size={16} />
                                                                 </div>
                                                             </div>
+                                                        </div>
+
+                                                        {/* Save as Default Checkbox */}
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={saveAsDefaultJob}
+                                                                onChange={(e) => setSaveAsDefaultJob(e.target.checked)}
+                                                                className="rounded border-emerald-700/50 bg-emerald-950/80 text-emerald-500 focus:ring-emerald-500/50 outline-none h-3 w-3 cursor-pointer"
+                                                            />
+                                                            <span className="text-[10px] text-emerald-500/70">Sauvegarder ce poste par défaut</span>
                                                         </div>
 
                                                         {/* Result Display */}
