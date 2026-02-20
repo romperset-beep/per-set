@@ -63,7 +63,9 @@ import { BetaTestBadge } from './components/BetaTestBadge';
 
 const AppContent: React.FC = () => {
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth < 768 ? 'callsheet-summary' : 'dashboard';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingDates, setIsEditingDates] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
