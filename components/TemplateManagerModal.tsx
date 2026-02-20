@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { UserTemplate, Department } from '../types';
+import { UserTemplate, Department, ConsumableItem } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { X, Trash2, Download, Plus, Save, ChevronRight, ChevronDown, Loader2, FileText, CheckCircle2, Search, Check, Mail } from 'lucide-react';
 import rvzCatalog from '../src/data/rvz_catalog.json';
 import { CONSUMABLES_CATALOG, DEPARTMENT_DISPLAY_NAMES } from '../src/data/consumables_catalog';
+
+export interface TemplateEditorItem extends Partial<ConsumableItem> {
+    quantity?: number;
+    category?: string;
+}
 
 const mapCategoryToDepartment = (rvzCategory: string): Department => {
     const map: Record<string, Department> = {
@@ -138,7 +143,7 @@ interface TemplateManagerModalProps {
     onClose: () => void;
     // Mode: 'MANAGE' (View/Delete) or 'SAVE' (Save current stock as template)
     mode: 'MANAGE' | 'SAVE';
-    currentStockToSave?: any[];
+    currentStockToSave?: TemplateEditorItem[];
     templateType?: 'CONSUMABLE' | 'MATERIAL'; // Added
     existingTemplateId?: string; // Added for editing
     initialName?: string; // Added for editing
@@ -164,7 +169,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
     const [importingId, setImportingId] = useState<string | null>(null);
 
     // Editing state for SAVE mode
-    const [itemsToSave, setItemsToSave] = useState<any[]>([]);
+    const [itemsToSave, setItemsToSave] = useState<TemplateEditorItem[]>([]);
 
     // Import State
     const [importDestination, setImportDestination] = useState<'SHOPPING' | 'STOCK'>('SHOPPING'); // Default to Shopping List
@@ -179,7 +184,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         if (templateType === 'CONSUMABLE') {
             type HierarchyGroup = {
                 name: string;
-                children?: { name: string, items: any[] }[];
+                children?: { name: string, items: TemplateEditorItem[] }[];
             };
 
             const hierarchyGroups: HierarchyGroup[] = Object.entries(CONSUMABLES_CATALOG).map(([dept, items]) => ({
@@ -189,7 +194,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                     items: items.map(name => ({
                         name,
                         category: dept,
-                        department: dept
+                        department: dept as Department | 'PRODUCTION'
                     }))
                 }]
             }));
@@ -198,8 +203,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         }
 
         // MATERIAL: Use RVZ hierarchical structure
-        const rawItems = rvzCatalog as any[];
-        const rawCategories = Array.from(new Set(rawItems.map((i: any) => i.category)));
+        const rawItems = rvzCatalog as { category: string; name: string;[key: string]: unknown }[];
+        const rawCategories = Array.from(new Set(rawItems.map((i) => i.category)));
 
         // Helper to get items for a category
         const getItems = (cat: string) => rawItems.filter(i => i.category === cat).sort((a, b) => a.name.localeCompare(b.name));
@@ -322,8 +327,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
         type HierarchyGroup = {
             name: string;
-            children?: { name: string, items: any[] }[];
-            subGroups?: { name: string, children: { name: string, items: any[] }[] }[];
+            children?: { name: string, items: { category: string; name: string;[key: string]: unknown }[] }[];
+            subGroups?: { name: string, children: { name: string, items: { category: string; name: string;[key: string]: unknown }[] }[] }[];
         };
 
         const hierarchyGroups: HierarchyGroup[] = [];
@@ -458,7 +463,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         }
 
         // MATERIAL: Use RVZ catalog
-        let filtered = rvzCatalog as any[];
+        let filtered = rvzCatalog as { category: string; name: string;[key: string]: unknown }[];
 
         if (selectedCategory) {
             filtered = filtered.filter(item => item.category === selectedCategory);
@@ -479,12 +484,12 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             name: name.trim(),
             quantity: 1,
             quantityCurrent: 1,
-            department: dept
+            department: dept as Department | 'PRODUCTION'
         }]);
 
         // Add to global catalog for future searches (consumables only)
         if (templateType === 'CONSUMABLE' && addToCatalog) {
-            addToCatalog(name.trim(), dept);
+            addToCatalog(name.trim(), dept as Department);
         }
 
         setNewItemName('');
@@ -636,7 +641,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             const targetPurchased = importDestination === 'STOCK';
 
             for (const item of template.items) {
-                const targetDept = project.projectType === 'Long Métrage' ? template.department : currentDept as any;
+                const targetDept = (project.projectType === 'Long Métrage' ? template.department : currentDept) as Department | 'PRODUCTION';
 
                 // 1. Check for existing item
                 const existingItem = project.items.find(i =>
@@ -669,8 +674,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                         quantityInitial: item.quantity,
                         quantityCurrent: item.quantity,
                         unit: item.unit || 'unités',
-                        status: 'Neuf' as any,
-                        surplusAction: 'En attente' as any,
+                        status: 'Neuf' as ConsumableItem['status'],
+                        surplusAction: 'En attente' as ConsumableItem['surplusAction'],
                         purchased: targetPurchased
                     });
                 }
@@ -922,9 +927,9 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                                 {/* Suggestions */}
                                                 {catalogSuggestions.length > 0 && (
                                                     <div className="absolute top-full left-0 right-0 mt-1 bg-cinema-800 border border-cinema-600 rounded-lg shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
-                                                        {catalogSuggestions.map((item: any) => (
+                                                        {catalogSuggestions.map((item: { name: string; category?: string }) => (
                                                             <button
-                                                                key={item.id}
+                                                                key={item.name}
                                                                 onClick={() => handleAddItem(item.name, item.category)}
                                                                 className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-purple-600/20 hover:text-white transition-colors flex justify-between items-center group border-b border-cinema-700/50 last:border-0"
                                                             >
