@@ -1,15 +1,18 @@
 import React from 'react';
 import { Film, Users, Edit2, Save, X, Trash2 } from 'lucide-react';
 
+import { User, Project } from '../../types';
+import { ProjectWithOffline } from '../AdminDashboard';
+
 interface AdminProjectsListProps {
-    filteredProjects: any[]; // Consider using a stronger type if Project type is available
-    users: any[];
+    filteredProjects: ProjectWithOffline[];
+    users: User[];
     editingId: string | null;
-    editForm: any;
+    editForm: Partial<User | Project>;
     setEditingId: (id: string | null) => void;
-    setEditForm: (form: any) => void;
+    setEditForm: (form: Partial<User | Project>) => void;
     saveEdit: (type: 'USER' | 'PROJECT') => void;
-    startEditing: (type: 'USER' | 'PROJECT', item: any) => void;
+    startEditing: (type: 'USER' | 'PROJECT', item: User | Project) => void;
     handleDeleteProject: (projectId: string, projectName: string) => void;
     renderHeader: (title: string, subtitle: string, icon: React.ReactNode) => React.ReactNode;
 }
@@ -56,8 +59,8 @@ export const AdminProjectsList: React.FC<AdminProjectsListProps> = ({
                                     {editingId === p.id ? (
                                         <input
                                             className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
-                                            value={editForm.productionCompany || ''}
-                                            onChange={e => setEditForm({ ...editForm, productionCompany: e.target.value })}
+                                            value={(editForm as Partial<Project>).productionCompany || ''}
+                                            onChange={e => setEditForm({ ...editForm, productionCompany: e.target.value } as Partial<Project>)}
                                         />
                                     ) : p.productionCompany}
                                 </td>
@@ -66,11 +69,11 @@ export const AdminProjectsList: React.FC<AdminProjectsListProps> = ({
                                         <Users className="h-4 w-4 text-eco-500" />
                                         <span>
                                             {(() => {
-                                                const matchedUsers = users.filter(u => {
-                                                    const uData = u as any;
+                                                const matchedUsers = users.filter((u: User) => {
+                                                    const uData = u;
                                                     if (uData.currentProjectId === p.id) return true;
                                                     if (uData.projectHistory && Array.isArray(uData.projectHistory)) {
-                                                        if (uData.projectHistory.some((h: any) => h.projectId === p.id || h.id === p.id)) return true;
+                                                        if (uData.projectHistory.some((h) => h.id === p.id)) return true;
                                                     }
                                                     if (p.members && p.members[u.id]) return true;
                                                     return false;
@@ -78,12 +81,12 @@ export const AdminProjectsList: React.FC<AdminProjectsListProps> = ({
 
                                                 if (p.id === 'crash-test-2026-crash-film') {
                                                     console.log(`[DEBUG ADMIN] Project: ${p.name}`);
-                                                    console.log(`Matched Users:`, matchedUsers.map(u => (u as any).email));
+                                                    console.log(`Matched Users:`, matchedUsers.map(u => u.email));
                                                     console.log(`Offline Count:`, p.offlineMembersCount);
                                                     console.log(`p.members map:`, p.members);
                                                 }
 
-                                                return matchedUsers.length + ((p as any).offlineMembersCount || 0);
+                                                return matchedUsers.length + (p.offlineMembersCount || 0);
                                             })()}
                                         </span>
                                     </div>

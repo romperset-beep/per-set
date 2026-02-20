@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { Users, Save, X, Edit2, Trash2 } from 'lucide-react';
-import { User } from '../../types';
+import { User, Project } from '../../types';
+import { ProjectWithOffline } from '../AdminDashboard';
 
 interface AdminUsersListProps {
     users: User[];
-    projectsList: any[];
-    user: any; // Current logged-in user
+    projectsList: ProjectWithOffline[];
+    user: User | null; // Current logged-in user
     editingId: string | null;
-    editForm: any;
+    editForm: Partial<User | Project>;
     setEditingId: (id: string | null) => void;
-    setEditForm: (form: any) => void;
+    setEditForm: (form: Partial<User | Project>) => void;
     saveEdit: (type: 'USER' | 'PROJECT') => void;
-    startEditing: (type: 'USER' | 'PROJECT', item: any) => void;
+    startEditing: (type: 'USER' | 'PROJECT', item: User | Project) => void;
     handleApproveUser: (userId: string) => void;
     handleRejectUser: (userId: string) => void;
     handleDeleteUser: (userId: string, userName: string) => void;
@@ -72,11 +73,11 @@ export const AdminUsersList: React.FC<AdminUsersListProps> = ({
                     <tbody className="divide-y divide-cinema-700 text-sm">
                         {filteredUsers
                             .sort((a, b) => (a.status === 'pending' === (b.status === 'pending')) ? 0 : a.status === 'pending' ? -1 : 1)
-                            .map((u: any) => {
+                            .map((u: User) => {
                                 const isGhost = !u.firstName || !u.lastName;
                                 const isSelf = u.id === user?.id;
                                 const isSuperAdmin = u.email === 'romperset@gmail.com';
-                                const currentUserId = user?.id || (user as any)?.uid;
+                                const currentUserId = user?.id;
                                 const isLinkedToMe = u.email === user?.email || u.id === currentUserId;
 
                                 return (
@@ -86,13 +87,13 @@ export const AdminUsersList: React.FC<AdminUsersListProps> = ({
                                                 <div className="space-y-2">
                                                     <input
                                                         className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
-                                                        value={editForm.name || ''}
-                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                                        value={(editForm as Partial<User>).name || ''}
+                                                        onChange={e => setEditForm({ ...editForm, name: e.target.value } as Partial<User>)}
                                                     />
                                                     <input
                                                         className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-xs text-slate-400"
-                                                        value={editForm.email || ''}
-                                                        onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                                        value={(editForm as Partial<User>).email || ''}
+                                                        onChange={e => setEditForm({ ...editForm, email: e.target.value } as Partial<User>)}
                                                     />
                                                 </div>
                                             ) : (
@@ -149,8 +150,8 @@ export const AdminUsersList: React.FC<AdminUsersListProps> = ({
                                             {editingId === u.id ? (
                                                 <input
                                                     className="bg-cinema-900 border border-cinema-600 rounded px-2 py-1 w-full text-white"
-                                                    value={editForm.department || ''}
-                                                    onChange={e => setEditForm({ ...editForm, department: e.target.value })}
+                                                    value={(editForm as Partial<User>).department || ''}
+                                                    onChange={e => setEditForm({ ...editForm, department: e.target.value as User['department'] } as Partial<User>)}
                                                 />
                                             ) : (
                                                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-cinema-700 text-slate-300 border border-cinema-600">

@@ -1,8 +1,15 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
+import { ProjectWithOffline } from '../AdminDashboard';
+
+interface Production {
+    name: string;
+    projectCount: number;
+    projects: ProjectWithOffline[];
+}
 
 interface AdminProductionsListProps {
-    productions: any[]; // Consider using a stronger type if Production type is available
+    productions: Production[];
     renderHeader: (title: string, subtitle: string, icon: React.ReactNode) => React.ReactNode;
 }
 
@@ -28,13 +35,13 @@ export const AdminProductionsList: React.FC<AdminProductionsListProps> = ({
                                 <td className="px-6 py-4 text-white font-medium">{prod.name}</td>
                                 <td className="px-6 py-4 text-slate-300">{prod.projectCount}</td>
                                 <td className="px-6 py-4 text-slate-400 text-xs">
-                                    {prod.projects.map((p: any) => p.name).join(', ')}
+                                    {prod.projects.map((p) => p.name).join(', ')}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-            </div>
+            </div >
         </>
     );
 };

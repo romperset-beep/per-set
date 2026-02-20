@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import { User } from '../types';
+import { User, Project } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, Search, Users, Building2, Calendar, Film, Trash2, ArrowLeft, Edit2, Save, X, ShoppingCart, FileText, CheckCircle, Download, Filter, AlertTriangle } from 'lucide-react';
@@ -16,10 +16,12 @@ import { fr } from 'date-fns/locale';
 
 type ViewMode = 'DASHBOARD' | 'USERS' | 'PRODUCTIONS' | 'PROJECTS' | 'RESALES' | 'RESET';
 
+export type ProjectWithOffline = Project & { offlineMembersCount?: number };
+
 export const AdminDashboard: React.FC = () => {
     const [view, setView] = useState<ViewMode>('DASHBOARD');
     const [users, setUsers] = useState<User[]>([]);
-    const [projectsList, setProjectsList] = useState<any[]>([]);
+    const [projectsList, setProjectsList] = useState<ProjectWithOffline[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { user } = useAuth(); // Get current logged-in user
@@ -28,7 +30,7 @@ export const AdminDashboard: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [resalesGroupBy, setResalesGroupBy] = useState<'seller' | 'buyer' | 'date'>('seller'); // Default to seller as requested
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<any>({});
+    const [editForm, setEditForm] = useState<Partial<User | Project>>({});
     const [resetConfirm, setResetConfirm] = useState("");
 
     const fetchData = async () => {
@@ -45,16 +47,16 @@ export const AdminDashboard: React.FC = () => {
             const projectsSnap = await getDocs(projectsQ);
 
             const projectsData = await Promise.all(projectsSnap.docs.map(async (docSnap) => {
-                const projectData = { id: docSnap.id, ...docSnap.data() };
+                const projectData = { id: docSnap.id, ...docSnap.data() } as ProjectWithOffline;
 
                 // Fetch offline members to get an accurate total team count
                 try {
                     const offlineQ = query(collection(db, 'projects', docSnap.id, 'offlineMembers'));
                     const offlineSnap = await getDocs(offlineQ);
-                    (projectData as any).offlineMembersCount = offlineSnap.size;
+                    projectData.offlineMembersCount = offlineSnap.size;
                 } catch (e) {
                     console.error("Could not fetch offline members for project", docSnap.id, e);
-                    (projectData as any).offlineMembersCount = 0;
+                    projectData.offlineMembersCount = 0;
                 }
 
                 return projectData;
@@ -119,7 +121,7 @@ export const AdminDashboard: React.FC = () => {
     // Actions
     const handleDeleteUser = async (userId: string, userName: string) => {
         // PROTECTION A: Strict Super Admin Protection
-        const targetUser = users.find(u => (u as any).id === userId);
+        const targetUser = users.find(u => u.id === userId);
 
         // Block Deletion of Super Admin
         if (targetUser?.email === 'romperset@gmail.com') {
@@ -130,7 +132,7 @@ export const AdminDashboard: React.FC = () => {
         // PROTECTION B: Prevent deleting a ghost profile that is actually YOUR account
         // Note: user object usually has 'id' in our app, 'uid' might be from Firebase User object directly.
         // We check both to be safe, but safely.
-        const currentUserId = user?.id || (user as any)?.uid;
+        const currentUserId = user?.id; // user object already has 'id'
         if (targetUser?.email === user?.email || targetUser?.id === currentUserId) {
             alert("🛑 ACTION INTERDITE 🛑\n\nCe profil fantôme est lié à VOTRE session actuelle.\nLe supprimer couperait votre accès immédiatement.");
             return;
@@ -143,7 +145,7 @@ export const AdminDashboard: React.FC = () => {
         }
 
         // Find target user profile for ghost detection
-        const targetProfile = users.find(u => (u as any).id === userId);
+        const targetProfile = users.find(u => u.id === userId);
 
         // PROTECTION 2: Warn about ghost profiles (incomplete profiles)
         const isGhost = !targetProfile?.firstName || !targetProfile?.lastName;
@@ -166,9 +168,9 @@ export const AdminDashboard: React.FC = () => {
             try {
                 // Use centralized deleteUser
                 await deleteUser(userId);
-                setUsers(prev => prev.filter(u => (u as any).id !== userId));
-            } catch (err: any) {
-                alert(`Erreur lors de la suppression: ${err.message}`);
+                setUsers(prev => prev.filter(u => u.id !== userId));
+            } catch (err: unknown) {
+                alert(`Erreur lors de la suppression: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
     };
@@ -178,8 +180,8 @@ export const AdminDashboard: React.FC = () => {
             try {
                 await deleteProject(projectId);
                 setProjectsList(prev => prev.filter(p => p.id !== projectId));
-            } catch (err: any) {
-                alert(`Erreur: ${err.message}`);
+            } catch (err: unknown) {
+                alert(`Erreur: ${err instanceof Error ? err.message : String(err)}`);
             }
         }
     };
@@ -193,8 +195,8 @@ export const AdminDashboard: React.FC = () => {
             });
             setTransactions(prev => prev.map(t => t.id === transaction.id ? { ...t, status: 'VALIDATED', invoicedAt: new Date().toISOString() } : t));
             alert("Transaction validée et prête pour facturation !");
-        } catch (e: any) {
-            alert("Erreur validation: " + e.message);
+        } catch (e: unknown) {
+            alert("Erreur validation: " + (e instanceof Error ? e.message : String(e)));
         }
     };
 
@@ -224,8 +226,8 @@ export const AdminDashboard: React.FC = () => {
             setTransactions(prev => prev.map(t => t.id === transaction.id ? { ...t, status: 'CANCELLED' } : t));
 
             alert("Transaction refusée et stock restauré.");
-        } catch (e: any) {
-            alert("Erreur rejet: " + e.message);
+        } catch (e: unknown) {
+            alert("Erreur rejet: " + (e instanceof Error ? e.message : String(e)));
         }
     };
 
@@ -270,9 +272,9 @@ export const AdminDashboard: React.FC = () => {
         try {
             await updateDoc(doc(db, 'users', userId), { status: 'approved' });
             // Update local state
-            setUsers(prev => prev.map(u => (u as any).id === userId ? { ...u, status: 'approved' } : u));
-        } catch (err: any) {
-            alert("Erreur validation : " + err.message);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'approved' } : u));
+        } catch (err: unknown) {
+            alert("Erreur validation : " + (err instanceof Error ? err.message : String(err)));
         }
     };
 
@@ -281,13 +283,13 @@ export const AdminDashboard: React.FC = () => {
         try {
             await updateDoc(doc(db, 'users', userId), { status: 'rejected' });
             // Update local state
-            setUsers(prev => prev.map(u => (u as any).id === userId ? { ...u, status: 'rejected' } : u));
-        } catch (err: any) {
-            alert("Erreur rejet : " + err.message);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'rejected' } : u));
+        } catch (err: unknown) {
+            alert("Erreur rejet : " + (err instanceof Error ? err.message : String(err)));
         }
     };
 
-    const startEditing = (type: 'USER' | 'PROJECT', item: any) => {
+    const startEditing = (type: 'USER' | 'PROJECT', item: User | Project) => {
         setEditingId(item.id);
         setEditForm({ ...item });
     };
@@ -304,16 +306,16 @@ export const AdminDashboard: React.FC = () => {
 
             // Update local state
             if (type === 'USER') {
-                setUsers(prev => prev.map(u => (u as any).id === editingId ? { ...u, ...dataToSave } : u));
+                setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...(dataToSave as Partial<User>) } as User : u));
             } else {
-                setProjectsList(prev => prev.map(p => p.id === editingId ? { ...p, ...dataToSave } : p));
+                setProjectsList(prev => prev.map(p => p.id === editingId ? { ...p, ...(dataToSave as Partial<ProjectWithOffline>) } as ProjectWithOffline : p));
             }
 
             setEditingId(null);
             setEditForm({});
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Update error", err);
-            alert("Erreur de sauvegarde : " + err.message);
+            alert("Erreur de sauvegarde : " + (err instanceof Error ? err.message : String(err)));
         }
     };
 
