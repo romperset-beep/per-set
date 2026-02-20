@@ -41,7 +41,24 @@ export const AdminDashboard: React.FC = () => {
             // Fetch Projects
             const projectsQ = query(collection(db, 'projects'));
             const projectsSnap = await getDocs(projectsQ);
-            setProjectsList(projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            const projectsData = await Promise.all(projectsSnap.docs.map(async (docSnap) => {
+                const projectData = { id: docSnap.id, ...docSnap.data() };
+
+                // Fetch offline members to get an accurate total team count
+                try {
+                    const offlineQ = query(collection(db, 'projects', docSnap.id, 'offlineMembers'));
+                    const offlineSnap = await getDocs(offlineQ);
+                    (projectData as any).offlineMembersCount = offlineSnap.size;
+                } catch (e) {
+                    console.error("Could not fetch offline members for project", docSnap.id, e);
+                    (projectData as any).offlineMembersCount = 0;
+                }
+
+                return projectData;
+            }));
+
+            setProjectsList(projectsData);
 
             // Fetch Transactions
             const transQ = query(collection(db, 'transactions'));
@@ -628,7 +645,26 @@ export const AdminDashboard: React.FC = () => {
                                                 <div className="flex items-center gap-2">
                                                     <Users className="h-4 w-4 text-eco-500" />
                                                     <span>
-                                                        {users.filter(u => (u as any).currentProjectId === p.id).length}
+                                                        {(() => {
+                                                            const matchedUsers = users.filter(u => {
+                                                                const uData = u as any;
+                                                                if (uData.currentProjectId === p.id) return true;
+                                                                if (uData.projectHistory && Array.isArray(uData.projectHistory)) {
+                                                                    if (uData.projectHistory.some((h: any) => h.projectId === p.id || h.id === p.id)) return true;
+                                                                }
+                                                                if (p.members && p.members[u.id]) return true;
+                                                                return false;
+                                                            });
+
+                                                            if (p.id === 'crash-test-2026-crash-film') {
+                                                                console.log(`[DEBUG ADMIN] Project: ${p.name}`);
+                                                                console.log(`Matched Users:`, matchedUsers.map(u => (u as any).email));
+                                                                console.log(`Offline Count:`, p.offlineMembersCount);
+                                                                console.log(`p.members map:`, p.members);
+                                                            }
+
+                                                            return matchedUsers.length + ((p as any).offlineMembersCount || 0);
+                                                        })()}
                                                     </span>
                                                 </div>
                                             </td>
