@@ -92,7 +92,7 @@ export const CircularEconomy: React.FC = () => {
             const transactionData: Omit<Transaction, 'id'> = {
                 sellerId: project.id,
                 sellerName: project.productionCompany || project.name,
-                buyerId: 'ABETTERSET_PLATFORM',
+                buyerId: 'PER-SET_PLATEFORM',
                 buyerName: 'Per-Set',
                 items: [{
                     id: item.id,
@@ -234,7 +234,7 @@ export const CircularEconomy: React.FC = () => {
                 const transactionData: Omit<Transaction, 'id'> = {
                     sellerId: project.id,
                     sellerName: project.productionCompany || project.name || "Production",
-                    buyerId: 'ABETTERSET_PLATFORM',
+                    buyerId: 'PER-SET_PLATEFORM',
                     buyerName: 'Per-Set',
                     items: itemsToSell,
                     totalAmount: totalAmount,

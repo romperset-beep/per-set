@@ -9,6 +9,26 @@ export const generateInvoice = async (transaction: Transaction) => {
     // Colors
     const primaryColor = '#1a1a1a';
 
+    // Load Logo
+    const logoUrl = '/logo.png';
+    let logoData: string | null = null;
+    try {
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoData = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn("Could not load logo for PDF", e);
+    }
+
+    if (logoData) {
+        // Use aspect ratio preserving dimensions
+        doc.addImage(logoData, 'PNG', 20, 10, 30, 30);
+    }
+
     // Config
     const vatRate = 20; // Default VAT
     const taxAmount = (transaction.totalAmount * vatRate) / 100;
@@ -41,7 +61,7 @@ export const generateInvoice = async (transaction: Transaction) => {
     // Buyer Info
     doc.setFontSize(14);
     doc.setTextColor(primaryColor);
-    doc.text("Acheteur (Production)", 120, 50);
+    doc.text("Acheteur", 120, 50);
 
     doc.setFontSize(11);
     doc.setTextColor(60);
