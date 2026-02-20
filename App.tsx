@@ -11,6 +11,7 @@ import { useSocial } from './context/SocialContext';
 import { MarketplaceProvider } from './context/MarketplaceContext';
 import { SocialProvider } from './context/SocialContext';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { LoadingFallback } from './components/LoadingFallback';
@@ -434,9 +435,11 @@ const AppContent: React.FC = () => {
     })();
 
     return (
-      <Suspense fallback={<LoadingFallback message="Chargement du module..." />}>
-        {content}
-      </Suspense>
+      <ErrorBoundary key={activeTab}>
+        <Suspense fallback={<LoadingFallback message="Chargement du module..." />}>
+          {content}
+        </Suspense>
+      </ErrorBoundary>
     );
   };
 

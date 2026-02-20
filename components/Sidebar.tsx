@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   // Define Category Type
   type Category = {
     title: string;
-    items: { id: string; label: string; icon: any; allowedDepts?: any; path?: string }[];
+    items: { id?: string; label: string; icon: React.ElementType; allowedDepts?: string | string[]; path?: string }[];
   };
 
   const categories: Category[] = [
@@ -97,7 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     }
   ];
 
-  const filterItem = (item: any) => {
+  const filterItem = (item: Category['items'][0]) => {
     // 1. Admin restricted (Top priority)
     if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
 
@@ -182,18 +182,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
                     // Or split? For now assign to global checks.
                     if (item.id === 'social') badgeCount = unreadSocialCount;
                     if (item.id === 'renforts' && currentDept === 'PRODUCTION' && project?.reinforcements) {
-                      badgeCount = project.reinforcements.reduce((acc: number, r: any) => {
+                      badgeCount = project.reinforcements.reduce((acc: number, r) => {
                         const staff = r.staff || [];
-                        return acc + staff.filter((s: any) => s.validationStatus === 'PENDING').length;
+                        return acc + staff.filter((s) => s.validationStatus === 'PENDING').length;
                       }, 0);
                     }
                     if (item.id === 'logistics') {
                       if (currentDept === 'REGIE' || currentDept === 'Régie') {
                         // Régie sees count of recently approved items (validated by dept, awaiting Régie acknowledgment)
-                        badgeCount = (logistics || []).filter((r: any) => r.status === 'APPROVED').length;
+                        badgeCount = (logistics || []).filter((r) => r.status === 'APPROVED').length;
                       } else {
                         // Other departments see count of items with pendingDate needing their validation
-                        badgeCount = (logistics || []).filter((r: any) => r.pendingDate && r.department === currentDept).length;
+                        badgeCount = (logistics || []).filter((r) => r.pendingDate && r.department === currentDept).length;
                       }
                     }
 

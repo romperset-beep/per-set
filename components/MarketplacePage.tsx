@@ -4,8 +4,7 @@ import { useMarketplace } from '../context/MarketplaceContext'; // Added
 import { ShoppingBag, Tag, Search, Filter, Globe, ExternalLink, Plus, Leaf } from 'lucide-react';
 import { ConsumableItem, SurplusAction, Department, ItemStatus, Transaction } from '../types';
 import { SellItemModal } from './SellItemModal'; // Added
-import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { createMarketplaceTransactionAction } from '../services/transactionService';
 
 // Extended interface to include Project ID (added in Context query)
 interface MarketplaceItem extends ConsumableItem {
@@ -143,19 +142,13 @@ export const MarketplacePage: React.FC = () => {
                 createdAt: new Date().toISOString()
             };
 
-            await addDoc(collection(db, 'transactions'), transactionData);
-
-            // Update Stock (Decrement) for ALL items in transaction
-            // This effectively "hides" them from Marketplace if qty becomes 0
-            await Promise.all(activeContactItems.map(async (i) => {
-                if (i.projectId) {
-                    const qtyToBuy = contactQuantities[i.id] || 1;
-                    const itemRef = doc(db, 'projects', i.projectId, 'items', i.id);
-                    await updateDoc(itemRef, {
-                        quantityCurrent: increment(-qtyToBuy)
-                    });
-                }
+            const decrements = activeContactItems.map((i) => ({
+                projectId: i.projectId,
+                itemId: i.id,
+                qty: contactQuantities[i.id] || 1,
             }));
+
+            await createMarketplaceTransactionAction(transactionData, decrements);
 
             alert("✅ Demande d'achat envoyée à l'administrateur ! Vous serez recontacté pour la facturation.");
             setContactModalOpen(false);
@@ -172,9 +165,9 @@ export const MarketplacePage: React.FC = () => {
             }).filter(i => i.quantityCurrent > 0);
             setItems(updatedItems);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error creating transaction:", error);
-            alert("Erreur lors de la création de la demande: " + error.message);
+            alert("Erreur lors de la création de la demande: " + (error instanceof Error ? error.message : String(error)));
         }
     };
 

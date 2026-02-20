@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Department, ConsumableItem, ItemStatus, SurplusAction } from '../types';
+import { Department, ConsumableItem, ItemStatus, SurplusAction, BuyBackItem } from '../types';
 import { X, Plus, Leaf, List, Search, Upload, Loader2, AlertCircle, ToggleLeft, ToggleRight, Euro } from 'lucide-react';
 import { analyzeOrderFile } from '../services/geminiService';
 import { useProject } from '../context/ProjectContext';
@@ -41,7 +41,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) =
 
     const suggestionsListRef = useRef<HTMLDivElement>(null);
 
-    const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+    const [marketplaceItems, setMarketplaceItems] = useState<ConsumableItem[]>([]);
 
     useEffect(() => {
         const fetchMarketplace = async () => {

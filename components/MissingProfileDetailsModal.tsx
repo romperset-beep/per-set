@@ -34,7 +34,7 @@ export const MissingProfileDetailsModal: React.FC<MissingProfileDetailsModalProp
                 lastName: formData.lastName,
                 phone: formData.phone,
                 role: formData.role, // Job Title
-                department: formData.department as any
+                department: formData.department as Department
             });
 
             // Success
@@ -117,7 +117,7 @@ export const MissingProfileDetailsModal: React.FC<MissingProfileDetailsModalProp
                             <select
                                 className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
                                 value={formData.department}
-                                onChange={e => setFormData({ ...formData, department: e.target.value as any })}
+                                onChange={e => setFormData({ ...formData, department: e.target.value as Department })}
                             >
                                 {Object.values(Department).map(d => (
                                     <option key={d} value={d}>{d}</option>

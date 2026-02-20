@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Department, SurplusAction, Transaction } from '../types';
+import { Department, SurplusAction, Transaction, ConsumableItem, BuyBackItem } from '../types';
 import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, ArrowRight, Clock } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext';
 import { db } from '../services/firebase';
-import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { createMarketplaceTransactionAction } from '../services/transactionService';
 import { useMarketplace } from '../context/MarketplaceContext';
 
 export const DepartmentOrders: React.FC = () => {
-    const { project, setProject, currentDept, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
-    const { addNotification } = useNotification();
+    const { project, setProject, currentDept, user, updateItem, addItem } = useProject();
+    const { addNotification, markNotificationAsReadByItemId } = useNotification();
     const { getGlobalMarketplaceItems } = useMarketplace();
 
     // State
@@ -18,7 +18,7 @@ export const DepartmentOrders: React.FC = () => {
     const [selectedForEmail, setSelectedForEmail] = useState<Set<string>>(new Set());
 
     // Price Modal State
-    const [priceModal, setPriceModal] = useState<{ item: any, action: SurplusAction, suggestedPrice: number, onConfirm?: (p: number) => void } | null>(null);
+    const [priceModal, setPriceModal] = useState<{ item: ConsumableItem, action: SurplusAction, suggestedPrice: number, onConfirm?: (p: number) => void } | null>(null);
 
     const toggleDeptExpansion = (dept: string) => {
         setExpandedDepts(prev => {
@@ -38,7 +38,7 @@ export const DepartmentOrders: React.FC = () => {
 
     // --- Helpers ---
 
-    const promptForMarketplacePrice = (item: any, action: SurplusAction, onConfirm?: (price: number) => void) => {
+    const promptForMarketplacePrice = (item: ConsumableItem, action: SurplusAction, onConfirm?: (price: number) => void) => {
         const currentPrice = item.price || 0;
         const defaultFactor = action === SurplusAction.MARKETPLACE ? 0.9 : 1.0;
         const suggestedPrice = currentPrice > 0 ? Math.round(currentPrice * defaultFactor * 100) / 100 : 0;
@@ -113,7 +113,7 @@ export const DepartmentOrders: React.FC = () => {
     };
 
     // Marketplace State
-    const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+    const [marketplaceItems, setMarketplaceItems] = useState<ConsumableItem[]>([]);
 
     useEffect(() => {
         const fetchMarketplace = async () => {
@@ -171,7 +171,7 @@ export const DepartmentOrders: React.FC = () => {
     const opportunities = React.useMemo(() => {
         if (!marketplaceItems.length || !visibleRequests.length) return [];
 
-        const matches: any[] = [];
+        const matches: { neededItem: ConsumableItem, marketItem: ConsumableItem & { effectivePrice?: number }, saving: number, cost: number }[] = [];
 
         (visibleRequests || []).forEach(neededItem => {
             // Find in marketplace by Name (Case Insensitive)
@@ -185,7 +185,7 @@ export const DepartmentOrders: React.FC = () => {
 
             if (marketMatches.length > 0) {
                 // Calculate effective price: 75% of original for Buyback items, else standard price
-                const matchesWithPrice = marketMatches.map((m: any) => {
+                const matchesWithPrice = marketMatches.map((m: ConsumableItem) => {
                     let effectivePrice = m.price || 0;
                     if (m.surplusAction === SurplusAction.BUYBACK) {
                         effectivePrice = (m.originalPrice || m.price || 0) * 0.75;
@@ -193,7 +193,7 @@ export const DepartmentOrders: React.FC = () => {
                     return { ...m, effectivePrice };
                 });
 
-                matchesWithPrice.sort((a: any, b: any) => a.effectivePrice - b.effectivePrice);
+                matchesWithPrice.sort((a, b) => a.effectivePrice - b.effectivePrice);
                 const bestMatch = matchesWithPrice[0];
 
                 matches.push({
@@ -208,7 +208,7 @@ export const DepartmentOrders: React.FC = () => {
         return matches;
     }, [marketplaceItems, visibleRequests, project.id]);
 
-    const handleDirectOrder = async (op: { neededItem: any, marketItem: any }) => {
+    const handleDirectOrder = async (op: { neededItem: ConsumableItem, marketItem: ConsumableItem & { effectivePrice?: number } }) => {
         if (!user) return;
         const confirmMsg = `Voulez-vous commander "${op.marketItem.name}" à ${op.marketItem.productionName} pour ${Number(op.marketItem.price).toFixed(2)} € ?`;
         if (!window.confirm(confirmMsg)) return;
@@ -234,12 +234,11 @@ export const DepartmentOrders: React.FC = () => {
                 createdAt: new Date().toISOString()
             };
 
-            await addDoc(collection(db, 'transactions'), transactionData);
-
-            // 2. Decrement Seller Stock (Direct Firestore)
-            await updateDoc(doc(db, 'projects', op.marketItem.projectId, 'items', op.marketItem.id), {
-                quantityCurrent: increment(-qtyToBuy)
-            });
+            await createMarketplaceTransactionAction(transactionData, [{
+                projectId: op.marketItem.projectId,
+                itemId: op.marketItem.id,
+                qty: qtyToBuy
+            }]);
 
             // 3. Update Local Request to "Ordered"
             if (updateItem) {
@@ -266,9 +265,9 @@ export const DepartmentOrders: React.FC = () => {
                 return p;
             }).filter(p => p.quantityCurrent > 0));
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Order failed:", error);
-            alert("Erreur lors de la commande: " + error.message);
+            alert("Erreur lors de la commande: " + (error instanceof Error ? error.message : String(error)));
         }
     };
 
@@ -304,12 +303,11 @@ export const DepartmentOrders: React.FC = () => {
                     status: 'PENDING',
                     createdAt: new Date().toISOString()
                 };
-                await addDoc(collection(db, 'transactions'), transactionData);
-
-                // 2. Seller Stock
-                await updateDoc(doc(db, 'projects', op.marketItem.projectId, 'items', op.marketItem.id), {
-                    quantityCurrent: increment(-qtyToBuy)
-                });
+                await createMarketplaceTransactionAction(transactionData, [{
+                    projectId: op.marketItem.projectId,
+                    itemId: op.marketItem.id,
+                    qty: qtyToBuy
+                }]);
 
                 // 3. Local Item
                 if (updateItem) {
@@ -340,7 +338,7 @@ export const DepartmentOrders: React.FC = () => {
             // Refresh UI
             setMarketplaceItems(newMarketItems.filter(p => p.quantityCurrent > 0));
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Bulk order error", error);
             alert("Erreur lors de la commande groupée.");
         }

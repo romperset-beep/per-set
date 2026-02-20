@@ -39,7 +39,7 @@ interface SocialContextType {
 const SocialContext = createContext<SocialContextType | undefined>(undefined);
 
 export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { project, user, userProfiles, addNotification } = useProject(); // Dependency on Core Project/User
+    const { project, user, userProfiles } = useProject(); // Dependency on Core Project/User
 
     const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -143,7 +143,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             // but we can trigger a success log.
         } catch (err: unknown) {
             console.error("[SocialContext] Add Error:", err);
-            setError(`Erreur d'envoi: ${err.message}`);
+            setError(`Erreur d'envoi: ${err instanceof Error ? err.message : String(err)}`);
             throw err;
         }
     };
@@ -168,7 +168,7 @@ export const SocialProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         } catch (err: unknown) {
             console.error("[SocialContext] Delete Error:", err);
-            setError(`Erreur de suppression: ${err.message}`);
+            setError(`Erreur de suppression: ${err instanceof Error ? err.message : String(err)}`);
             throw err;
         }
     };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../services/firebase';
 import { User, Project } from '../types';
+import { fetchAllUsersAction, fetchAllProjectsAction, fetchAllTransactionsAction, ProjectWithOfflineInfo, approveUserAction, rejectUserAction, updateGenericDocumentAction } from '../services/adminService';
+import { validateTransactionAction, rejectTransactionAction } from '../services/transactionService';
 import { useProject } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, Search, Users, Building2, Calendar, Film, Trash2, ArrowLeft, Edit2, Save, X, ShoppingCart, FileText, CheckCircle, Download, Filter, AlertTriangle } from 'lucide-react';
@@ -16,7 +16,7 @@ import { fr } from 'date-fns/locale';
 
 type ViewMode = 'DASHBOARD' | 'USERS' | 'PRODUCTIONS' | 'PROJECTS' | 'RESALES' | 'RESET';
 
-export type ProjectWithOffline = Project & { offlineMembersCount?: number };
+export type ProjectWithOffline = ProjectWithOfflineInfo;
 
 export const AdminDashboard: React.FC = () => {
     const [view, setView] = useState<ViewMode>('DASHBOARD');
@@ -36,41 +36,17 @@ export const AdminDashboard: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Fetch Users
-            const usersQ = query(collection(db, 'users'));
-            const usersSnap = await getDocs(usersQ);
-            // We need to store doc ID for users to delete them using deleteDoc
-            setUsers(usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as User & { id: string })));
+            const fetchedUsers = await fetchAllUsersAction();
+            setUsers(fetchedUsers);
 
-            // Fetch Projects
-            const projectsQ = query(collection(db, 'projects'));
-            const projectsSnap = await getDocs(projectsQ);
+            const fetchedProjects = await fetchAllProjectsAction();
+            setProjectsList(fetchedProjects as ProjectWithOffline[]);
 
-            const projectsData = await Promise.all(projectsSnap.docs.map(async (docSnap) => {
-                const projectData = { id: docSnap.id, ...docSnap.data() } as ProjectWithOffline;
-
-                // Fetch offline members to get an accurate total team count
-                try {
-                    const offlineQ = query(collection(db, 'projects', docSnap.id, 'offlineMembers'));
-                    const offlineSnap = await getDocs(offlineQ);
-                    projectData.offlineMembersCount = offlineSnap.size;
-                } catch (e) {
-                    console.error("Could not fetch offline members for project", docSnap.id, e);
-                    projectData.offlineMembersCount = 0;
-                }
-
-                return projectData;
-            }));
-
-            setProjectsList(projectsData);
-
-            // Fetch Transactions
-            const transQ = query(collection(db, 'transactions'));
-            const transSnap = await getDocs(transQ);
-            setTransactions(transSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+            const fetchedTransactions = await fetchAllTransactionsAction();
+            setTransactions(fetchedTransactions);
 
         } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("Error fetching admin data:", error);
         } finally {
             setIsLoading(false);
         }
@@ -189,10 +165,7 @@ export const AdminDashboard: React.FC = () => {
     const handleValidateTransaction = async (transaction: Transaction) => {
         if (transaction.status !== 'PENDING') return;
         try {
-            await updateDoc(doc(db, 'transactions', transaction.id), {
-                status: 'VALIDATED',
-                invoicedAt: new Date().toISOString()
-            });
+            await validateTransactionAction(transaction);
             setTransactions(prev => prev.map(t => t.id === transaction.id ? { ...t, status: 'VALIDATED', invoicedAt: new Date().toISOString() } : t));
             alert("Transaction validée et prête pour facturation !");
         } catch (e: unknown) {
@@ -204,27 +177,8 @@ export const AdminDashboard: React.FC = () => {
         if (!window.confirm("Voulez-vous vraiment refuser cette vente ? Le stock sera remis en vente.")) return;
 
         try {
-            // 1. Update Transaction Status
-            await updateDoc(doc(db, 'transactions', transaction.id), {
-                status: 'CANCELLED'
-            });
-
-            // 2. Restore Stock
-            await Promise.all(transaction.items.map(async (item) => {
-                try {
-                    const itemRef = doc(db, 'projects', transaction.sellerId, 'items', item.id);
-                    await updateDoc(itemRef, {
-                        quantityCurrent: increment(item.quantity),
-                        surplusAction: 'RELEASED_TO_PROD' // Reset status to make it visible in "To Sort"
-                    });
-                } catch (e) {
-                    console.error("Error restoring stock for item", item.id, e);
-                }
-            }));
-
-            // 3. Update Local State
+            await rejectTransactionAction(transaction);
             setTransactions(prev => prev.map(t => t.id === transaction.id ? { ...t, status: 'CANCELLED' } : t));
-
             alert("Transaction refusée et stock restauré.");
         } catch (e: unknown) {
             alert("Erreur rejet: " + (e instanceof Error ? e.message : String(e)));
@@ -270,7 +224,7 @@ export const AdminDashboard: React.FC = () => {
 
     const handleApproveUser = async (userId: string) => {
         try {
-            await updateDoc(doc(db, 'users', userId), { status: 'approved' });
+            await approveUserAction(userId);
             // Update local state
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'approved' } : u));
         } catch (err: unknown) {
@@ -281,7 +235,7 @@ export const AdminDashboard: React.FC = () => {
     const handleRejectUser = async (userId: string) => {
         if (!window.confirm("Voulez-vous vraiment refuser cet utilisateur ? Il ne pourra pas accéder à l'application.")) return;
         try {
-            await updateDoc(doc(db, 'users', userId), { status: 'rejected' });
+            await rejectUserAction(userId);
             // Update local state
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'rejected' } : u));
         } catch (err: unknown) {
@@ -297,12 +251,11 @@ export const AdminDashboard: React.FC = () => {
     const saveEdit = async (type: 'USER' | 'PROJECT') => {
         try {
             const collectionName = type === 'USER' ? 'users' : 'projects';
-            const ref = doc(db, collectionName, editingId!);
 
             // Clean up localized fields that shouldn't be in DB if present
             const { id, ...dataToSave } = editForm;
 
-            await updateDoc(ref, dataToSave);
+            await updateGenericDocumentAction(collectionName, editingId!, dataToSave);
 
             // Update local state
             if (type === 'USER') {

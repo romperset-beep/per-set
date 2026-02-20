@@ -7,7 +7,13 @@ import { extractTextFromPdf } from '../../utils/pdfHelpers';
 export const ImportMemberModal = ({ onClose }: { onClose: () => void }) => {
     const { addOfflineMember } = useTeam();
     const [mode, setMode] = useState<'MANUAL' | 'BULK'>('MANUAL');
-    const [manualData, setManualData] = useState({
+    const [manualData, setManualData] = useState<{
+        firstName: string;
+        lastName: string;
+        role: string;
+        phone: string;
+        department: Department | 'PRODUCTION';
+    }>({
         firstName: '',
         lastName: '',
         role: '',
@@ -42,7 +48,7 @@ export const ImportMemberModal = ({ onClose }: { onClose: () => void }) => {
         if (!manualData.firstName || !manualData.lastName) return;
         await addOfflineMember({
             ...manualData,
-            department: manualData.department as any
+            department: manualData.department as Department | 'PRODUCTION'
         });
         onClose();
     };
@@ -133,7 +139,7 @@ export const ImportMemberModal = ({ onClose }: { onClose: () => void }) => {
                             <select
                                 className="bg-cinema-900 border-cinema-700 rounded p-2 text-white w-full"
                                 value={manualData.department}
-                                onChange={e => setManualData({ ...manualData, department: e.target.value as any })}
+                                onChange={e => setManualData({ ...manualData, department: e.target.value as Department | 'PRODUCTION' })}
                             >
                                 {Object.values(Department).map(d => (
                                     <option key={d} value={d}>{d}</option>

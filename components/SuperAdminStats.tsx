@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { db } from '../services/firebase';
-import { collection, getDocs, collectionGroup, query, where } from 'firebase/firestore';
+import { fetchAllProjectsAction, fetchAllGlobalItemsAction } from '../services/adminService';
 import {
     BarChart3,
     TrendingUp,
@@ -68,16 +67,14 @@ export const SuperAdminStats: React.FC = () => {
 
             try {
                 // 1. Fetch All Projects
-                const projectsSnap = await getDocs(collection(db, 'projects'));
+                const fetchedProjects = await fetchAllProjectsAction();
                 const projectsData: ProjectStats[] = [];
 
                 let gStats = { ...globalStats };
-                gStats.totalProjects = projectsSnap.size;
+                gStats.totalProjects = fetchedProjects.length;
 
                 // 2. Fetch All Items (Collection Group)
-                const itemsSnap = await getDocs(collectionGroup(db, 'items'));
-                const allItems: ConsumableItem[] = [];
-                itemsSnap.forEach(doc => allItems.push({ id: doc.id, ...doc.data() } as ConsumableItem));
+                const allItems = await fetchAllGlobalItemsAction() as ConsumableItem[];
 
                 // Process Items Global
                 gStats.totalItems = allItems.length;
@@ -91,8 +88,8 @@ export const SuperAdminStats: React.FC = () => {
 
 
                 // Process Projects & Aggregates
-                projectsSnap.forEach(doc => {
-                    const p = { id: doc.id, ...doc.data() } as Project;
+                fetchedProjects.forEach(rawP => {
+                    const p = rawP as Project;
 
                     // Logistics (Km)
                     // Note: This relies on logistics[] array in project doc. 
@@ -290,8 +287,8 @@ export const SuperAdminStats: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className={`px-2 py-1 rounded-full text-xs border ${p.status === 'Shooting' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                                p.status === 'Wrap' ? 'bg-slate-700 text-slate-300 border-slate-600' :
-                                                    'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                            p.status === 'Wrap' ? 'bg-slate-700 text-slate-300 border-slate-600' :
+                                                'bg-blue-500/10 text-blue-400 border-blue-500/20'
                                             }`}>
                                             {p.status}
                                         </span>

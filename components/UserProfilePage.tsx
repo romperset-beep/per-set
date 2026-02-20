@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { UserProfile, Department } from '../types';
 import { Save, Upload, FileText, CheckCircle, Trash2, Bell, BellOff, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { getUserProfileAction, updateUserProfileAction } from '../services/userService';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getStorage } from 'firebase/storage';
 import { db, auth, storage } from '../services/firebase';
 import { USPA_JOBS } from '../data/uspaRates';
@@ -30,10 +30,8 @@ export const UserProfilePage: React.FC = () => {
             // (Context 'userProfiles' might be filtered or incomplete)
             try {
                 if (auth.currentUser) {
-                    const userRef = doc(db, 'users', auth.currentUser.uid);
-                    const snap = await getDoc(userRef);
-                    if (snap.exists()) {
-                        const data = snap.data() as UserProfile; // Cast to ensure we get fields
+                    const data = await getUserProfileAction(auth.currentUser.uid);
+                    if (data) {
                         console.log("Direct Profile Fetch Success:", data);
 
                         // Merge logic: Priority to Direct Fetch
@@ -226,20 +224,18 @@ export const UserProfilePage: React.FC = () => {
         if (user && auth.currentUser) {
             try {
                 // Update Firestore
-                const userRef = doc(db, 'users', auth.currentUser.uid);
-
                 // Sanitize formData to remove undefined values (Firestore rejects undefined)
                 const sanitizedData = Object.fromEntries(
                     Object.entries(formData).map(([k, v]) => [k, v === undefined ? null : v])
                 );
 
-                // We use setDoc with merge to ensure we don't overwrite other important user fields like project history
-                await setDoc(userRef, {
+                const finalData = {
                     ...sanitizedData,
-                    // Ensure these are split correctly if not present in formData
                     firstName: formData.firstName || user.name.split(' ')[0],
                     lastName: formData.lastName || user.name.split(' ').slice(1).join(' ')
-                }, { merge: true });
+                };
+
+                await updateUserProfileAction(auth.currentUser.uid, finalData);
 
                 // Show success modal instead of alert
                 setShowSuccessModal(true);

@@ -56,7 +56,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ onClose, onNavigate 
 
         // Search in inventory items
         project.items?.forEach(item => {
-            const itemCategory = (item as any).category || '';
+            const itemCategory = ((item as unknown) as Record<string, unknown>).category as string || '';
             if (
                 item.name.toLowerCase().includes(lowerQuery) ||
                 itemCategory.toLowerCase().includes(lowerQuery) ||

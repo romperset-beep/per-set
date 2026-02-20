@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { useMarketplace } from '../context/MarketplaceContext'; // Added
-import { Department } from '../types';
+import { Department, BuyBackItem } from '../types';
 import { ShoppingBag, Tag, Euro, User, CheckSquare, Square, Plus, Image as ImageIcon, X, Trash2, FileText, Leaf } from 'lucide-react';
 import { SellItemModal } from './SellItemModal';
 import { SalesHistoryModal } from './SalesHistoryModal';
@@ -12,7 +12,7 @@ export const BuyBackMarketplace: React.FC = () => {
     const { buyBackItems, toggleBuyBackReservation, confirmBuyBackTransaction, deleteBuyBackItem } = useMarketplace(); // Added
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false); // Added
-    const [invoiceItem, setInvoiceItem] = useState<any | null>(null);
+    const [invoiceItem, setInvoiceItem] = useState<BuyBackItem | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     if (!buyBackItems) {

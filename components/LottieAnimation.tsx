@@ -4,7 +4,7 @@ import Lottie from 'lottie-react';
 
 interface LottieAnimationProps {
     url?: string;
-    animationData?: any;
+    animationData?: Record<string, unknown>;
     className?: string;
     loop?: boolean;
     autoplay?: boolean;
@@ -17,7 +17,7 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
     loop = true,
     autoplay = true
 }) => {
-    const [animationData, setAnimationData] = useState<any>(initialData);
+    const [animationData, setAnimationData] = useState<Record<string, unknown> | undefined>(initialData);
     const [error, setError] = useState(false);
 
     useEffect(() => {

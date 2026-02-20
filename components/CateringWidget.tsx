@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { Department, CateringLog, UserProfile } from '../types';
+import { Department, CateringLog, UserProfile, User } from '../types';
 import { Utensils, Calendar, UserPlus, Check, X, Leaf, PieChart as PieIcon, Download } from 'lucide-react';
+
+interface RowData {
+    id: string;
+    name: string;
+    department: string;
+    diet: string;
+    hasEaten: boolean;
+    isVegetarian: boolean;
+    isManual: boolean;
+    role: string;
+}
 
 export const CateringWidget: React.FC = () => {
     const { project, updateProjectDetails, user, userProfiles, currentDept } = useProject();
@@ -44,12 +55,12 @@ export const CateringWidget: React.FC = () => {
         // 1. Existing Users (Filtered by Project)
         const userRows = userProfiles
             .filter(profile => {
-                const p = profile as any;
+                const p = profile as unknown as User;
                 // Case 1: Active project (Redundant but keeps UI snappy)
                 if (p.currentProjectId === project.id) return true;
                 // Case 2: Project in history
                 if (p.projectHistory && Array.isArray(p.projectHistory)) {
-                    if (p.projectHistory.some((h: any) => h.projectId === project.id || h.id === project.id)) return true;
+                    if (p.projectHistory.some(h => h.id === project.id)) return true;
                 }
                 // Case 3: Explicitly in project members map (The "Team Directory" Logic)
                 if (project.members && project.members[profile.id]) return true;
@@ -60,7 +71,7 @@ export const CateringWidget: React.FC = () => {
                 const log = dailyLogs.find(l => l.userId === profile.email); // Assume email is ID for now
                 return {
                     id: profile.email,
-                    name: (profile.firstName && profile.lastName) ? `${profile.firstName} ${profile.lastName}` : ((profile as any).name || profile.email),
+                    name: (profile.firstName && profile.lastName) ? `${profile.firstName} ${profile.lastName}` : (profile.name || profile.email),
                     department: profile.department,
                     diet: profile.dietaryHabits || 'Standard',
                     hasEaten: log?.hasEaten || false,
@@ -77,7 +88,7 @@ export const CateringWidget: React.FC = () => {
         // Prioritize Call Sheet cast, then PDT cast
         const castSource = callSheet?.cast?.length ? callSheet.cast : (pdtDay?.cast || []);
 
-        const castRows = castSource.map((actor: any, index: number) => {
+        const castRows = castSource.map((actor: { actor?: string; role?: string }, index: number) => {
             const actorName = actor.actor || `Inconnu ${index + 1}`;
             const castId = `cast_${actorName.replace(/\s+/g, '_')}`;
             const log = dailyLogs.find(l => l.userId === castId);
@@ -111,7 +122,7 @@ export const CateringWidget: React.FC = () => {
         });
     }, [userProfiles, dailyLogs]);
 
-    const handleToggleMeal = async (row: any, field: 'hasEaten' | 'isVegetarian') => {
+    const handleToggleMeal = async (row: RowData, field: 'hasEaten' | 'isVegetarian') => {
         if (!isRegie || isValidated) return; // Read-only for others or if validated
 
         const newValue = !row[field];
@@ -128,7 +139,7 @@ export const CateringWidget: React.FC = () => {
                 id: logId,
                 date: selectedDate,
                 userId: row.isManual ? undefined : row.id,
-                department: row.department,
+                department: row.department as Department | 'PRODUCTION',
                 hasEaten: field === 'hasEaten' ? newValue : false,
                 isVegetarian: field === 'isVegetarian' ? newValue : row.isVegetarian, // Keep profile default if toggling eaten
                 isManual: false,
@@ -312,7 +323,7 @@ export const CateringWidget: React.FC = () => {
     }, [dailyLogs]);
 
     // CSV Export Logic
-    const downloadCSV = (data: any[], filename: string, isWeeklyLog = false) => {
+    const downloadCSV = (data: (RowData | CateringLog)[], filename: string, isWeeklyLog = false) => {
         const headers = ['Date', 'Nom', 'Département', 'Fonction', 'Régime', 'A Mangé', 'Végétarien'];
 
         const rows = data.map(row => {
@@ -333,13 +344,14 @@ export const CateringWidget: React.FC = () => {
                 isVeg = log.isVegetarian ? 'OUI' : 'NON';
             } else {
                 // Table Row (Daily)
+                const tableRow = row as RowData;
                 date = formatDateFR(selectedDate);
-                name = row.name;
-                dept = row.department;
-                role = row.role || '';
-                diet = row.diet;
-                hasEaten = row.hasEaten ? 'OUI' : 'NON';
-                isVeg = row.isVegetarian ? 'OUI' : 'NON';
+                name = tableRow.name;
+                dept = tableRow.department;
+                role = tableRow.role || '';
+                diet = tableRow.diet;
+                hasEaten = tableRow.hasEaten ? 'OUI' : 'NON';
+                isVeg = tableRow.isVegetarian ? 'OUI' : 'NON';
             }
 
             return [date, `"${name}"`, dept, `"${role}"`, diet, hasEaten, isVeg];
@@ -364,9 +376,9 @@ export const CateringWidget: React.FC = () => {
     };
 
     // Structured Weekly Report
-    const downloadWeeklyReport = (weekKey: string, logsForWeek: any[]) => {
+    const downloadWeeklyReport = (weekKey: string, logsForWeek: CateringLog[]) => {
         // 1. Group by Date
-        const logsByDate: Record<string, any[]> = {};
+        const logsByDate: Record<string, CateringLog[]> = {};
         logsForWeek.forEach(log => {
             if (!logsByDate[log.date]) logsByDate[log.date] = [];
             logsByDate[log.date].push(log);
@@ -575,9 +587,9 @@ export const CateringWidget: React.FC = () => {
                                         // Count active team members with profiles for this project
                                         // This matches the logic used in TeamDirectory to avoid ghost members
                                         const activeMembers = userProfiles.filter(profile => {
-                                            const p = profile as any;
+                                            const p = profile as unknown as User;
                                             return p.currentProjectId === project.id ||
-                                                p.projectHistory?.some((h: any) => h.id === project.id);
+                                                p.projectHistory?.some(h => h.id === project.id);
                                         });
                                         return activeMembers.length;
                                     })()}
@@ -716,9 +728,9 @@ export const CateringWidget: React.FC = () => {
                                         // Calculate Total Forecast
                                         // 1. Team (Active Members)
                                         const tech = userProfiles.filter(profile => {
-                                            const p = profile as any;
+                                            const p = profile as unknown as User;
                                             return p.currentProjectId === project.id ||
-                                                p.projectHistory?.some((h: any) => h.id === project.id);
+                                                p.projectHistory?.some(h => h.id === project.id);
                                         }).length;
 
                                         // 2. Cast
@@ -982,7 +994,7 @@ export const CateringWidget: React.FC = () => {
                                     <label className="block text-sm font-medium text-slate-400 mb-1">Département (Rattachement)</label>
                                     <select
                                         value={guestDept}
-                                        onChange={(e) => setGuestDept(e.target.value as any)}
+                                        onChange={(e) => setGuestDept(e.target.value as Department | 'PRODUCTION')}
                                         className="w-full bg-cinema-900 border border-cinema-700 rounded-lg p-3 text-white focus:border-eco-500 outline-none"
                                     >
                                         {Object.values(Department).map(d => (
