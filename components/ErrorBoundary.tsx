@@ -43,7 +43,16 @@ export class ErrorBoundary extends Component<Props, State> {
                             {this.state.error?.message || "Erreur inconnue"}
                         </pre>
                         <button
-                            onClick={() => this.setState({ hasError: false })}
+                            onClick={() => {
+                                if (
+                                    this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+                                    this.state.error?.message?.includes('Importing a module script failed')
+                                ) {
+                                    window.location.reload();
+                                } else {
+                                    this.setState({ hasError: false });
+                                }
+                            }}
                             className="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded transition-colors"
                         >
                             Réessayer

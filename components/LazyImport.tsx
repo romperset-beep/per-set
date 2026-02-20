@@ -14,9 +14,11 @@ export const lazyImport = <T extends ComponentType<any>>(
                 error.message.includes('Failed to fetch dynamically imported module') ||
                 error.message.includes('Importing a module script failed')
             )) {
-                // Force reload if not already reloaded to avoid loop
-                if (!window.sessionStorage.getItem('chunk_reload_' + window.location.pathname)) {
-                    window.sessionStorage.setItem('chunk_reload_' + window.location.pathname, 'true');
+                // Force reload if not already reloaded recently (within last 10 seconds to avoid loop)
+                const lastReload = window.sessionStorage.getItem('last_chunk_reload');
+                const now = Date.now();
+                if (!lastReload || now - parseInt(lastReload) > 10000) {
+                    window.sessionStorage.setItem('last_chunk_reload', now.toString());
                     window.location.reload();
                     // Return a never-resolving promise to pause rendering while reloading
                     return new Promise(() => { });
