@@ -173,8 +173,14 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                         </a>
                     )}
 
-                    {todayCallSheet?.cateringLocation && (
-                        <a href={getMapsLink(todayCallSheet.cateringLocation)} target="_blank" rel="noreferrer" className="block group">
+                    {/* 2. ADRESSE : CANTINE */}
+                    {(todayCallSheet?.cateringLocation || todayCallSheet?.cateringAddress) && (
+                        <a
+                            href={getMapsLink(todayCallSheet.cateringAddress || todayCallSheet.cateringLocation || "")}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block group"
+                        >
                             <div className="bg-white/5 hover:bg-white/10 p-3 rounded-lg border border-white/10 transition-colors flex items-center gap-3">
                                 <div className="p-2 bg-orange-500/20 text-orange-400 rounded-md group-hover:bg-orange-500 group-hover:text-white transition-colors">
                                     <Utensils className="w-5 h-5" />
@@ -188,7 +194,34 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-sm font-medium text-white line-clamp-1">{todayCallSheet.cateringLocation}</div>
+                                    {/* Location Name */}
+                                    <div className="text-sm font-medium text-white line-clamp-1">{todayCallSheet.cateringLocation || "Lieu Cantine"}</div>
+
+                                    {/* Address (New) */}
+                                    {todayCallSheet.cateringAddress && (
+                                        <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{todayCallSheet.cateringAddress}</div>
+                                    )}
+                                </div>
+                                <div className="text-xs text-blue-400 font-bold group-hover:underline">Voir</div>
+                            </div>
+                        </a>
+                    )}
+
+                    {/* Decor Secondaire */}
+                    {todayCallSheet?.location2 && (
+                        <a
+                            href={getMapsLink(todayCallSheet.location2)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block group"
+                        >
+                            <div className="bg-white/5 hover:bg-white/10 p-3 rounded-lg border border-white/10 transition-colors flex items-center gap-3">
+                                <div className="p-2 bg-teal-500/20 text-teal-400 rounded-md group-hover:bg-teal-500 group-hover:text-white transition-colors">
+                                    <MapPin className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="text-xs text-slate-400 font-bold uppercase">Décor Secondaire</div>
+                                    <div className="text-sm font-medium text-white line-clamp-1">{todayCallSheet.location2}</div>
                                 </div>
                                 <div className="text-xs text-blue-400 font-bold group-hover:underline">Voir</div>
                             </div>
