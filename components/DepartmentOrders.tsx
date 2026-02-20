@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Department, SurplusAction, Transaction } from '../types';
 import { ShoppingCart, CheckCircle2, RefreshCw, Undo2, PackageCheck, Mail, ArrowRight, Clock } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext';
 import { db } from '../services/firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { useMarketplace } from '../context/MarketplaceContext';
 
 export const DepartmentOrders: React.FC = () => {
-    const { project, setProject, currentDept, addNotification, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
+    const { project, setProject, currentDept, user, markNotificationAsReadByItemId, updateItem, addItem } = useProject();
+    const { addNotification } = useNotification();
     const { getGlobalMarketplaceItems } = useMarketplace();
 
     // State

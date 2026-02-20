@@ -2,12 +2,14 @@ import React from 'react';
 import { SurplusAction, ItemStatus, Transaction } from '../types';
 import { Recycle, Heart, ShoppingBag, ArrowRight, Check, LayoutDashboard, RefreshCw, GraduationCap, Box, Undo2, Film, Edit2, Archive, DollarSign, Download, FileText, Mail, Printer, Gift } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext';
 import { db } from '../services/firebase';
 import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { generateInvoice } from '../utils/invoiceGenerator';
 
 export const CircularEconomy: React.FC = () => {
-    const { project, setProject, circularView: view, setCircularView: setView, addNotification, user, updateItem, addItem } = useProject();
+    const { project, setProject, circularView: view, setCircularView: setView, user, updateItem, addItem } = useProject();
+    const { addNotification } = useNotification();
     const [transferModal, setTransferModal] = React.useState<{ item: any, quantity: number, targetAction: SurplusAction } | null>(null);
 
     // All items that have leftover quantity (filtered by department)

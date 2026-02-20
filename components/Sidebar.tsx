@@ -21,7 +21,8 @@ import {
   BarChart2, // Added
   CalendarRange // Added
 } from 'lucide-react';
-import { useProject } from '../context/ProjectContext'; // Restored
+import { useProject } from '../context/ProjectContext';
+import { useLogistics } from '../context/LogisticsContext'; // Restored
 import { useSocial } from '../context/SocialContext'; // Added
 import { useMarketplace } from '../context/MarketplaceContext'; // Added
 import { useIsMobile } from '../hooks/useIsMobile'; // Added
@@ -35,6 +36,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onClose }) => {
   const { currentDept, logout, leaveProject, unreadCount, user, t, itemsToReceiveCount, project } = useProject();
+  const { logistics } = useLogistics();
   const { unreadSocialCount, markSocialAsRead } = useSocial(); // Added
   const { unreadMarketplaceCount, markMarketplaceAsRead } = useMarketplace(); // Added
   const isMobile = useIsMobile();
@@ -43,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   // Define Category Type
   type Category = {
     title: string;
-    items: { id: string; label: string; icon: any; allowedDepts?: any }[];
+    items: { id: string; label: string; icon: any; allowedDepts?: any; path?: string }[];
   };
 
   const categories: Category[] = [
@@ -185,14 +187,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
                         return acc + staff.filter((s: any) => s.validationStatus === 'PENDING').length;
                       }, 0);
                     }
-                    // Logistics badge: count items needing current department's attention
-                    if (item.id === 'logistics' && project?.logistics) {
+                    if (item.id === 'logistics') {
                       if (currentDept === 'REGIE' || currentDept === 'Régie') {
                         // Régie sees count of recently approved items (validated by dept, awaiting Régie acknowledgment)
-                        badgeCount = project.logistics.filter((r: any) => r.status === 'APPROVED').length;
+                        badgeCount = (logistics || []).filter((r: any) => r.status === 'APPROVED').length;
                       } else {
                         // Other departments see count of items with pendingDate needing their validation
-                        badgeCount = project.logistics.filter((r: any) => r.pendingDate && r.department === currentDept).length;
+                        badgeCount = (logistics || []).filter((r: any) => r.pendingDate && r.department === currentDept).length;
                       }
                     }
 

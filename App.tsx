@@ -4,6 +4,9 @@ import Sidebar from './components/Sidebar';
 import { ProjectProvider, useProject } from '@/context/ProjectContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider, useNotification } from './context/NotificationContext';
+import { ExpenseProvider } from './context/ExpenseContext';
+import { LogisticsProvider } from './context/LogisticsContext';
+import { TeamProvider } from './context/TeamContext';
 import { useSocial } from './context/SocialContext';
 import { MarketplaceProvider } from './context/MarketplaceContext';
 import { SocialProvider } from './context/SocialContext';
@@ -882,21 +885,27 @@ const AppWrapper = () => {
       <ProjectProvider>
         <NotificationProvider>
           <SocialProvider>
-            <MarketplaceProvider>
-              <AppContent />
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  style: {
-                    background: '#1e293b',
-                    color: '#fff',
-                    border: '1px solid #334155'
-                  }
-                }}
-              />
-              <OfflineIndicator />
-              <DebugFooter />
-            </MarketplaceProvider>
+            <ExpenseProvider>
+              <LogisticsProvider>
+                <MarketplaceProvider>
+                  <TeamProvider>
+                    <AppContent />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        style: {
+                          background: '#1e293b',
+                          color: '#fff',
+                          border: '1px solid #334155'
+                        }
+                      }}
+                    />
+                    <OfflineIndicator />
+                    <DebugFooter />
+                  </TeamProvider>
+                </MarketplaceProvider>
+              </LogisticsProvider>
+            </ExpenseProvider>
           </SocialProvider>
         </NotificationProvider>
       </ProjectProvider>

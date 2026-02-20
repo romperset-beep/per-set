@@ -1,13 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { useNotification } from '../context/NotificationContext'; // Added
+import { useNotification } from '../context/NotificationContext';
+import { useLogistics } from '../context/LogisticsContext'; // Added
 import { Department, LogisticsRequest, LogisticsType } from '../types';
 import { Truck, ChevronLeft, ChevronRight, Plus, X, Calendar, MapPin, Clock, FileText, User, ChevronDown, ChevronRight as ChevronRightIcon, Package, AlertTriangle, Check } from 'lucide-react';
 
 export const LogisticsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, setCurrentDept, addNotification, addLogisticsRequest, deleteLogisticsRequest } = useProject();
-    const { notifications, markAsRead } = useNotification(); // Added
+    const { project, updateProjectDetails, user, currentDept, setCurrentDept } = useProject();
+    const { logistics, addLogisticsRequest, deleteLogisticsRequest } = useLogistics();
+    const { notifications, markAsRead, addNotification } = useNotification(); // Added
 
     // Auto-clear notifications for Production
     React.useEffect(() => {
@@ -147,10 +149,10 @@ export const LogisticsWidget: React.FC = () => {
 
     const groupedByWeek = useMemo(() => {
         const groups: Record<string, { label: string, count: number, days: string[] }> = {};
-        const allDates = (project.logistics || []).map(r => r.date).sort();
+        const allDates = (logistics || []).map(r => r.date).sort();
         if (allDates.length === 0) return {};
 
-        (project.logistics || []).forEach(r => {
+        (logistics || []).forEach(r => {
             const d = new Date(r.date);
             const { key, label } = getWeekInfo(d);
 
@@ -325,7 +327,7 @@ export const LogisticsWidget: React.FC = () => {
     }, [creationMode, linkedLocation, linkType, duration, project.pdtDays, useFullDuration]);
 
     const getRequests = (dateStr: string, dept: string) => {
-        return (project.logistics || []).filter(r => r.date === dateStr && r.department === dept);
+        return (logistics || []).filter(r => r.date === dateStr && r.department === dept);
     };
 
     const resetForm = () => {
@@ -382,7 +384,7 @@ export const LogisticsWidget: React.FC = () => {
 
         // --- EDIT MODE ---
         if (editingRequestId) {
-            const allRequests = project.logistics || [];
+            const allRequests = logistics || [];
             const updatedReqs = allRequests.map(r => {
                 if (r.id === editingRequestId) {
                     return {
@@ -634,7 +636,7 @@ export const LogisticsWidget: React.FC = () => {
             if (sourceDate === targetDateStr) return; // No change
 
             // Find the request
-            const allRequests = project.logistics || [];
+            const allRequests = logistics || [];
             const reqToMove = allRequests.find(r => r.id === requestId);
 
             if (!reqToMove) return;
@@ -1192,7 +1194,7 @@ export const LogisticsWidget: React.FC = () => {
                                 {!isCollapsed && (
                                     <div className="p-4 space-y-4 border-t border-cinema-800 animate-in slide-in-from-top-2 duration-200">
                                         {(groupedByWeek[weekKey].days || []).sort().map(dateStr => {
-                                            const dayRequests = (project.logistics || [])
+                                            const dayRequests = (logistics || [])
                                                 .filter(r => r.date === dateStr)
                                                 // FILTER: Production/Regie see everything (or filtered by something else if we added a filter dropdown here too, but for now they see everything in this list view is implied or we should filter?)
                                                 // Actually `groupedByWeek` contains ALL logistics. We must filter here to show only what the user is allowed to see.

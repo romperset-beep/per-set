@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ItemStatus, SurplusAction, Department, Transaction } from '../types';
 import { Minus, Plus, ShoppingCart, CheckCircle2, PlusCircle, RefreshCw, GraduationCap, Undo2, Mail, PackageCheck, PackageOpen, Clock, Receipt, Film, Trash2, AlertTriangle, ArrowRightLeft, ShoppingBag, Save } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { AddItemModal } from './AddItemModal';
 import { ExpenseReportModal } from './ExpenseReportModal';
@@ -17,9 +18,7 @@ export const InventoryManager: React.FC = () => {
         project,
         setProject,
         currentDept,
-        addNotification,
         user,
-        markNotificationAsReadByItemId,
         updateItem,
         addItem,
         deleteItem,
@@ -27,6 +26,7 @@ export const InventoryManager: React.FC = () => {
         loadMoreItems
     } = useProject();
     const { getGlobalMarketplaceItems } = useMarketplace();
+    const { addNotification, markNotificationAsReadByItemId } = useNotification();
 
     // Form State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);

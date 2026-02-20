@@ -4,7 +4,6 @@ import { useAuth } from './AuthContext'; // Added
 import {
   Project,
   User,
-  Notification,
   Department,
   ExpenseReport,
   ExpenseStatus,
@@ -82,17 +81,9 @@ interface ProjectContextType {
 
   logout: () => Promise<void>;
 
-  // Notifications
-  notifications: Notification[];
-  addNotification: (message: string, type: Notification['type'], target?: Department | 'PRODUCTION', itemId?: string) => Promise<void>;
-  markAsRead: (id: string) => Promise<void>;
-  deleteNotification: (id: string) => Promise<void>; // Added
-  markAllAsRead: (notificationIds: string[]) => Promise<void>; // Added
-  markNotificationAsReadByItemId: (itemId: string) => Promise<void>;
-  clearAllNotifications: () => Promise<void>; // Added
+  // Notifications handled by NotificationContext
   unreadCount: number;
   itemsToReceiveCount: number; // Added
-  unreadNotificationCount: number;
 
   // Expense Reports
   expenseReports: ExpenseReport[];
@@ -132,19 +123,9 @@ interface ProjectContextType {
   deleteReinforcement: (id: string) => Promise<void>; // Added
 
   // Logistics
-  logistics: LogisticsRequest[]; // Keep for existing logic if needed, but project.logistics works too
-  addLogisticsRequest: (request: LogisticsRequest) => Promise<void>;
-  deleteLogisticsRequest: (requestId: string) => Promise<void>;
+  // Deprecated: logistics moved to LogisticsContext
 
-  // RBAC
-  addMember: (email: string, role?: 'ADMIN' | 'USER') => Promise<void>;
-  removeMember: (userId: string) => Promise<void>;
-
-  // Offline Members
-  offlineMembers: OfflineMember[];
-  addOfflineMember: (member: Omit<OfflineMember, 'id' | 'createdAt'>) => Promise<void>;
-  updateOfflineMember: (id: string, updates: Partial<OfflineMember>) => Promise<void>;
-  deleteOfflineMember: (memberId: string) => Promise<void>;
+  // Deprecated: offline members and team logic moved to TeamContext
 }
 
 const DEFAULT_PROJECT: Project = {
@@ -941,7 +922,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // 3. Sync Notifications
   // Notification Methods (Direct Firestore Access to avoid Circular Dependency)
-  const addNotification = async (message: string, type: Notification['type'], target: Department | 'PRODUCTION' = 'PRODUCTION', itemId?: string) => {
+  const addNotification = async (message: string, type: string, target: Department | 'PRODUCTION' = 'PRODUCTION', itemId?: string) => {
     try {
       const projectId = project.id;
       if (!projectId || projectId === 'default-project') return;
@@ -960,65 +941,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const markAsRead = async (id: string) => {
-    try {
-      const projectId = project.id;
-      const notifRef = doc(db, 'projects', projectId, 'notifications', id);
-      await updateDoc(notifRef, { read: true });
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
-    }
-  };
-
-  const markAllAsRead = async (notificationIds: string[]) => {
-    try {
-      const projectId = project.id;
-      const batchUpdates = notificationIds.map(id => {
-        const notifRef = doc(db, 'projects', projectId, 'notifications', id);
-        return updateDoc(notifRef, { read: true });
-      });
-      await Promise.all(batchUpdates);
-    } catch (err) {
-      console.error("Failed to mark all as read:", err);
-    }
-  };
-
-  const clearAllNotifications = async () => {
-    try {
-      // Cannot clear locally efficiently without state, but can delete all from DB?
-      // For safety/complexity, let's leave this as a no-op or simple warn in ProjectContext
-      // and force users to use NotificationContext for bulk management.
-      // actually, we can just fetch and delete?
-      console.warn("clearAllNotifications in ProjectContext is deprecated. Use NotificationContext.");
-    } catch (err: any) {
-      console.error("Error clearing notifications:", err);
-    }
-  };
-
-  const deleteNotification = async (id: string) => {
-    try {
-      const projectId = project.id;
-      const notifRef = doc(db, 'projects', projectId, 'notifications', id);
-      await deleteDoc(notifRef);
-    } catch (err) {
-      console.error("Failed to delete notification:", err);
-    }
-  };
-
-  const markNotificationAsReadByItemId = async (itemId: string) => {
-    // We can't query state here easily. So we do a Firestore Query.
-    try {
-      const projectId = project.id;
-      const notifsRef = collection(db, 'projects', projectId, 'notifications');
-      const q = query(notifsRef, where('itemId', '==', itemId), where('read', '==', false));
-      const snap = await getDocs(q);
-
-      const updatePromises = snap.docs.map(doc => updateDoc(doc.ref, { read: true }));
-      await Promise.all(updatePromises);
-    } catch (err) {
-      console.error("Failed to mark notifications as read by item:", err);
-    }
-  };
 
   // 5. Sync Expense Reports
   useEffect(() => {
@@ -1216,10 +1138,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [project.id]);
 
   // ------------------------------------------------------------------
-  // 5. SYNC SUBCOLLECTIONS (Renforts & Logistics)
+  // 5. SYNC SUBCOLLECTIONS (Renforts)
+  // Logistics moved to LogisticsContext
   // ------------------------------------------------------------------
-  // Fix for Bug #3: Data Disappearance due to Race Conditions.
-  // We now sync 'reinforcements' and 'logistics' from subcollections instead of a single array.
 
   useEffect(() => {
     const projectId = project.id;
@@ -1237,21 +1158,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error("[RenfortsSync] Error:", error);
     });
 
-    // B. SYNC LOGISTICS
-    const logisticsRef = collection(db, 'projects', projectId, 'logistics');
-    const unsubLogistics = onSnapshot(logisticsRef, (snapshot) => {
-      const logistics = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as any));
-      setProject(prev => {
-        if (JSON.stringify(prev.logistics) === JSON.stringify(logistics)) return prev;
-        return { ...prev, logistics };
-      });
-    }, (error) => {
-      console.error("[LogisticsSync] Error:", error);
-    });
-
     return () => {
       unsubRenforts();
-      unsubLogistics();
     };
   }, [project.id]);
 
@@ -1301,110 +1209,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
 
 
 
-  // --- MEMBER MANAGEMENT (RBAC) ---
-  const addMember = async (email: string, role: 'ADMIN' | 'USER' = 'USER') => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    // 1. Find User ID by Email
-    const q = query(collection(db, 'users'), where('email', '==', email));
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      addNotification("Utilisateur introuvable avec cet email.", "ERROR");
-      return;
-    }
-
-    const targetUser = snap.docs[0].data() as User; // Assuming User type matches
-    const userId = snap.docs[0].id; // Use Doc ID as User ID
-
-    // 2. Add to Members with explicit ID
-    const newMemberEntry = {
-      role,
-      joinedAt: new Date().toISOString(),
-      email: targetUser.email,
-      name: targetUser.name
-    };
-
-    // Use specific dot notation to update just this key in the map
-    const projectRef = doc(db, 'projects', projectId);
-    await updateDoc(projectRef, {
-      [`members.${userId}`]: newMemberEntry
-    });
-
-    addNotification(`${targetUser.name} ajouté au projet !`, "SUCCESS");
-  };
-
-  const removeMember = async (userId: string) => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    /* 
-      Firestore FieldValue.delete() is needed to remove a map key.
-      But we can't import it easily without modular SDK.
-      Alternative: Read, delete key, Write entire map? 
-      Or use updateDoc with deleteField()
-    */
-
-    // Dynamic import to avoid breaking changes if not available in current context?
-    // We already use modular SDK.
-    const { deleteField } = await import('firebase/firestore');
-
-    const projectRef = doc(db, 'projects', projectId);
-    await updateDoc(projectRef, {
-      [`members.${userId}`]: deleteField()
-    });
-
-    addNotification("Membre retiré du projet.", "INFO");
-  };
-
-  // AUTO-MIGRATION / BACKFILL (Run by Admin)
-  useEffect(() => {
-    // ... existing sync ...
-  }, [project.id]); // Placeholder to keep structure valid if needed, but actually I'm appending BEFORE auto-migration.
-
-  // --- OFFLINE MEMBERS ---
-  useEffect(() => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    const q = query(collection(db, 'projects', projectId, 'offlineMembers'), orderBy('firstName'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const members = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as OfflineMember[];
-      setOfflineMembers(members);
-    });
-    return () => unsubscribe();
-  }, [project.id]);
-
-  const addOfflineMember = async (member: Omit<OfflineMember, 'id' | 'createdAt'>) => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    await addDoc(collection(db, 'projects', projectId, 'offlineMembers'), {
-      ...member,
-      createdAt: new Date().toISOString()
-    });
-    addNotification(`${member.firstName} ajouté (Hors Ligne)`, "SUCCESS");
-  };
-
-  const updateOfflineMember = async (id: string, updates: Partial<OfflineMember>) => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    await updateDoc(doc(db, 'projects', projectId, 'offlineMembers', id), updates);
-    addNotification("Fiche membre mise à jour", "SUCCESS");
-  };
-
-  const deleteOfflineMember = async (memberId: string) => {
-    const projectId = project.id;
-    if (!projectId || projectId === 'default-project') return;
-
-    await deleteDoc(doc(db, 'projects', projectId, 'offlineMembers', memberId));
-    addNotification("Membre supprimé", "INFO");
-  };
 
   // AUTO-MIGRATION / BACKFILL (Run by Admin)
   useEffect(() => {
@@ -1564,35 +1368,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
 
-  // --- LOGISTICS (Atomic Subcollection Updates) ---
-  // Overrides previous array implementation
-  const addLogisticsRequest = async (request: LogisticsRequest) => {
-    const projectId = project.id;
-    if (!projectId) return;
-
-    // Ensure ID
-    const id = request.id || `logistics_${Date.now()}`;
-    const docRef = doc(db, 'projects', projectId, 'logistics', id);
-
-    // Sanitize undefined values (Firestore rejects undefined)
-    const sanitizedRequest = Object.fromEntries(
-      Object.entries({ ...request, id }).map(([k, v]) => [k, v === undefined ? null : v])
-    );
-
-    await setDoc(docRef, sanitizedRequest);
-
-    addNotification(
-      `Demande transport (${request.type}) pour ${request.department}`,
-      'INFO',
-      'PRODUCTION'
-    );
-  };
-
-  const deleteLogisticsRequest = async (requestId: string) => {
-    const projectId = project.id;
-    if (!projectId) return;
-    await deleteDoc(doc(db, 'projects', projectId, 'logistics', requestId));
-  };
 
   const unreadCount = project.items.filter(i =>
     !i.purchased &&
@@ -1631,17 +1406,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     refreshUser, // Added
     resetPassword,
     logout,
-    notifications: [], // Deprecated: Consumers should use useNotification()
-    addNotification,
-    markAsRead,
-    deleteNotification,
-    markAllAsRead,
-    markNotificationAsReadByItemId,
-    clearAllNotifications,
     unreadCount,
     unreadSocialCount,
     // unreadMarketplaceCount moved
-    unreadNotificationCount: 0, // Deprecated: Consumers should use useNotification()
     // markSocialAsRead moved
     // markMarketplaceAsRead moved
     expenseReports,
@@ -1660,16 +1427,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateReinforcement,
     deleteReinforcement,
 
-    // Logistics
-    logistics: project.logistics || [],
-    addLogisticsRequest,
-    deleteLogisticsRequest,
-    addMember,
-    removeMember,
-    offlineMembers,
-    addOfflineMember,
-    updateOfflineMember,
-    deleteOfflineMember,
+
+
     searchProjects,
     deleteMyAccount,
     deleteUser,

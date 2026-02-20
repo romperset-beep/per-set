@@ -3,6 +3,8 @@ import { Department, SurplusAction } from '../types';
 import { DailyDashboard } from './DailyDashboard';
 import { Users, ShoppingBag, MessageSquare, FileText, Receipt, Utensils, Clock, Truck, GripHorizontal, Zap, ClipboardList } from 'lucide-react';
 import { useProject } from '@/context/ProjectContext';
+import { useExpenses } from '@/context/ExpenseContext';
+import { useTeam } from '@/context/TeamContext';
 import { useMarketplace } from '@/context/MarketplaceContext'; // Added
 import { useSocial } from '@/context/SocialContext'; // Added
 import { MyListsWidget } from './MyListsWidget';
@@ -226,7 +228,8 @@ const CateringWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const ExpensesWidget = ({ onClick }: { onClick: () => void }) => {
-    const { expenseReports, currentDept, user } = useProject();
+    const { currentDept, user } = useProject();
+    const { expenseReports } = useExpenses();
     const count = currentDept === 'PRODUCTION'
         ? (expenseReports?.length || 0)
         : (expenseReports?.filter(r => r.submittedBy === user?.name).length || 0);
@@ -244,7 +247,8 @@ const ExpensesWidget = ({ onClick }: { onClick: () => void }) => {
 };
 
 const TeamWidget = ({ onClick }: { onClick: () => void }) => {
-    const { userProfiles, project, offlineMembers } = useProject();
+    const { userProfiles, project } = useProject();
+    const { offlineMembers } = useTeam();
 
     // Filter profiles belonging to THIS project
     const projectMembers = userProfiles.filter(profile => {
@@ -431,7 +435,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 </div>
 
                 {/* Production / Régie: Can change department view */}
-                {(user?.department === 'PRODUCTION' || user?.department === 'Régie' || user?.department === 'REGIE' || user?.department === Department.REGIE) && (
+                {(user?.department === 'PRODUCTION' || user?.department === Department.REGIE) && (
                     <div className="flex items-center gap-3 bg-cinema-900 p-2 rounded-lg border border-cinema-700">
                         <Users className="text-eco-400 h-5 w-5" />
                         <select
@@ -449,7 +453,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 )}
 
                 {/* Other departments: Read-only display of their department */}
-                {(user?.department !== 'PRODUCTION' && user?.department !== 'Régie' && user?.department !== 'REGIE' && user?.department !== Department.REGIE) && (
+                {(user?.department !== 'PRODUCTION' && user?.department !== Department.REGIE) && (
                     <div className="flex items-center gap-3 bg-cinema-900 p-2 px-4 rounded-lg border border-cinema-700">
                         <Users className="text-eco-400 h-5 w-5" />
                         <span className="text-white font-medium">{currentDept}</span>

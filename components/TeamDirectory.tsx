@@ -3,9 +3,11 @@ import { useProject } from '../context/ProjectContext';
 import { Department, OfflineMember } from '../types';
 import { Search, FileText, Download, Mail, Phone, Upload } from 'lucide-react';
 import { extractTextFromPdf } from '../utils/pdfHelpers';
+import { useTeam } from '../context/TeamContext';
 
 export const TeamDirectory: React.FC = () => {
-    const { userProfiles, currentDept, project, addMember, removeMember, offlineMembers, addOfflineMember, deleteOfflineMember } = useProject();
+    const { userProfiles, currentDept, project } = useProject();
+    const { addMember, removeMember, offlineMembers, addOfflineMember, deleteOfflineMember } = useTeam();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDept, setSelectedDept] = useState<string>('ALL');
     const [selectedProfile, setSelectedProfile] = useState<any>(null);
@@ -393,7 +395,8 @@ const DocumentButton = ({ label, hasDoc, url }: { label: string, hasDoc: boolean
 };
 
 const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () => void }) => {
-    const { updateOfflineMember, currentDept } = useProject();
+    const { currentDept } = useProject();
+    const { updateOfflineMember } = useTeam();
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({
         firstName: profile.firstName,
@@ -570,7 +573,7 @@ const DetailRow = ({ label, value, className = '' }: any) => (
 );
 
 const ImportMemberModal = ({ onClose }: { onClose: () => void }) => {
-    const { addOfflineMember } = useProject();
+    const { addOfflineMember } = useTeam();
     const [mode, setMode] = useState<'MANUAL' | 'BULK'>('MANUAL');
     const [manualData, setManualData] = useState({
         firstName: '',

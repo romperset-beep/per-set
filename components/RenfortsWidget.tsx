@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Plus, Calendar, Clock, MapPin, User, Truck, 
 import toast from 'react-hot-toast';
 
 export const RenfortsWidget: React.FC = () => {
-    const { project, updateProjectDetails, user, currentDept, addNotification, addReinforcement, updateReinforcement, deleteReinforcement } = useProject();
+    const { project, updateProjectDetails, user, currentDept, addReinforcement, updateReinforcement, deleteReinforcement } = useProject();
+    const { addNotification } = useNotification();
     const { notifications, markAsRead } = useNotification(); // Added
 
     React.useEffect(() => {
@@ -1501,8 +1502,8 @@ export const RenfortsWidget: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setLocationScope('week')}
                                                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${locationScope === 'week'
-                                                        ? 'bg-indigo-600 text-white'
-                                                        : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
                                                     }`}
                                             >
                                                 Cette semaine
@@ -1511,8 +1512,8 @@ export const RenfortsWidget: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setLocationScope('all')}
                                                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${locationScope === 'all'
-                                                        ? 'bg-indigo-600 text-white'
-                                                        : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
+                                                    ? 'bg-indigo-600 text-white'
+                                                    : 'bg-cinema-900 text-slate-400 border border-cinema-700 hover:text-white'
                                                     }`}
                                             >
                                                 Tout le tournage

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useExpenses } from '../context/ExpenseContext';
 import { ExpenseReport, ExpenseStatus } from '../types';
 import { FileText, CheckCircle2, XCircle, Clock, Receipt, Users, User, PlusCircle, ChevronDown, ChevronUp, Download, FolderOpen, Trash2 } from 'lucide-react';
 import { ExpenseReportModal } from './ExpenseReportModal';
 import { generateExpenseReportPDF, generateSummaryPDF } from '../services/pdfService';
 
 export const ExpenseReports: React.FC = () => {
-    const { expenseReports, updateExpenseReportStatus, deleteExpenseReport, user } = useProject();
+    const { user } = useProject();
+    const { expenseReports, updateExpenseReportStatus, deleteExpenseReport } = useExpenses();
     const [viewMode, setViewMode] = useState<'PERSONAL' | 'TEAM'>('PERSONAL');
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(null); // Quick View State

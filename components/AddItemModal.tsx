@@ -3,6 +3,7 @@ import { Department, ConsumableItem, ItemStatus, SurplusAction } from '../types'
 import { X, Plus, Leaf, List, Search, Upload, Loader2, AlertCircle, ToggleLeft, ToggleRight, Euro } from 'lucide-react';
 import { analyzeOrderFile } from '../services/geminiService';
 import { useProject } from '../context/ProjectContext';
+import { useNotification } from '../context/NotificationContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { CONSUMABLES_CATALOG } from '../src/data/consumables_catalog';
 
@@ -16,7 +17,8 @@ interface AddItemModalProps {
 }
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose }) => {
-    const { setProject, currentDept, project, addNotification, user, addItem } = useProject();
+    const { setProject, currentDept, project, user, addItem } = useProject();
+    const { addNotification } = useNotification();
     const { catalogItems, addToCatalog, getGlobalMarketplaceItems } = useMarketplace();
 
     const [newItemName, setNewItemName] = useState('');

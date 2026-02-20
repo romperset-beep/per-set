@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useExpenses } from '../context/ExpenseContext';
 import { EnergyLog, Department } from '../types';
 import { Zap, Droplet, Activity, Save, AlertTriangle, Calendar, Camera, FileText, Loader2, Upload, CheckCircle2 } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
@@ -9,7 +10,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ExpenseReport, ExpenseStatus } from '../types';
 
 export const EnergyTracker: React.FC = () => {
-    const { project, updateProjectDetails, user, addExpenseReport } = useProject();
+    const { project, updateProjectDetails, user } = useProject();
+    const { addExpenseReport } = useExpenses();
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     // Form State

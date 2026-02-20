@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
+import { useExpenses } from '../context/ExpenseContext';
 import { ExpenseLine, ConsumableItem } from '../types';
 import { X, Upload, Plus, Trash2, AlertCircle, Sparkles, Loader2, Link2, DollarSign } from 'lucide-react';
 import { analyzeReceipt } from '../services/geminiService';
@@ -18,7 +19,8 @@ interface PriceMatch {
 }
 
 export const ExpenseReportModal: React.FC<ExpenseReportModalProps> = ({ isOpen, onClose }) => {
-    const { addExpenseReport, updateItem, user, project } = useProject();
+    const { updateItem, user, project } = useProject();
+    const { addExpenseReport } = useExpenses();
 
     // Mode Toggle
     const [mode, setMode] = useState<'SIMPLE' | 'ADVANCED'>('SIMPLE');

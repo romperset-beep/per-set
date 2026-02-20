@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, D
 import { Project, PDTAnalysisResult, User, PDTSequence, PDTDay } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext';
+import { useLogistics } from '../context/LogisticsContext';
 import { useToast } from '../hooks/useToast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { parsePDT } from '../services/pdtService';
@@ -11,7 +12,8 @@ import { generatePDTTemplate, parsePDTMatrix } from '../services/matrixService';
 import * as XLSX from 'xlsx';
 
 export const PDTManager: React.FC = () => {
-    const { project, updateProjectDetails, addLogisticsRequest, addReinforcement } = useProject();
+    const { project, updateProjectDetails, addReinforcement } = useProject();
+    const { logistics, addLogisticsRequest } = useLogistics();
     const { addNotification } = useNotification();
     const toast = useToast();
     const [isDragging, setIsDragging] = useState(false);
@@ -29,13 +31,13 @@ export const PDTManager: React.FC = () => {
 
     // Compute logistics changes preview: one line per sequence (not per item type)
     const logisticsChangesPreview = useMemo(() => {
-        if (!analysisResult || !project.logistics || project.logistics.length === 0) return [];
+        if (!analysisResult || !logistics || logistics.length === 0) return [];
 
         // Deduplicate: one line per sequence showing the sequence date change
         const seenSequences = new Set<string>();
         const changes: { seqId: string; oldSeqDate: string; newSeqDate: string }[] = [];
 
-        for (const req of project.logistics) {
+        for (const req of logistics) {
             // Only consider sequence-linked items, skip duplicates
             if (!req.linkedSequenceId || !req.autoUpdateDates || !analysisResult.extractedSequences) continue;
             if (seenSequences.has(req.linkedSequenceId)) continue;
@@ -55,7 +57,7 @@ export const PDTManager: React.FC = () => {
         }
 
         return changes;
-    }, [analysisResult, project.logistics, project.pdtSequences]);
+    }, [analysisResult, logistics, project.pdtSequences]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -151,7 +153,7 @@ export const PDTManager: React.FC = () => {
             }
 
             // Auto-Sync Logic: Logistics (write to subcollection)
-            if (project.logistics && project.logistics.length > 0) {
+            if (logistics && logistics.length > 0) {
                 // Prepare Map of Location -> {start, end} from NEW pdtDays
                 const locationDates: Record<string, { start: Date, end: Date }> = {};
                 if (updates.pdtDays) {
@@ -169,7 +171,7 @@ export const PDTManager: React.FC = () => {
                 }
 
                 // Update Logistics — write each changed item to subcollection
-                for (const req of project.logistics) {
+                for (const req of logistics) {
                     let updatedReq = { ...req };
                     let changed = false;
 
