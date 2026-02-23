@@ -397,6 +397,20 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
 
     // Render helper
     const renderWidget = (id: string) => {
+        // Feature checks (dynamic modules)
+        const features = project?.features;
+        if (id === 'orders' && features?.['orders'] === false) return null;
+        if (id === 'inventory' && features?.['inventory'] === false) return null;
+        if (id === 'callsheets' && features?.['callsheets'] === false) return null;
+        if (id === 'timesheet' && features?.['timesheet'] === false) return null;
+        if (id === 'renforts' && features?.['renforts'] === false) return null;
+        if (id === 'logistics' && features?.['logistics'] === false) return null;
+        if (id === 'energy' && features?.['energy'] === false) return null;
+        if (id === 'catering' && features?.['catering'] === false) return null;
+        if (id === 'expenses' && features?.['expenses'] === false) return null;
+        if (id === 'buyback' && features?.['local_marketplace'] === false) return null;
+        if (id === 'social' && features?.['social'] === false) return null;
+
         // Permissions checks
         if (id === 'catering' && currentDept !== 'Régie' && currentDept !== 'PRODUCTION') return null;
         if (id === 'energy' && currentDept !== 'Régie' && currentDept !== 'REGIE' && currentDept !== 'PRODUCTION') return null;
