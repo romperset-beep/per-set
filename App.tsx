@@ -481,101 +481,105 @@ const AppContent: React.FC = () => {
             {/* Beta Badge */}
             <BetaTestBadge />
 
-            <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-4">
+              {/* Project & Production Button */}
               <button
                 onClick={() => (user?.department === 'PRODUCTION' || user?.isAdmin) && setIsConfigModalOpen(true)}
-                className={`flex items-center gap-3 text-left group ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`flex flex-col items-start px-3 py-1.5 -ml-3 sm:ml-0 rounded-xl border transition-all group ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'bg-cinema-800/60 border-cinema-700 hover:bg-cinema-700 hover:border-blue-500/50 cursor-pointer shadow-sm hover:shadow-md' : 'bg-transparent border-transparent cursor-default'}`}
+                title={(user?.department === 'PRODUCTION' || user?.isAdmin) ? "Configuration du projet" : undefined}
               >
-                <h2 className={`text-white font-bold text-lg ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'group-hover:text-blue-400 transition-colors' : ''}`}>
-                  {user.filmTitle}
-                </h2>
-                {project.projectType && (
-                  <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
-                    {project.projectType}
-                  </span>
-                )}
-                {(user?.department === 'PRODUCTION' || user?.isAdmin) && (
-                  <Settings className="h-4 w-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                )}
+                <div className="flex items-center gap-2">
+                  <h2 className={`text-white font-bold text-lg leading-tight ${(user?.department === 'PRODUCTION' || user?.isAdmin) ? 'group-hover:text-blue-400 transition-colors' : ''}`}>
+                    {user.filmTitle}
+                  </h2>
+                  {project.projectType && (
+                    <span className="hidden md:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                      {project.projectType}
+                    </span>
+                  )}
+                  {(user?.department === 'PRODUCTION' || user?.isAdmin) && (
+                    <Settings className="h-3.5 w-3.5 text-slate-500 opacity-60 group-hover:text-blue-400 group-hover:opacity-100 transition-all ml-1" />
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5 flex items-center gap-1">
+                  <span className="truncate max-w-[150px] md:max-w-[200px]">{user.productionName}</span>
+                </div>
               </button>
-              <div className="flex items-center gap-2 text-xs text-slate-400 uppercase tracking-wider">
-                <span className="truncate max-w-[150px] md:max-w-none">{user.productionName}</span>
-                {/* Date Display & Edit Logic */}
-                {(project.shootingStartDate || user.department === 'PRODUCTION') && (
-                  <>
-                    <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-600"></span>
 
-                    <div className="relative">
-                      <button
-                        onClick={() => user.department === 'PRODUCTION' && setIsEditingDates(true)}
-                        className={`hidden sm:flex items-center gap-1 text-slate-500 transition-colors ${user.department === 'PRODUCTION' ? 'hover:text-blue-400 cursor-pointer' : ''}`}
-                        title={user.department === 'PRODUCTION' ? "Modifier les dates de tournage" : undefined}
+              {/* Date Button */}
+              {(project.shootingStartDate || user.department === 'PRODUCTION') && (
+                <div className="relative">
+                  <button
+                    onClick={() => user.department === 'PRODUCTION' && setIsEditingDates(true)}
+                    className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-medium group ${user.department === 'PRODUCTION' ? 'bg-cinema-800/60 border-cinema-700 text-slate-300 hover:text-blue-400 hover:border-blue-500/50 hover:bg-cinema-700 cursor-pointer shadow-sm hover:shadow-md' : 'bg-transparent border-transparent text-slate-400 cursor-default'}`}
+                    title={user.department === 'PRODUCTION' ? "Modifier les dates de tournage" : undefined}
+                  >
+                    <Calendar className={`h-3.5 w-3.5 ${user.department === 'PRODUCTION' ? 'text-slate-400 group-hover:text-blue-400 transition-colors' : 'text-slate-500'}`} />
+                    {project.shootingStartDate && project.shootingEndDate ? (
+                      <span>
+                        {new Date(project.shootingStartDate).toLocaleDateString()} - {new Date(project.shootingEndDate).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="italic opacity-80">Définir les dates de tournage</span>
+                    )}
+                    {user.department === 'PRODUCTION' && (
+                      <Settings className="h-3 w-3 text-slate-500 opacity-40 group-hover:text-blue-400 group-hover:opacity-100 transition-all ml-1" />
+                    )}
+                  </button>
+
+                  {/* Edit Modal */}
+                  {isEditingDates && (
+                    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-32" onClick={() => setIsEditingDates(false)}>
+                      <div
+                        className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 shadow-2xl min-w-[320px] animate-in fade-in slide-in-from-top-4 duration-200"
+                        onClick={e => e.stopPropagation()}
                       >
-                        <Calendar className="h-3 w-3" />
-                        {project.shootingStartDate && project.shootingEndDate ? (
-                          <span>
-                            {new Date(project.shootingStartDate).toLocaleDateString()} - {new Date(project.shootingEndDate).toLocaleDateString()}
-                          </span>
-                        ) : (
-                          <span className="italic text-slate-600">Définir les dates</span>
-                        )}
-                      </button>
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-blue-400" />
+                            Dates de Tournage
+                          </h3>
+                          <button onClick={() => setIsEditingDates(false)} className="text-slate-400 hover:text-white">
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
 
-                      {/* Edit Modal */}
-                      {isEditingDates && (
-                        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-32" onClick={() => setIsEditingDates(false)}>
-                          <div
-                            className="bg-cinema-800 p-6 rounded-xl border border-cinema-700 shadow-2xl min-w-[320px] animate-in fade-in slide-in-from-top-4 duration-200"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <div className="flex justify-between items-center mb-6">
-                              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Calendar className="h-5 w-5 text-blue-400" />
-                                Dates de Tournage
-                              </h3>
-                              <button onClick={() => setIsEditingDates(false)} className="text-slate-400 hover:text-white">
-                                <X className="h-5 w-5" />
-                              </button>
-                            </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de début</label>
+                            <input
+                              type="date"
+                              value={project.shootingStartDate || ''}
+                              onChange={e => updateProjectDetails({ shootingStartDate: e.target.value })}
+                              className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                            />
+                          </div>
 
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de début</label>
-                                <input
-                                  type="date"
-                                  value={project.shootingStartDate || ''}
-                                  onChange={e => updateProjectDetails({ shootingStartDate: e.target.value })}
-                                  className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                />
-                              </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de fin</label>
+                            <input
+                              type="date"
+                              value={project.shootingEndDate || ''}
+                              onChange={e => updateProjectDetails({ shootingEndDate: e.target.value })}
+                              className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                            />
+                          </div>
 
-                              <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Date de fin</label>
-                                <input
-                                  type="date"
-                                  value={project.shootingEndDate || ''}
-                                  onChange={e => updateProjectDetails({ shootingEndDate: e.target.value })}
-                                  className="w-full bg-cinema-900 border border-cinema-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                />
-                              </div>
-
-                              <div className="pt-4 flex justify-end">
-                                <button
-                                  onClick={() => setIsEditingDates(false)}
-                                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 font-medium transition-colors flex items-center gap-2"
-                                >
-                                  <Check className="h-4 w-4" />
-                                  Valider
-                                </button>
-                              </div>
-                            </div>
+                          <div className="pt-4 flex justify-end">
+                            <button
+                              onClick={() => setIsEditingDates(false)}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 font-medium transition-colors flex items-center gap-2"
+                            >
+                              <Check className="h-4 w-4" />
+                              Valider
+                            </button>
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
