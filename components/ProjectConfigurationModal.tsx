@@ -82,6 +82,42 @@ export const ProjectConfigurationModal: React.FC<ProjectConfigurationModalProps>
                     )}
                 </div>
 
+                {/* Catering Mode Options */}
+                <div className="pt-4 border-t border-cinema-700">
+                    <h4 className="text-sm font-bold text-slate-300 mb-4">Gestion des Repas</h4>
+                    <div className="space-y-3">
+                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${project.cateringMode !== 'TRAITEUR' ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-cinema-900/50 border-cinema-700 text-slate-300 hover:border-cinema-500'}`}>
+                            <input
+                                type="radio"
+                                name="cateringMode"
+                                value="CANTINE"
+                                checked={project.cateringMode !== 'TRAITEUR'}
+                                onChange={() => updateProjectDetails({ cateringMode: 'CANTINE' })}
+                                className="mt-1 w-4 h-4 text-blue-600 bg-cinema-800 border-cinema-600 focus:ring-blue-500 focus:ring-opacity-50"
+                            />
+                            <div>
+                                <span className="block font-medium">Cantine professionnelle (Sur place)</span>
+                                <span className="text-xs text-slate-400">Utilise la Feuille de Cantine (pointage de l'équipe avec totaux).</span>
+                            </div>
+                        </label>
+
+                        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${project.cateringMode === 'TRAITEUR' ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-cinema-900/50 border-cinema-700 text-slate-300 hover:border-cinema-500'}`}>
+                            <input
+                                type="radio"
+                                name="cateringMode"
+                                value="TRAITEUR"
+                                checked={project.cateringMode === 'TRAITEUR'}
+                                onChange={() => updateProjectDetails({ cateringMode: 'TRAITEUR' })}
+                                className="mt-1 w-4 h-4 text-blue-600 bg-cinema-800 border-cinema-600 focus:ring-blue-500 focus:ring-opacity-50"
+                            />
+                            <div>
+                                <span className="block font-medium">Traiteur / Restaurant (Commande à la carte)</span>
+                                <span className="text-xs text-slate-400">Permet à la Régie de créer un menu et à l'équipe de faire son choix.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 {/* Advanced Settings */}
                 <div className="pt-4 border-t border-cinema-700">
                     <h4 className="text-sm font-bold text-slate-300 mb-4">Paramètres Avancés</h4>

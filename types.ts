@@ -203,6 +203,9 @@ export interface Project {
   logistics?: LogisticsRequest[];
   energyLogs?: EnergyLog[];
   foodDonations?: FoodDonation[]; // Added for food waste donations
+  dailyMenus?: MenuOfTheDay[]; // Added for Regie to edit day menus
+  mealChoices?: CrewMealChoice[]; // Added for crew selections
+  cateringMode?: 'CANTINE' | 'TRAITEUR'; // Catering mode preference
   weekMapping?: Record<string, string>; // Maps "W42-2023" -> "Week 1 (Shooting)"
 }
 
@@ -250,6 +253,31 @@ export interface FoodDonation {
   contactName?: string;
   note?: string; // Describe the meal
   createdAt: string; // ISO
+}
+
+export interface MenuOfTheDay {
+  id: string;
+  date: string; // YYYY-MM-DD
+  starters: string[];
+  mains: string[];
+  desserts: string[];
+  drinks: string[];
+  hasCoffee: boolean;
+  isPublished: boolean;
+}
+
+export interface CrewMealChoice {
+  id: string; // e.g., date_userId
+  date: string; // YYYY-MM-DD
+  userId: string;
+  userName: string;
+  department: Department | 'PRODUCTION';
+  starter?: string;
+  main?: string;
+  dessert?: string;
+  drink?: string;
+  wantsCoffee?: boolean;
+  hasReceived: boolean;
 }
 
 export interface TimeLog {

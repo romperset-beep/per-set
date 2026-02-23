@@ -157,6 +157,7 @@ export const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose
                                 <>
                                     <DetailRow label="Adresse" value={`${profile.address || ''} ${profile.postalCode || ''} ${profile.city || ''}`} className="col-span-2" />
                                     <DetailRow label="Situation Familiale" value={profile.familyStatus} />
+                                    <DetailRow label="Régimes alimentaires" value={profile.dietaryHabits} />
                                 </>
                             )}
                         </div>
