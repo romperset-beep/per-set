@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, Download } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, Calendar, Eye, Download, Check, X, Edit2 } from 'lucide-react';
 import { Project, PDTAnalysisResult, User, PDTSequence, PDTDay } from '../types';
 import { useProject } from '../context/ProjectContext';
 import { useNotification } from '../context/NotificationContext';
@@ -28,6 +28,23 @@ export const PDTManager: React.FC = () => {
     const [editSequences, setEditSequences] = useState<number>(0);
     const [editStartDate, setEditStartDate] = useState<string>('');
     const [editEndDate, setEditEndDate] = useState<string>('');
+    const [editingDay, setEditingDay] = useState<string | null>(null);
+    const [editingDayValue, setEditingDayValue] = useState<string>('');
+
+    // Explicit Dates State
+    const [manualDates, setManualDates] = useState<string[]>([]);
+
+    const [isAddingDate, setIsAddingDate] = useState(false);
+    const [newDateValue, setNewDateValue] = useState('');
+
+    const [editingDateObj, setEditingDateObj] = useState<string | null>(null);
+    const [editingDateNewValue, setEditingDateNewValue] = useState<string>('');
+
+    const [editingSetObj, setEditingSetObj] = useState<string | null>(null);
+    const [editingSetNewValue, setEditingSetNewValue] = useState<string>('');
+
+    const [editingDetailsObj, setEditingDetailsObj] = useState<string | null>(null);
+    const [detailsForm, setDetailsForm] = useState<Partial<PDTDay>>({});
 
     // Compute logistics changes preview: one line per sequence (not per item type)
     const logisticsChangesPreview = useMemo(() => {
@@ -58,6 +75,110 @@ export const PDTManager: React.FC = () => {
 
         return changes;
     }, [analysisResult, logistics, project.pdtSequences]);
+
+    const saveDaySequences = (dateStr: string) => {
+        if (!analysisResult || !analysisResult.extractedSequences) return;
+
+        const newIds = editingDayValue.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        const newSeqs = newIds.map(id => ({ id, date: dateStr }));
+
+        const otherSeqs = analysisResult.extractedSequences.filter(s => s.date !== dateStr);
+
+        setAnalysisResult({
+            ...analysisResult,
+            extractedSequences: [...otherSeqs, ...newSeqs]
+        });
+
+        setEditingDay(null);
+        setEditingDayValue('');
+
+        // Ensure date is retained in manualDates so it doesn't disappear if empty
+        if (!manualDates.includes(dateStr)) {
+            setManualDates([...manualDates, dateStr]);
+        }
+    };
+
+    const handleAddDate = () => {
+        if (!newDateValue) return;
+        if (!manualDates.includes(newDateValue)) {
+            setManualDates([...manualDates, newDateValue]);
+        }
+        setIsAddingDate(false);
+        setNewDateValue('');
+    };
+
+    const saveDateChange = (oldDate: string) => {
+        if (!editingDateNewValue || editingDateNewValue === oldDate) {
+            setEditingDateObj(null);
+            return;
+        }
+
+        if (analysisResult?.extractedSequences) {
+            setAnalysisResult({
+                ...analysisResult,
+                extractedSequences: analysisResult.extractedSequences.map(s =>
+                    s.date === oldDate ? { ...s, date: editingDateNewValue } : s
+                )
+            });
+        }
+
+        setManualDates(prev => {
+            const next = prev.filter(d => d !== oldDate);
+            if (!next.includes(editingDateNewValue)) next.push(editingDateNewValue);
+            return next;
+        });
+
+        setEditingDateObj(null);
+    };
+
+    const saveSetChange = (dateStr: string) => {
+        if (!analysisResult) return;
+
+        const currentDays = analysisResult.pdtDays || [];
+        const existingDayIndex = currentDays.findIndex((d: any) => d.date === dateStr);
+
+        let newDays = [...currentDays];
+        if (existingDayIndex >= 0) {
+            newDays[existingDayIndex] = { ...newDays[existingDayIndex], set: editingSetNewValue };
+        } else {
+            // Create a new day entry just for the set if it doesn't exist
+            newDays.push({ date: dateStr, set: editingSetNewValue, type: 'SHOOT' });
+        }
+
+        setAnalysisResult({
+            ...analysisResult,
+            pdtDays: newDays
+        });
+
+        setEditingSetObj(null);
+    };
+
+    const openDetailsEditor = (dateStr: string, dayInfo: any) => {
+        setEditingDetailsObj(dateStr);
+        setDetailsForm(dayInfo ? { ...dayInfo } : { date: dateStr, type: 'SHOOT' });
+    };
+
+    const saveDetailsForm = () => {
+        if (!editingDetailsObj || !analysisResult) return;
+        const currentDays = analysisResult.pdtDays || [];
+        const index = currentDays.findIndex((d: any) => d.date === editingDetailsObj);
+        let newDays = [...currentDays];
+
+        // cast string to array if typed specifically
+        const processedForm = { ...detailsForm };
+        if (typeof processedForm.cast === 'string') {
+            processedForm.cast = (processedForm.cast as string).split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        if (index >= 0) {
+            newDays[index] = { ...newDays[index], ...processedForm };
+        } else {
+            newDays.push({ date: editingDetailsObj, type: 'SHOOT', ...processedForm } as PDTDay);
+        }
+
+        setAnalysisResult({ ...analysisResult, pdtDays: newDays });
+        setEditingDetailsObj(null);
+    };
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -715,49 +836,261 @@ export const PDTManager: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700">
-                                        {Array.from(new Set(analysisResult.extractedSequences.map(s => s.date))).sort().map(dateStr => {
+                                        {Array.from(new Set([
+                                            ...(analysisResult.extractedSequences?.map(s => s.date) || []),
+                                            ...manualDates
+                                        ])).sort().map(dateStr => {
                                             const daySeqs = analysisResult.extractedSequences?.filter(s => s.date === dateStr) || [];
                                             const displayDate = new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
 
                                             // Optional: Find extra rich data for this day from pdtDays if available
                                             const dayInfo = analysisResult.pdtDays?.find((d: any) => d.date === dateStr);
 
-                                            // Sort numerical/alphanumerical
-                                            const sortedSeqs = daySeqs.sort((a, b) => {
-                                                const numA = parseInt(a.id.replace(/\D/g, '')) || 0;
-                                                const numB = parseInt(b.id.replace(/\D/g, '')) || 0;
-                                                return numA - numB;
-                                            });
+                                            // Keep original order so manual edits are preserved
+                                            const sortedSeqs = daySeqs;
 
                                             return (
-                                                <tr key={dateStr} className="hover:bg-slate-700/50">
-                                                    <td className="px-4 py-2 font-mono text-emerald-400 whitespace-nowrap">
-                                                        {displayDate}
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {sortedSeqs.map(seq => (
-                                                                <span key={seq.id} className="px-1.5 py-0.5 bg-slate-700 rounded text-xs text-white border border-slate-600">
-                                                                    {seq.id}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                        {dayInfo && dayInfo.set && (
-                                                            <div className="text-xs text-slate-500 mt-1 italic">
-                                                                Sets: {dayInfo.set}
-                                                            </div>
-                                                        )}
-                                                        {dayInfo && dayInfo.cast && dayInfo.cast.length > 0 && (
-                                                            <div className="text-xs text-slate-500 mt-0.5">
-                                                                Cast: {dayInfo.cast.join(', ')}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                </tr>
+                                                <React.Fragment key={dateStr}>
+                                                    <tr className="hover:bg-slate-700/50">
+                                                        <td className="px-4 py-2 font-mono text-emerald-400 whitespace-nowrap group">
+                                                            {editingDateObj === dateStr ? (
+                                                                <div className="flex items-center gap-1">
+                                                                    <input
+                                                                        type="date"
+                                                                        value={editingDateNewValue}
+                                                                        onChange={(e) => setEditingDateNewValue(e.target.value)}
+                                                                        className="bg-slate-900 border border-emerald-500/50 text-white text-xs rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') saveDateChange(dateStr);
+                                                                            if (e.key === 'Escape') setEditingDateObj(null);
+                                                                        }}
+                                                                    />
+                                                                    <button onClick={() => saveDateChange(dateStr)} className="text-emerald-500 hover:text-emerald-400"><Check className="w-3 h-3" /></button>
+                                                                    <button onClick={() => setEditingDateObj(null)} className="text-slate-400 hover:text-slate-300"><X className="w-3 h-3" /></button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{displayDate}</span>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingDateObj(dateStr);
+                                                                            setEditingDateNewValue(dateStr);
+                                                                        }}
+                                                                        className="opacity-0 md:opacity-100 lg:opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-emerald-400 transition-opacity"
+                                                                        title="Modifier la date"
+                                                                    >
+                                                                        <Edit2 className="w-3 h-3" />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            {editingDay === dateStr ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingDayValue}
+                                                                        onChange={(e) => setEditingDayValue(e.target.value)}
+                                                                        className="bg-slate-900 border border-emerald-500/50 text-white text-sm rounded px-3 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                                        placeholder="ex: 1, 7, 29"
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') saveDaySequences(dateStr);
+                                                                            if (e.key === 'Escape') {
+                                                                                setEditingDay(null);
+                                                                                setEditingDayValue('');
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => saveDaySequences(dateStr)}
+                                                                        className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded transition-colors"
+                                                                        title="Sauvegarder"
+                                                                    >
+                                                                        <Check className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingDay(null);
+                                                                            setEditingDayValue('');
+                                                                        }}
+                                                                        className="p-1.5 bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+                                                                        title="Annuler"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-1 items-start">
+                                                                    <div className="flex flex-wrap gap-1 items-center group">
+                                                                        {sortedSeqs.length > 0 ? sortedSeqs.map(seq => (
+                                                                            <span key={seq.id} className="px-1.5 py-0.5 bg-slate-700 rounded text-xs text-white border border-slate-600 shadow-sm">
+                                                                                {seq.id}
+                                                                            </span>
+                                                                        )) : (
+                                                                            <span className="text-xs text-slate-500 italic">Aucune séquence</span>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingDay(dateStr);
+                                                                                setEditingDayValue(sortedSeqs.map(s => s.id).join(', '));
+                                                                            }}
+                                                                            className="ml-2 p-1 text-slate-500 hover:text-emerald-400 opacity-0 md:opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                            title="Modifier les séquences"
+                                                                        >
+                                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                    {dayInfo && dayInfo.set ? (
+                                                                        <div className="text-xs text-slate-500 mt-1 font-medium group/set flex items-center gap-2">
+                                                                            <span className="truncate max-w-[200px] md:max-w-xs">{dayInfo.set}</span>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditingSetObj(dateStr);
+                                                                                    setEditingSetNewValue(dayInfo.set || '');
+                                                                                }}
+                                                                                className="opacity-0 md:opacity-100 lg:opacity-0 group-hover/set:opacity-100 p-0.5 text-slate-500 hover:text-emerald-400 transition-opacity"
+                                                                                title="Modifier le décor"
+                                                                            >
+                                                                                <Edit2 className="w-3 h-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingSetObj(dateStr);
+                                                                                setEditingSetNewValue('');
+                                                                            }}
+                                                                            className="text-[10px] mt-1 text-slate-500 hover:text-emerald-400 border border-dashed border-slate-700/50 hover:border-emerald-500/30 rounded px-1.5 py-0.5 flex items-center gap-1 transition-colors w-fit"
+                                                                        >
+                                                                            + Ajouter un décor
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Full details display */}
+                                                                    {dayInfo && (dayInfo.cast?.length > 0 || dayInfo.silhouettes || dayInfo.extras || dayInfo.schedule || dayInfo.hasDrone || dayInfo.notes) && (
+                                                                        <div className="text-[10px] text-slate-400 mt-2 p-2 bg-slate-900/50 rounded flex flex-col gap-1 w-fit max-w-sm border border-slate-700/50">
+                                                                            {dayInfo.schedule && <div><span className="font-bold text-slate-500">Horaire:</span> {dayInfo.schedule}</div>}
+                                                                            {dayInfo.cast && dayInfo.cast.length > 0 && <div><span className="font-bold text-slate-500">Comédiens:</span> {dayInfo.cast.join(', ')}</div>}
+                                                                            {dayInfo.silhouettes && <div><span className="font-bold text-slate-500">Silhouettes:</span> {dayInfo.silhouettes}</div>}
+                                                                            {dayInfo.extras && <div><span className="font-bold text-slate-500">Figurants:</span> {dayInfo.extras}</div>}
+                                                                            {dayInfo.hasDrone && <div className="text-amber-400 font-bold flex items-center gap-1"><span className="text-xs">🛸</span> Drone prévu</div>}
+                                                                            {dayInfo.notes && <div><span className="font-bold text-slate-500">Note:</span> {dayInfo.notes}</div>}
+                                                                        </div>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => openDetailsEditor(dateStr, dayInfo)}
+                                                                        className="text-[10px] mt-1 text-slate-500 hover:text-blue-400 border border-dashed border-slate-700/50 hover:border-blue-500/30 rounded px-1.5 py-0.5 flex items-center gap-1 transition-colors w-fit"
+                                                                    >
+                                                                        + Modifier infos jour (Horaire, Cast, Figuration...)
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {/* EDITING SET UI */}
+                                                            {editingSetObj === dateStr && (
+                                                                <div className="flex items-center gap-1 mt-1.5 w-full max-w-sm">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingSetNewValue}
+                                                                        onChange={(e) => setEditingSetNewValue(e.target.value)}
+                                                                        className="bg-slate-900 border border-emerald-500/50 text-white text-xs rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                                        placeholder="Nom du décor..."
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') saveSetChange(dateStr);
+                                                                            if (e.key === 'Escape') setEditingSetObj(null);
+                                                                        }}
+                                                                    />
+                                                                    <button onClick={() => saveSetChange(dateStr)} className="text-emerald-500 hover:text-emerald-400 p-1"><Check className="w-3.5 h-3.5" /></button>
+                                                                    <button onClick={() => setEditingSetObj(null)} className="text-slate-400 hover:text-slate-300 p-1"><X className="w-3.5 h-3.5" /></button>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+
+                                                    {editingDetailsObj === dateStr && (
+                                                        <tr>
+                                                            <td colSpan={2} className="px-4 py-3 bg-slate-800/80 border-t border-slate-700">
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Horaire Prévu</label>
+                                                                        <input type="text" value={detailsForm.schedule || ''} onChange={e => setDetailsForm({ ...detailsForm, schedule: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 08:00 - 18:00" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Comédiens (séparés par des virgules)</label>
+                                                                        <input type="text" value={Array.isArray(detailsForm.cast) ? detailsForm.cast.join(', ') : (detailsForm.cast || '')} onChange={e => setDetailsForm({ ...detailsForm, cast: e.target.value as any })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: Omar Sy, François Cluzet" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Nb Silhouettes</label>
+                                                                        <input type="text" value={detailsForm.silhouettes || ''} onChange={e => setDetailsForm({ ...detailsForm, silhouettes: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 5" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Nb Figurants</label>
+                                                                        <input type="text" value={detailsForm.extras || ''} onChange={e => setDetailsForm({ ...detailsForm, extras: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 20 passants" />
+                                                                    </div>
+                                                                    <div className="col-span-1 md:col-span-2">
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Note / Infos Utiles</label>
+                                                                        <input type="text" value={detailsForm.notes || ''} onChange={e => setDetailsForm({ ...detailsForm, notes: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: Nuit américaine, etc." />
+                                                                    </div>
+                                                                    <div className="col-span-1 md:col-span-2 flex items-center justify-between mt-2 pt-2 border-t border-slate-700">
+                                                                        <label className="flex items-center gap-2 text-xs text-white cursor-pointer hover:text-emerald-400 group">
+                                                                            <input type="checkbox" checked={!!detailsForm.hasDrone} onChange={e => setDetailsForm({ ...detailsForm, hasDrone: e.target.checked })} className="form-checkbox bg-slate-900 border-slate-600 text-emerald-500 rounded focus:ring-1 focus:ring-emerald-500 w-4 h-4 cursor-pointer" />
+                                                                            <span className="font-bold flex items-center gap-1 group-hover:text-emerald-400 transition-colors"><span>🛸</span> Drone prévu ce jour ?</span>
+                                                                        </label>
+                                                                        <div className="flex gap-2">
+                                                                            <button onClick={() => setEditingDetailsObj(null)} className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white bg-slate-700 hover:bg-slate-600 rounded transition-colors">Annuler</button>
+                                                                            <button onClick={saveDetailsForm} className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 rounded transition-colors flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Sauvegarder</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
                                             );
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Add missed Day UI */}
+                            <div className="p-3 border-t border-slate-700 bg-slate-900/30 flex justify-center">
+                                {isAddingDate ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={newDateValue}
+                                            onChange={(e) => setNewDateValue(e.target.value)}
+                                            className="bg-slate-900 border border-emerald-500/50 text-white text-sm rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleAddDate();
+                                                if (e.key === 'Escape') setIsAddingDate(false);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleAddDate}
+                                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded text-sm font-bold transition-colors"
+                                        >
+                                            Ajouter
+                                        </button>
+                                        <button
+                                            onClick={() => setIsAddingDate(false)}
+                                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-bold transition-colors"
+                                        >
+                                            Annuler
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setIsAddingDate(true)}
+                                        className="text-sm text-emerald-500 hover:text-emerald-400 font-bold flex items-center gap-2 transition-colors py-1 px-4 border border-dashed border-emerald-500/30 rounded-lg hover:bg-emerald-500/10"
+                                    >
+                                        + Ajouter un jour manquant
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}

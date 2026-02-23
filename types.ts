@@ -41,8 +41,10 @@ export interface CateringDayInfo {
   date: string;
   stunts?: number; // Cascadeurs (Forecast)
   extrasManual?: number; // Figurants (Forecast Override)
+  silhouettesManual?: number; // Silhouettes (Forecast Override)
   stuntsConsumed?: number; // Cascadeurs (Actual/Validated)
   extrasConsumed?: number; // Figurants (Actual/Validated)
+  silhouettesConsumed?: number; // Silhouettes (Actual/Validated)
   notes?: string;
 }
 
@@ -140,7 +142,10 @@ export interface PDTDay {
   set?: string;
   sequences: string[]; // List of sequence IDs e.g. ["1", "2", "3A"]
   cast?: string[]; // List of Actor Names or IDs
+  silhouettes?: string; // Number/Details of silhouettes
   extras?: string; // e.g. "20 passants"
+  schedule?: string; // e.g. "08:00 - 18:00"
+  hasDrone?: boolean;
   notes?: string;
   linkedLocation?: string; // Canonical location name for linking
 }

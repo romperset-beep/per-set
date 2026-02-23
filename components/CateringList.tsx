@@ -608,6 +608,66 @@ export const CateringList: React.FC = () => {
                                 <div className="text-[10px] uppercase font-bold text-slate-500">Comédiens</div>
                             </div>
 
+                            {/* Silhouettes (Editable + Consumed) */}
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Silhouettes</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                            placeholder="Prévu"
+                                            title="Prévu"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined) {
+                                                    return project.cateringInfos[selectedDate].silhouettesManual;
+                                                }
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                if (pdtDay?.silhouettes) {
+                                                    const match = pdtDay.silhouettes.match(/(\d+)/);
+                                                    return match ? parseInt(match[1]) : 0;
+                                                }
+                                                return 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        silhouettesManual: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600">/</span>
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
+                                            placeholder="Réel"
+                                            title="Validé / Mangé"
+                                            value={project.cateringInfos?.[selectedDate]?.silhouettesConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        silhouettesConsumed: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Figurants (Editable + Consumed) */}
                             <div className="flex flex-col items-center gap-1">
                                 <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Figurants</div>
@@ -746,10 +806,19 @@ export const CateringList: React.FC = () => {
                                             extras = match ? parseInt(match[1]) : 0;
                                         }
 
-                                        // 4. Stunts Forecast
+                                        // 4. Silhouettes Forecast
+                                        let silhouettes = 0;
+                                        if (project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined) {
+                                            silhouettes = project.cateringInfos[selectedDate].silhouettesManual!;
+                                        } else if (pdtDay?.silhouettes) {
+                                            const match = pdtDay.silhouettes.match(/(\d+)/);
+                                            silhouettes = match ? parseInt(match[1]) : 0;
+                                        }
+
+                                        // 5. Stunts Forecast
                                         const stunts = project.cateringInfos?.[selectedDate]?.stunts || 0;
 
-                                        return tech + cast + extras + stunts;
+                                        return tech + cast + extras + silhouettes + stunts;
                                     })()}
                                 </div>
                                 <div className="text-[9px] uppercase font-bold text-amber-500/60">Total Prévu</div>
@@ -768,10 +837,13 @@ export const CateringList: React.FC = () => {
                                         // Usually "Validé" means confirmed count. If undefined, means 0 confirmed yet.
                                         const extras = project.cateringInfos?.[selectedDate]?.extrasConsumed || 0;
 
-                                        // 3. Stunts Validated
+                                        // 3. Silhouettes Validated
+                                        const silhouettes = project.cateringInfos?.[selectedDate]?.silhouettesConsumed || 0;
+
+                                        // 4. Stunts Validated
                                         const stunts = project.cateringInfos?.[selectedDate]?.stuntsConsumed || 0;
 
-                                        return teamEaten + extras + stunts;
+                                        return teamEaten + extras + silhouettes + stunts;
                                     })()}
                                 </div>
                                 <div className="text-[10px] uppercase font-bold text-green-500">Total Validé</div>

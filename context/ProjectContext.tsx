@@ -224,6 +224,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         // console.log("[ProjectSync] Metadata received:", data);
 
         setProject(prev => {
+          // CRITICAL FIX: Prevent race condition if user left project
+          if (prev.id !== projectId) return prev;
+
           // EXCLUDE subcollection-managed data from metadata sync.
           // Items, logistics, and reinforcements are handled by their own subcollection listeners.
           const { items, logistics, reinforcements, ...restData } = data;
@@ -317,6 +320,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       setProject(prev => {
+        // CRITICAL FIX: Prevent race condition if user left project
+        if (prev.id !== projectId) return prev;
+
         // This listener only handles the FIRST PAGE updates. 
         // For proper realtime pagination, complex logic is needed.
         // For MVP: We replace current items with first page, user needs to 'load more' to see rest.
@@ -1155,6 +1161,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const unsubRenforts = onSnapshot(renfortsRef, (snapshot) => {
       const reinforcements = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reinforcement));
       setProject(prev => {
+        if (prev.id !== projectId) return prev;
         if (JSON.stringify(prev.reinforcements) === JSON.stringify(reinforcements)) return prev;
         return { ...prev, reinforcements };
       });
