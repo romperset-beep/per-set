@@ -42,9 +42,11 @@ export interface CateringDayInfo {
   stunts?: number; // Cascadeurs (Forecast)
   extrasManual?: number; // Figurants (Forecast Override)
   silhouettesManual?: number; // Silhouettes (Forecast Override)
+  extraCrewManual?: number; // Extra Equipe (Forecast Override)
   stuntsConsumed?: number; // Cascadeurs (Actual/Validated)
   extrasConsumed?: number; // Figurants (Actual/Validated)
   silhouettesConsumed?: number; // Silhouettes (Actual/Validated)
+  extraCrewConsumed?: number; // Extra Equipe (Actual/Validated)
   notes?: string;
 }
 
@@ -143,7 +145,9 @@ export interface PDTDay {
   sequences: string[]; // List of sequence IDs e.g. ["1", "2", "3A"]
   cast?: string[]; // List of Actor Names or IDs
   silhouettes?: string; // Number/Details of silhouettes
+  stunts?: string; // Cascadeurs e.g. "3"
   extras?: string; // e.g. "20 passants"
+  extraCrew?: string; // e.g. "Maquilleur SFX, Chauffeur"
   schedule?: string; // e.g. "08:00 - 18:00"
   hasDrone?: boolean;
   notes?: string;

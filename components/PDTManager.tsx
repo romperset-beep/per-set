@@ -234,24 +234,26 @@ export const PDTManager: React.FC = () => {
     };
 
     const handleValidate = async () => {
-        if (!analysisResult || !file) return;
+        if (!analysisResult) return;
 
         setIsUploading(true);
         try {
-            // 1. Upload File
-            const storage = getStorage();
-            const storageRef = ref(storage, `projects/${project.id}/pdt/${file.name}`);
+            const updates: any = {};
 
-            // Upload
-            await uploadBytes(storageRef, file);
-            const downloadUrl = await getDownloadURL(storageRef);
+            if (file) {
+                // 1. Upload File
+                const storage = getStorage();
+                const storageRef = ref(storage, `projects/${project.id}/pdt/${file.name}`);
+
+                // Upload
+                await uploadBytes(storageRef, file);
+                const downloadUrl = await getDownloadURL(storageRef);
+
+                updates.pdtUrl = downloadUrl;
+                updates.pdtName = file.name;
+            }
 
             // 2. Prepare Updates
-            const updates: any = {
-                pdtUrl: downloadUrl,
-                pdtName: file.name
-            };
-
             // Use Editable Values
             if (editStartDate) updates.shootingStartDate = editStartDate;
             if (editEndDate) updates.shootingEndDate = editEndDate;
@@ -564,6 +566,50 @@ export const PDTManager: React.FC = () => {
         }
     };
 
+    const handleLoadCurrentPDT = () => {
+        if (!project.pdtDays || project.pdtDays.length === 0) {
+            toast.error("Aucun jour de PDT enregistré en base.");
+            return;
+        }
+
+        setIsAnalyzing(true);
+
+        try {
+            const shootDays = project.pdtDays.filter(d => d.type === 'SHOOT').length;
+            const dates = project.pdtDays.filter(d => d.type === 'SHOOT').map(d => d.date).sort();
+
+            const result: PDTAnalysisResult = {
+                dates: shootDays,
+                sequences: project.pdtSequences?.length || 0,
+                period: dates.length > 0 ? `${dates[0]} - ${dates[dates.length - 1]}` : "N/A",
+                text: "Édition du PDT Actuel",
+                startDayInfo: "Chargé depuis la base de données",
+                startDayOffset: 0,
+                extractedSequences: project.pdtSequences || [],
+                pdtDays: JSON.parse(JSON.stringify(project.pdtDays)) // Deep copy
+            };
+
+            setAnalysisResult(result);
+
+            // Initialize Editable State
+            setEditDates(shootDays);
+            setEditSequences(project.pdtSequences?.length || 0);
+            if (dates.length > 0) {
+                setEditStartDate(dates[0]);
+                setEditEndDate(dates[dates.length - 1]);
+            }
+            // Clear any selected file to indicate we are editing the DB version
+            setFile(null);
+
+            toast.success("PDT actuel chargé pour édition !");
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur lors du chargement");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     return (
         <div className="p-6 max-w-6xl mx-auto space-y-8">
             <div className="flex flex-col gap-2">
@@ -590,6 +636,14 @@ export const PDTManager: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleLoadCurrentPDT}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-500/20"
+                                title="Modifier le PDT actuel sans tout réimporter"
+                            >
+                                <Edit2 className="w-4 h-4" />
+                                <span className="hidden sm:inline">Éditer PDT</span>
+                            </button>
                             <button
                                 onClick={() => window.open(project.pdtUrl, '_blank')}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
@@ -969,12 +1023,14 @@ export const PDTManager: React.FC = () => {
                                                                     )}
 
                                                                     {/* Full details display */}
-                                                                    {dayInfo && (dayInfo.cast?.length > 0 || dayInfo.silhouettes || dayInfo.extras || dayInfo.schedule || dayInfo.hasDrone || dayInfo.notes) && (
+                                                                    {dayInfo && (dayInfo.cast?.length > 0 || dayInfo.silhouettes || dayInfo.extras || dayInfo.schedule || dayInfo.stunts || dayInfo.extraCrew || dayInfo.hasDrone || dayInfo.notes) && (
                                                                         <div className="text-[10px] text-slate-400 mt-2 p-2 bg-slate-900/50 rounded flex flex-col gap-1 w-fit max-w-sm border border-slate-700/50">
                                                                             {dayInfo.schedule && <div><span className="font-bold text-slate-500">Horaire:</span> {dayInfo.schedule}</div>}
                                                                             {dayInfo.cast && dayInfo.cast.length > 0 && <div><span className="font-bold text-slate-500">Comédiens:</span> {dayInfo.cast.join(', ')}</div>}
                                                                             {dayInfo.silhouettes && <div><span className="font-bold text-slate-500">Silhouettes:</span> {dayInfo.silhouettes}</div>}
                                                                             {dayInfo.extras && <div><span className="font-bold text-slate-500">Figurants:</span> {dayInfo.extras}</div>}
+                                                                            {dayInfo.stunts && <div><span className="font-bold text-slate-500">Cascadeurs:</span> {dayInfo.stunts}</div>}
+                                                                            {dayInfo.extraCrew && <div><span className="font-bold text-slate-500">Extra Équipe:</span> {dayInfo.extraCrew}</div>}
                                                                             {dayInfo.hasDrone && <div className="text-amber-400 font-bold flex items-center gap-1"><span className="text-xs">🛸</span> Drone prévu</div>}
                                                                             {dayInfo.notes && <div><span className="font-bold text-slate-500">Note:</span> {dayInfo.notes}</div>}
                                                                         </div>
@@ -1029,6 +1085,14 @@ export const PDTManager: React.FC = () => {
                                                                     <div>
                                                                         <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Nb Figurants</label>
                                                                         <input type="text" value={detailsForm.extras || ''} onChange={e => setDetailsForm({ ...detailsForm, extras: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 20 passants" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Nb Cascadeurs</label>
+                                                                        <input type="text" value={detailsForm.stunts || ''} onChange={e => setDetailsForm({ ...detailsForm, stunts: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 3" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Nb Extra Équipe</label>
+                                                                        <input type="text" value={detailsForm.extraCrew || ''} onChange={e => setDetailsForm({ ...detailsForm, extraCrew: e.target.value })} className="bg-slate-900 border border-slate-700 text-white text-xs rounded px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="ex: 2 (SFX, chauf...)" />
                                                                     </div>
                                                                     <div className="col-span-1 md:col-span-2">
                                                                         <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Note / Infos Utiles</label>

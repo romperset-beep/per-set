@@ -738,7 +738,17 @@ export const CateringList: React.FC = () => {
                                             className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
                                             placeholder="Prévu"
                                             title="Prévu"
-                                            value={project.cateringInfos?.[selectedDate]?.stunts || 0}
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.stunts !== undefined) {
+                                                    return project.cateringInfos[selectedDate].stunts;
+                                                }
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                if (pdtDay?.stunts) {
+                                                    const match = pdtDay.stunts.match(/(\d+)/);
+                                                    return match ? parseInt(match[1]) : 0;
+                                                }
+                                                return 0;
+                                            })()}
                                             onChange={async (e) => {
                                                 const val = parseInt(e.target.value) || 0;
                                                 const newInfos = {
@@ -768,6 +778,66 @@ export const CateringList: React.FC = () => {
                                                     [selectedDate]: {
                                                         ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
                                                         stuntsConsumed: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Extra Equipe (Editable + Consumed) */}
+                            <div className="flex flex-col items-center gap-1">
+                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Extra Équipe</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
+                                            placeholder="Prévu"
+                                            title="Prévu"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined) {
+                                                    return project.cateringInfos[selectedDate].extraCrewManual;
+                                                }
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                if (pdtDay?.extraCrew) {
+                                                    const match = pdtDay.extraCrew.match(/(\d+)/);
+                                                    return match ? parseInt(match[1]) : 0;
+                                                }
+                                                return 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        extraCrewManual: val
+                                                    }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600">/</span>
+                                    <div className="relative group">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
+                                            placeholder="Réel"
+                                            title="Validé / Mangé"
+                                            value={project.cateringInfos?.[selectedDate]?.extraCrewConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: {
+                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
+                                                        extraCrewConsumed: val
                                                     }
                                                 };
                                                 await updateProjectDetails({ cateringInfos: newInfos });
@@ -816,9 +886,24 @@ export const CateringList: React.FC = () => {
                                         }
 
                                         // 5. Stunts Forecast
-                                        const stunts = project.cateringInfos?.[selectedDate]?.stunts || 0;
+                                        let stunts = 0;
+                                        if (project.cateringInfos?.[selectedDate]?.stunts !== undefined) {
+                                            stunts = project.cateringInfos[selectedDate].stunts!;
+                                        } else if (pdtDay?.stunts) {
+                                            const match = pdtDay.stunts.match(/(\d+)/);
+                                            stunts = match ? parseInt(match[1]) : 0;
+                                        }
 
-                                        return tech + cast + extras + silhouettes + stunts;
+                                        // 6. Extra Crew Forecast
+                                        let extraCrew = 0;
+                                        if (project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined) {
+                                            extraCrew = project.cateringInfos[selectedDate].extraCrewManual!;
+                                        } else if (pdtDay?.extraCrew) {
+                                            const match = pdtDay.extraCrew.match(/(\d+)/);
+                                            extraCrew = match ? parseInt(match[1]) : 0;
+                                        }
+
+                                        return tech + cast + extras + silhouettes + stunts + extraCrew;
                                     })()}
                                 </div>
                                 <div className="text-[9px] uppercase font-bold text-amber-500/60">Total Prévu</div>
@@ -843,7 +928,10 @@ export const CateringList: React.FC = () => {
                                         // 4. Stunts Validated
                                         const stunts = project.cateringInfos?.[selectedDate]?.stuntsConsumed || 0;
 
-                                        return teamEaten + extras + silhouettes + stunts;
+                                        // 5. Extra Crew Validated
+                                        const extraCrew = project.cateringInfos?.[selectedDate]?.extraCrewConsumed || 0;
+
+                                        return teamEaten + extras + silhouettes + stunts + extraCrew;
                                     })()}
                                 </div>
                                 <div className="text-[10px] uppercase font-bold text-green-500">Total Validé</div>

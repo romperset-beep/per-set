@@ -102,60 +102,115 @@ export const TimesheetWidget: React.FC = () => {
         return foundKey ? sheet.departmentCallTimes[foundKey] : null;
     };
 
-    // Auto-fill Times from Call Sheet when Date Changes
+    // Auto-fill Times from Call Sheet or Existing Log when Date Changes
     useEffect(() => {
-        if (!callSheets || !date) return;
+        if (!date || !user) return;
 
-        const sheet = callSheets.find(cs => cs.date === date);
-        if (sheet) {
-            // 1. Call Time
-            // 1. Exact/Fuzzy match
-            const specificTime = getDepartmentTime(sheet, user.department);
-            if (specificTime) {
-                setCallTime(specificTime);
-            } else if (sheet.callTime) {
-                // Fallback to General Call Time
-                // SMART LOGIC: For Production/Regie, if Meal is BEFORE Call Time (Preparations), assume Meal IS the Call Time.
-                let finalCallTime = sheet.callTime;
+        // 1. First, check if there's already a saved log for this user on this date
+        const existingLog = project.timeLogs?.find(l => l.userId === user.email && l.date === date);
+        if (existingLog) {
+            setCallTime(existingLog.callTime);
+            setEndTime(existingLog.endTime);
+            setMealTime(existingLog.mealTime || '');
+            setHasShortenedMeal(existingLog.hasShortenedMeal || false);
+            setBreakDuration(existingLog.breakDuration || 0);
+            setPauseTime(existingLog.pauseTime || '');
+            setNote(existingLog.note || '');
+            setIsContinuousDay(existingLog.isContinuousDay || false);
+            return; // Prioritize existing saved manual data
+        }
 
-                if (sheet.cateringTime) {
-                    const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-                    const isProdOrRegie = ['production', 'regie', 'direction', 'bureau'].some(d => normalize(user.department).includes(d));
+        // 2. Clear residual fields from other days since it's a new entry
+        setBreakDuration(0);
+        setPauseTime('');
+        setNote('');
+        setHasShortenedMeal(false);
 
-                    if (isProdOrRegie) {
-                        const parse = (t: string) => {
-                            const [h, m] = t.split(':').map(Number);
-                            return h + (m / 60);
-                        };
-                        const c = parse(sheet.callTime);
-                        const m = parse(sheet.cateringTime);
+        // 3. Fallback to Call Sheet
+        if (callSheets) {
+            const sheet = callSheets.find(cs => cs.date === date);
+            if (sheet) {
+                // 1. Call Time
+                // Exact/Fuzzy match
+                const specificTime = getDepartmentTime(sheet, user.department);
+                if (specificTime) {
+                    setCallTime(specificTime);
+                } else if (sheet.callTime) {
+                    // Fallback to General Call Time
+                    // SMART LOGIC: For Production/Regie, if Meal is BEFORE Call Time (Preparations), assume Meal IS the Call Time.
+                    let finalCallTime = sheet.callTime;
 
-                        // Calculate delay from Meal to Call (modulo 24h)
-                        // Ex: Meal 22h, Call 01h -> (1 - 22 + 24) % 24 = 3h gap.
-                        // If gap is small (e.g. < 5h), it means Meal is "Just Before" Call.
-                        const gap = (c - m + 24) % 24;
+                    if (sheet.cateringTime) {
+                        const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                        const isProdOrRegie = ['production', 'regie', 'direction', 'bureau'].some(d => normalize(user.department).includes(d));
 
-                        if (gap > 0 && gap <= 5) {
-                            finalCallTime = sheet.cateringTime;
+                        if (isProdOrRegie) {
+                            const parse = (t: string) => {
+                                const [h, m] = t.split(':').map(Number);
+                                return h + (m / 60);
+                            };
+                            const c = parse(sheet.callTime);
+                            const m = parse(sheet.cateringTime);
+
+                            const gap = (c - m + 24) % 24;
+
+                            if (gap > 0 && gap <= 5) {
+                                finalCallTime = sheet.cateringTime;
+                            }
                         }
                     }
+
+                    setCallTime(finalCallTime);
                 }
 
-                setCallTime(finalCallTime);
-            }
+                // 2. End Time
+                if (sheet.endTime) {
+                    setEndTime(sheet.endTime);
+                }
 
-
-            // 2. End Time
-            if (sheet.endTime) {
-                setEndTime(sheet.endTime);
-            }
-
-            // 3. Meal Time
-            if (sheet.cateringTime) {
-                setMealTime(sheet.cateringTime);
+                // 3. Meal Time
+                if (sheet.cateringTime) {
+                    setMealTime(sheet.cateringTime);
+                }
+                return; // Stop here, we found a callsheet
             }
         }
-    }, [date, callSheets, user]); // Run when date changes
+
+        // 4. Fallback to PDT Schedule if available and no callsheet was found
+        const pdtDay = project.pdtDays?.find(d => d.date === date);
+        if (pdtDay?.schedule) {
+            // Flexible regex to catch times like "08:00", "8h30", "18h", "10h30"
+            const regex = /(\d{1,2})[hH:](\d{0,2})/g;
+            const matches = [...pdtDay.schedule.matchAll(regex)];
+
+            if (matches.length >= 2) {
+                const formatTime = (m: RegExpMatchArray) => {
+                    const h = m[1].padStart(2, '0');
+                    const min = (m[2] || '00').padStart(2, '0');
+                    return `${h}:${min}`;
+                };
+                setCallTime(formatTime(matches[0]));
+                setEndTime(formatTime(matches[1]));
+            } else if (matches.length === 1) {
+                const formatTime = (m: RegExpMatchArray) => {
+                    const h = m[1].padStart(2, '0');
+                    const min = (m[2] || '00').padStart(2, '0');
+                    return `${h}:${min}`;
+                };
+                setCallTime(formatTime(matches[0]));
+                setEndTime('');
+            } else {
+                setCallTime('');
+                setEndTime('');
+            }
+        } else {
+            setCallTime('');
+            setEndTime('');
+        }
+        // Clear Meal if no callsheet/PDT info (PDT usually doesn't have meal time)
+        setMealTime('');
+
+    }, [date, callSheets, project.pdtDays, project.timeLogs, user]); // Run when date changes
 
     // Auto-fill Destination when opening calculator
     useEffect(() => {
