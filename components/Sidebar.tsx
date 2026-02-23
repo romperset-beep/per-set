@@ -19,7 +19,8 @@ import {
   Zap, // Added
   ClipboardList, // Added
   BarChart2, // Added
-  CalendarRange // Added
+  CalendarRange, // Added
+  HeartHandshake // Added
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { useLogistics } from '../context/LogisticsContext'; // Restored
@@ -64,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'timesheet', label: "Feuilles d'heures", icon: Clock, allowedDepts: 'ALL' },
         { id: 'energy', label: 'Énergie / Groupe', icon: Zap, allowedDepts: ['PRODUCTION', 'Lumière'] },
         { id: 'catering', label: 'Feuille Cantine', icon: Utensils, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
+        { id: 'food-donations', label: 'Dons Alimentaires', icon: HeartHandshake, allowedDepts: ['REGIE', 'Régie', 'PRODUCTION'] },
       ]
     },
     {
@@ -114,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
 
     // 3. Define Restricted Items Groups
     const prodOnlyItems = ['inter_marketplace', 'donations', 'report'];
-    const prodAndRegieItems = ['catering', 'orders'];
+    const prodAndRegieItems = ['catering', 'orders', 'food-donations'];
 
     // 4. Check Restrictions
     if (item.id === 'energy') {

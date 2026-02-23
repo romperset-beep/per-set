@@ -202,6 +202,7 @@ export interface Project {
   reinforcements?: Reinforcement[];
   logistics?: LogisticsRequest[];
   energyLogs?: EnergyLog[];
+  foodDonations?: FoodDonation[]; // Added for food waste donations
   weekMapping?: Record<string, string>; // Maps "W42-2023" -> "Week 1 (Shooting)"
 }
 
@@ -237,6 +238,18 @@ export interface CateringLog {
   hasEaten: boolean;
   isVegetarian: boolean;
   isManual: boolean;
+}
+
+export interface FoodDonation {
+  id: string; // e.g., date_cantine
+  date: string; // YYYY-MM-DD
+  cantineAddress: string;
+  mealsSaved: number;
+  association: string;
+  status: 'A_RECUPERER' | 'EN_ATTENTE' | 'COLLECTE';
+  contactName?: string;
+  note?: string; // Describe the meal
+  createdAt: string; // ISO
 }
 
 export interface TimeLog {

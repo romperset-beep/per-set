@@ -58,6 +58,7 @@ const MarketplacePage = lazyImport(() => import('./components/MarketplacePage').
 const DepartmentOrders = lazyImport(() => import('./components/DepartmentOrders').then(m => ({ default: m.DepartmentOrders })));
 const SuperAdminStats = lazyImport(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
 const PDTManager = lazyImport(() => import('./components/PDTManager').then(m => ({ default: m.PDTManager })));
+const FoodDonationWidget = lazyImport(() => import('./components/FoodDonationWidget').then(m => ({ default: m.FoodDonationWidget })));
 
 import { BetaTestBadge } from './components/BetaTestBadge';
 
@@ -424,6 +425,8 @@ const AppContent: React.FC = () => {
           // ProjectManager holds the currentDept state, but App.tsx doesn't natively expose it easily unless we lift state up or use Context.
           // Wait, useProject has currentDept!
           return <DailyCallSheetSummary />;
+        case 'food-donations':
+          return <FoodDonationWidget />;
         case 'admin':
           return <AdminDashboard />;
         case 'global-stats': // Added route
