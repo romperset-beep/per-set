@@ -218,7 +218,7 @@ const CateringWidget = ({ onClick }: { onClick: () => void }) => {
     return (
         <button onClick={onClick} className={THEME_CLASSES.QUOTIDIEN}>
             <div className="flex justify-between items-start">
-                <h3 className="text-lg font-semibold opacity-70">Feuille Cantine</h3>
+                <h3 className="text-lg font-semibold opacity-70">REPAS</h3>
                 <Utensils className="h-6 w-6 text-orange-400 group-hover:scale-110 transition-transform" />
             </div>
             <p className="text-4xl font-bold mt-2 text-orange-400">{todayCount}</p>
