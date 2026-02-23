@@ -100,6 +100,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
   ];
 
   const filterItem = (item: Category['items'][0]) => {
+    // 0. Feature restrictions (Dynamic Modules)
+    if (project?.features && project.features[item.id] === false) {
+      return false;
+    }
+
     // 1. Admin restricted (Top priority)
     if (item.id === 'admin') return user?.email === 'romperset@gmail.com';
 

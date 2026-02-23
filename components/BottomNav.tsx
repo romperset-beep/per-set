@@ -9,6 +9,7 @@ import {
     FileText,
     type LucideIcon
 } from 'lucide-react';
+import { useProject } from '../context/ProjectContext';
 
 interface BottomNavProps {
     activeTab: string;
@@ -32,15 +33,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
     // Only show on mobile
     const isMobile = window.innerWidth < 768;
+    const { project } = useProject();
+
     if (!isMobile) return null;
+
+    const features = project?.features;
 
     const mainTabs: NavItem[] = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Tableau' },
-        { id: 'callsheet-summary', icon: FileText, label: 'FDS' },
-        { id: 'timesheet', icon: Clock, label: 'Heures' },
-        { id: 'inventory', icon: Package, label: 'Stock' },
-        { id: 'social', icon: Users, label: 'Social' },
-    ];
+        features?.['callsheets'] !== false ? { id: 'callsheet-summary', icon: FileText, label: 'FDS' } : null,
+        features?.['timesheet'] !== false ? { id: 'timesheet', icon: Clock, label: 'Heures' } : null,
+        features?.['inventory'] !== false ? { id: 'inventory', icon: Package, label: 'Stock' } : null,
+        features?.['social'] !== false ? { id: 'social', icon: Users, label: 'Social' } : null,
+    ].filter(Boolean) as NavItem[];
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 bg-cinema-900 border-t border-cinema-700 z-40 md:hidden safe-area-bottom">

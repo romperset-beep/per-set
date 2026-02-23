@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Film, ArrowRight, Loader2, Plus, LogOut, X } from 'lucide-react';
+import { Building2, Film, ArrowRight, Loader2, Plus, LogOut, X, LayoutGrid, Check } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { LottieAnimation } from './LottieAnimation';
 import { Project } from '../types';
@@ -18,8 +18,47 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
     const hasSavedProject = !!(user?.productionName && user?.filmTitle);
     const hasHistory = !!(user?.projectHistory && user.projectHistory.length > 0);
 
-    // Default to choice if we have a saved project OR history to show
-    const [view, setView] = useState<'choice' | 'form'>((hasSavedProject || hasHistory) ? 'choice' : 'form');
+    const [view, setView] = useState<'choice' | 'form' | 'features'>((hasSavedProject || hasHistory) ? 'choice' : 'form');
+
+    const [features, setFeatures] = useState<Record<string, boolean>>({
+        'pdt-manager': true,
+        'orders': true,
+        'callsheets': true,
+        'timesheet': true,
+        'energy': true,
+        'catering': true,
+        'food-donations': true,
+        'renforts': true,
+        'logistics': true,
+        'inventory': true,
+        'social': true,
+        'expenses': true,
+        'inter_marketplace': true,
+        'local_marketplace': true,
+        'donations': true,
+        'report': true,
+        'global-stats': true,
+    });
+
+    const AVAILABLE_FEATURES = [
+        { id: 'pdt-manager', label: 'Gestion des PDT', desc: 'Analyse et planning de tournage' },
+        { id: 'orders', label: 'Commandes', desc: 'Validation et suivi des achats' },
+        { id: 'callsheets', label: 'Feuilles de Service', desc: "Création et diffusion d'appels" },
+        { id: 'timesheet', label: "Feuilles d'heures", desc: 'Saisie et suivi des heures' },
+        { id: 'energy', label: 'Énergie / Groupe', desc: 'Suivi de la consommation électrique' },
+        { id: 'catering', label: 'Cantine / Repas', desc: 'Choix de repas et validations' },
+        { id: 'food-donations', label: 'Dons Alimentaires', desc: 'Sauvetage des repas non consommés' },
+        { id: 'renforts', label: 'Renforts', desc: 'Gestion du personnel' },
+        { id: 'logistics', label: 'Aller-Retour Matériel', desc: 'Besoins logistiques' },
+        { id: 'inventory', label: 'Consommables', desc: 'Suivi des stocks' },
+        { id: 'social', label: 'Messagerie', desc: 'Communication inter-équipe' },
+        { id: 'expenses', label: 'Notes de Frais', desc: 'Gestion des dépenses' },
+        { id: 'inter_marketplace', label: 'Revente Inter-Prod', desc: 'Vente entre productions' },
+        { id: 'local_marketplace', label: "Ventes à l'équipe", desc: 'Vente de matériel en fin de projet' },
+        { id: 'donations', label: 'Économie Circulaire', desc: 'Dons aux assos, écoles' },
+        { id: 'report', label: 'Rapport RSE+', desc: "Export de données d'impact" },
+        { id: 'global-stats', label: 'Statistiques', desc: 'Vue globale du projet' },
+    ];
 
     const [formData, setFormData] = useState({
         productionName: user?.productionName || '',
@@ -41,10 +80,18 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         setShowSuggestions(false);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleNextStep = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.productionName || !formData.filmTitle) return;
 
+        if (isNewProject) {
+            setView('features');
+        } else {
+            handleFinalSubmit();
+        }
+    };
+
+    const handleFinalSubmit = async () => {
         setIsLoading(true);
         try {
             // Determine default convention if implicit
@@ -55,7 +102,15 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                 finalConvention = 'Publicité'; // Auto-set Publicité
             }
 
-            await joinProject(formData.productionName, formData.filmTitle, formData.startDate, formData.endDate, formData.projectType, finalConvention);
+            await joinProject(
+                formData.productionName,
+                formData.filmTitle,
+                formData.startDate,
+                formData.endDate,
+                formData.projectType,
+                finalConvention,
+                isNewProject ? features : undefined
+            );
             onProjectSelected();
         } catch (err) {
             console.error(err);
@@ -205,6 +260,73 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
         );
     }
 
+    if (view === 'features') {
+        return (
+            <div className="w-full max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="bg-cinema-800 border border-cinema-700 p-8 rounded-2xl shadow-2xl relative z-10">
+                    <div className="text-center mb-8">
+                        <div className="flex justify-center mb-4">
+                            <LayoutGrid className="h-12 w-12 text-blue-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">
+                            Modules du Projet
+                        </h2>
+                        <p className="text-slate-400 text-sm">
+                            Sélectionnez les fonctionnalités actives pour "{formData.filmTitle}". Modifiable à tout moment dans les Settings.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                        {AVAILABLE_FEATURES.map((feature) => (
+                            <label
+                                key={feature.id}
+                                className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${features[feature.id]
+                                        ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                                        : 'bg-cinema-900 border-cinema-700 hover:border-cinema-500 opacity-60'
+                                    }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={features[feature.id] || false}
+                                    onChange={(e) => setFeatures({ ...features, [feature.id]: e.target.checked })}
+                                    className="mt-1 w-5 h-5 text-blue-600 bg-cinema-800 border-cinema-600 rounded focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                    <h4 className="text-white font-bold text-sm mb-1">{feature.label}</h4>
+                                    <p className="text-xs text-slate-400 leading-snug">{feature.desc}</p>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-between items-center gap-4 pt-4 border-t border-cinema-700">
+                        <button
+                            type="button"
+                            onClick={() => setView('form')}
+                            className="text-slate-400 hover:text-white px-6 py-3 font-medium transition-colors"
+                        >
+                            Retour
+                        </button>
+                        <button
+                            onClick={handleFinalSubmit}
+                            disabled={isLoading}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-[1.02] shadow-lg shadow-blue-900/20 flex items-center gap-2"
+                        >
+                            {isLoading ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <Check className="h-5 w-5" />
+                                    Créer le Projet
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="bg-cinema-800 border border-cinema-700 p-8 rounded-2xl shadow-2xl relative z-10">
@@ -224,7 +346,7 @@ export const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSel
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4 relative">
+                <form onSubmit={handleNextStep} className="space-y-4 relative">
                     {/* Production Name with Autocomplete */}
                     <div className="relative group z-20">
                         <Building2 className="absolute left-3 top-3 h-5 w-5 text-slate-500 group-focus-within:text-eco-400 transition-colors" />

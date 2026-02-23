@@ -77,7 +77,7 @@ interface ProjectContextType {
   resendVerification: () => Promise<void>;
   refreshUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>; // Added
-  joinProject: (prod: string, film: string, start?: string, end?: string, type?: string, convention?: string) => Promise<void>;
+  joinProject: (prod: string, film: string, start?: string, end?: string, type?: string, convention?: string, features?: Record<string, boolean>) => Promise<void>;
   leaveProject: () => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   removeProjectFromHistory: (projectId: string) => Promise<void>; // Added
@@ -669,7 +669,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // refreshUser, register, resendVerification, login removed (handled by AuthContext)
 
 
-  const joinProject = async (prod: string, film: string, start?: string, end?: string, type?: string, convention?: string) => {
+  const joinProject = async (prod: string, film: string, start?: string, end?: string, type?: string, convention?: string, features?: Record<string, boolean>) => {
     try {
       if (!user) return; // auth.currentUser check implicte in user
 
@@ -688,6 +688,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (end) projectData.shootingEndDate = end;
       if (type) projectData.projectType = type;
       if (convention) projectData.convention = convention;
+      if (features) projectData.features = features;
 
       // CRITICAL FIX: Add user to members map for Firestore security rules
       // Without this, isMemberOfProject() returns false and user can't access project

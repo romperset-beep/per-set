@@ -178,6 +178,7 @@ export interface Project {
   settings?: {
     requireOrderValidation: boolean;
   };
+  features?: Record<string, boolean>; // Module toggles
   members?: {
     [userId: string]: {
       role: 'ADMIN' | 'USER' | 'GUEST';
