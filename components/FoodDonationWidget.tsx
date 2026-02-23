@@ -19,7 +19,8 @@ export const FoodDonationWidget: React.FC = () => {
     const [note, setNote] = useState('');
 
     const associationsList = [
-        "Le Chaînon Manquant"
+        "Le Chaînon Manquant",
+        "Autre"
     ];
 
     // Auto-fill cantine address from CallSheet when Date changes
