@@ -12,7 +12,6 @@ import { MarketplaceProvider } from './context/MarketplaceContext';
 import { SocialProvider } from './context/SocialContext';
 import { FallbackErrorBoundary } from './components/FallbackErrorBoundary';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { DebugFooter } from './components/DebugFooter';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { LoadingFallback } from './components/LoadingFallback';
 import { Bell, LogOut, User as UserIcon, Menu, Calendar, X, Check, Trash2, Settings, BellOff, CheckCircle, Loader2 } from 'lucide-react';
@@ -909,7 +908,6 @@ const AppWrapper = () => {
                       }}
                     />
                     <OfflineIndicator />
-                    <DebugFooter />
                   </TeamProvider>
                 </MarketplaceProvider>
               </LogisticsProvider>
