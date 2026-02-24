@@ -516,16 +516,21 @@ export const CateringList: React.FC = () => {
                     )}
 
                     {viewMode === 'daily' && (
-                        <>
-                            <div className="text-center">
-                                <span className="block text-2xl font-bold text-white">{stats.total}</span>
-                                <span className="text-xs text-slate-400 uppercase font-bold">Repas Total</span>
+                        <div className="flex items-center gap-3 bg-cinema-900/50 py-1.5 px-4 rounded-lg border border-cinema-700">
+                            <div className="text-center pr-3 border-r border-cinema-700">
+                                <span className="block text-xl font-bold text-white leading-tight">{stats.total}</span>
+                                <span className="text-[9px] text-slate-400 uppercase font-bold">Total</span>
                             </div>
-                            <div className="text-center">
-                                <span className="block text-2xl font-bold text-eco-400">{stats.veggie}</span>
-                                <span className="text-xs text-slate-400 uppercase font-bold text-eco-400/70">Dont Végé</span>
+                            <div className="text-center flex items-center gap-2">
+                                <div className="bg-eco-500/20 p-1.5 rounded-full text-eco-400 hidden sm:block">
+                                    <Leaf className="h-3 w-3" />
+                                </div>
+                                <div>
+                                    <span className="block text-xl font-bold text-eco-400 leading-tight">{stats.veggie}</span>
+                                    <span className="text-[9px] text-slate-400 uppercase font-bold text-eco-400/80">Végé</span>
+                                </div>
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {isRegie && (
@@ -568,24 +573,24 @@ export const CateringList: React.FC = () => {
             {/* PDT / FORECAST SECTION */}
             {
                 isRegie && (
-                    <div className="bg-cinema-900/50 border border-cinema-700 rounded-xl p-4 flex flex-col md:flex-row gap-6 items-center justify-between">
-                        <div className="flex items-center gap-2">
+                    <div className="bg-cinema-900/40 border border-cinema-700 rounded-xl p-4 md:p-6 flex flex-col gap-6">
+                        {/* Section Header */}
+                        <div className="flex items-center gap-3 border-b border-cinema-700/50 pb-4">
                             <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                                <PieIcon className="h-5 w-5" />
+                                <PieIcon className="h-5 w-5 md:h-6 md:w-6" />
                             </div>
                             <div>
-                                <h3 className="text-white font-bold">Prévisions (PDT)</h3>
-                                <p className="text-xs text-slate-400">Basé sur la feuille de service</p>
+                                <h3 className="text-white font-bold text-lg md:text-xl leading-tight">Prévisions (PDT)</h3>
+                                <p className="text-xs md:text-sm text-slate-400">Basé sur la feuille de service</p>
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 md:gap-8">
+                        {/* Top Stats Grid (Totals + Fixed) */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                             {/* Équipe */}
-                            <div className="text-center">
-                                <div className="text-xl font-bold text-white">
+                            <div className="bg-cinema-800 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center border border-cinema-700 shadow-sm">
+                                <div className="text-2xl md:text-3xl font-bold text-white mb-1">
                                     {(() => {
-                                        // Count active team members with profiles for this project
-                                        // This matches the logic used in TeamDirectory to avoid ghost members
                                         const activeMembers = userProfiles.filter(profile => {
                                             const p = profile as unknown as User;
                                             return p.currentProjectId === project.id ||
@@ -594,349 +599,241 @@ export const CateringList: React.FC = () => {
                                         return activeMembers.length;
                                     })()}
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-slate-500">Équipe</div>
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-500 tracking-wider">Équipe</div>
                             </div>
 
                             {/* Comédiens (From PDT) */}
-                            <div className="text-center">
-                                <div className="text-xl font-bold text-white">
+                            <div className="bg-cinema-800 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center border border-cinema-700 shadow-sm">
+                                <div className="text-2xl md:text-3xl font-bold text-white mb-1">
                                     {(() => {
                                         const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
                                         return pdtDay?.cast?.length || 0;
                                     })()}
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-slate-500">Comédiens</div>
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-500 tracking-wider">Comédiens</div>
                             </div>
-
-                            {/* Silhouettes (Editable + Consumed) */}
-                            <div className="flex flex-col items-center gap-1">
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Silhouettes</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                            placeholder="Prévu"
-                                            title="Prévu"
-                                            value={(() => {
-                                                if (project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined) {
-                                                    return project.cateringInfos[selectedDate].silhouettesManual;
-                                                }
-                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
-                                                if (pdtDay?.silhouettes) {
-                                                    const match = pdtDay.silhouettes.match(/(\d+)/);
-                                                    return match ? parseInt(match[1]) : 0;
-                                                }
-                                                return 0;
-                                            })()}
-                                            onChange={async (e) => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        silhouettesManual: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
-                                    </div>
-                                    <span className="text-slate-600">/</span>
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
-                                            placeholder="Réel"
-                                            title="Validé / Mangé"
-                                            value={project.cateringInfos?.[selectedDate]?.silhouettesConsumed ?? ''}
-                                            onChange={async (e) => {
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        silhouettesConsumed: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Figurants (Editable + Consumed) */}
-                            <div className="flex flex-col items-center gap-1">
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Figurants</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                            placeholder="Prévu"
-                                            title="Prévu"
-                                            value={(() => {
-                                                if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
-                                                    return project.cateringInfos[selectedDate].extrasManual;
-                                                }
-                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
-                                                if (pdtDay?.extras) {
-                                                    const match = pdtDay.extras.match(/(\d+)/);
-                                                    return match ? parseInt(match[1]) : 0;
-                                                }
-                                                return 0;
-                                            })()}
-                                            onChange={async (e) => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        extrasManual: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
-                                    </div>
-                                    <span className="text-slate-600">/</span>
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
-                                            placeholder="Réel"
-                                            title="Validé / Mangé"
-                                            value={project.cateringInfos?.[selectedDate]?.extrasConsumed ?? ''}
-                                            onChange={async (e) => {
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        extrasConsumed: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Cascadeurs (Editable + Consumed) */}
-                            <div className="flex flex-col items-center gap-1">
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Cascadeurs</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                            placeholder="Prévu"
-                                            title="Prévu"
-                                            value={(() => {
-                                                if (project.cateringInfos?.[selectedDate]?.stunts !== undefined) {
-                                                    return project.cateringInfos[selectedDate].stunts;
-                                                }
-                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
-                                                if (pdtDay?.stunts) {
-                                                    const match = pdtDay.stunts.match(/(\d+)/);
-                                                    return match ? parseInt(match[1]) : 0;
-                                                }
-                                                return 0;
-                                            })()}
-                                            onChange={async (e) => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        stunts: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
-                                    </div>
-                                    <span className="text-slate-600">/</span>
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
-                                            placeholder="Réel"
-                                            title="Validé / Mangé"
-                                            value={project.cateringInfos?.[selectedDate]?.stuntsConsumed ?? ''}
-                                            onChange={async (e) => {
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        stuntsConsumed: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Extra Equipe (Editable + Consumed) */}
-                            <div className="flex flex-col items-center gap-1">
-                                <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Extra Équipe</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-800 border border-cinema-600 rounded text-center text-white font-bold focus:border-amber-500 outline-none"
-                                            placeholder="Prévu"
-                                            title="Prévu"
-                                            value={(() => {
-                                                if (project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined) {
-                                                    return project.cateringInfos[selectedDate].extraCrewManual;
-                                                }
-                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
-                                                if (pdtDay?.extraCrew) {
-                                                    const match = pdtDay.extraCrew.match(/(\d+)/);
-                                                    return match ? parseInt(match[1]) : 0;
-                                                }
-                                                return 0;
-                                            })()}
-                                            onChange={async (e) => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        extraCrewManual: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-slate-500 absolute -bottom-4 w-full text-center">Prévu</span>
-                                    </div>
-                                    <span className="text-slate-600">/</span>
-                                    <div className="relative group">
-                                        <input
-                                            type="number"
-                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded text-center text-green-400 font-bold focus:border-green-500 outline-none"
-                                            placeholder="Réel"
-                                            title="Validé / Mangé"
-                                            value={project.cateringInfos?.[selectedDate]?.extraCrewConsumed ?? ''}
-                                            onChange={async (e) => {
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                const newInfos = {
-                                                    ...(project.cateringInfos || {}),
-                                                    [selectedDate]: {
-                                                        ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }),
-                                                        extraCrewConsumed: val
-                                                    }
-                                                };
-                                                await updateProjectDetails({ cateringInfos: newInfos });
-                                            }}
-                                        />
-                                        <span className="text-[9px] text-green-500/70 absolute -bottom-4 w-full text-center">Validé</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* TOTAL PREVISIONNEL vs RÉEL */}
-                            <div className="w-px h-10 bg-cinema-700 mx-2 hidden md:block"></div>
 
                             {/* FORECAST TOTAL */}
-                            <div className="text-center opacity-60 hover:opacity-100 transition-opacity">
-                                <div className="text-xl font-bold text-amber-500/80">
+                            <div className="bg-amber-500/10 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center border border-amber-500/20 shadow-sm transition-all hover:bg-amber-500/15">
+                                <div className="text-2xl md:text-3xl font-bold text-amber-500 mb-1">
                                     {(() => {
-                                        // Calculate Total Forecast
-                                        // 1. Team (Active Members)
                                         const tech = userProfiles.filter(profile => {
                                             const p = profile as unknown as User;
                                             return p.currentProjectId === project.id ||
                                                 p.projectHistory?.some(h => h.id === project.id);
                                         }).length;
-
-                                        // 2. Cast
                                         const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
                                         const cast = pdtDay?.cast?.length || 0;
 
-                                        // 3. Extras Forecast
-                                        let extras = 0;
-                                        if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) {
-                                            extras = project.cateringInfos[selectedDate].extrasManual!;
-                                        } else if (pdtDay?.extras) {
-                                            const match = pdtDay.extras.match(/(\d+)/);
-                                            extras = match ? parseInt(match[1]) : 0;
-                                        }
-
-                                        // 4. Silhouettes Forecast
-                                        let silhouettes = 0;
-                                        if (project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined) {
-                                            silhouettes = project.cateringInfos[selectedDate].silhouettesManual!;
-                                        } else if (pdtDay?.silhouettes) {
-                                            const match = pdtDay.silhouettes.match(/(\d+)/);
-                                            silhouettes = match ? parseInt(match[1]) : 0;
-                                        }
-
-                                        // 5. Stunts Forecast
-                                        let stunts = 0;
-                                        if (project.cateringInfos?.[selectedDate]?.stunts !== undefined) {
-                                            stunts = project.cateringInfos[selectedDate].stunts!;
-                                        } else if (pdtDay?.stunts) {
-                                            const match = pdtDay.stunts.match(/(\d+)/);
-                                            stunts = match ? parseInt(match[1]) : 0;
-                                        }
-
-                                        // 6. Extra Crew Forecast
-                                        let extraCrew = 0;
-                                        if (project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined) {
-                                            extraCrew = project.cateringInfos[selectedDate].extraCrewManual!;
-                                        } else if (pdtDay?.extraCrew) {
-                                            const match = pdtDay.extraCrew.match(/(\d+)/);
-                                            extraCrew = match ? parseInt(match[1]) : 0;
-                                        }
+                                        let extras = project.cateringInfos?.[selectedDate]?.extrasManual !== undefined ? project.cateringInfos[selectedDate].extrasManual! : (pdtDay?.extras ? parseInt(pdtDay.extras.match(/(\d+)/)?.[1] || '0') : 0);
+                                        let silhouettes = project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined ? project.cateringInfos[selectedDate].silhouettesManual! : (pdtDay?.silhouettes ? parseInt(pdtDay.silhouettes.match(/(\d+)/)?.[1] || '0') : 0);
+                                        let stunts = project.cateringInfos?.[selectedDate]?.stunts !== undefined ? project.cateringInfos[selectedDate].stunts! : (pdtDay?.stunts ? parseInt(pdtDay.stunts.match(/(\d+)/)?.[1] || '0') : 0);
+                                        let extraCrew = project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined ? project.cateringInfos[selectedDate].extraCrewManual! : (pdtDay?.extraCrew ? parseInt(pdtDay.extraCrew.match(/(\d+)/)?.[1] || '0') : 0);
 
                                         return tech + cast + extras + silhouettes + stunts + extraCrew;
                                     })()}
                                 </div>
-                                <div className="text-[9px] uppercase font-bold text-amber-500/60">Total Prévu</div>
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-amber-500/80 tracking-wider">Total Prévu</div>
                             </div>
 
                             {/* ACTUAL TOTAL (VALIDATED) */}
-                            <div className="text-center bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">
-                                <div className="text-2xl font-bold text-green-400">
+                            <div className="bg-green-500/10 rounded-xl p-3 md:p-4 flex flex-col items-center justify-center border border-green-500/20 shadow-sm">
+                                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-1">
                                     {(() => {
-                                        // Calculate Total Validated
-                                        // 1. Team + Guests (From Actual Logs)
                                         const teamEaten = dailyLogs.filter(l => l.hasEaten).length;
-
-                                        // 2. Extras Validated (Fallback to Forecast if not set? User asked to validate, so separate)
-                                        // Let's use 0 if not set, or maybe we should default to forecast?
-                                        // Usually "Validé" means confirmed count. If undefined, means 0 confirmed yet.
                                         const extras = project.cateringInfos?.[selectedDate]?.extrasConsumed || 0;
-
-                                        // 3. Silhouettes Validated
                                         const silhouettes = project.cateringInfos?.[selectedDate]?.silhouettesConsumed || 0;
-
-                                        // 4. Stunts Validated
                                         const stunts = project.cateringInfos?.[selectedDate]?.stuntsConsumed || 0;
-
-                                        // 5. Extra Crew Validated
                                         const extraCrew = project.cateringInfos?.[selectedDate]?.extraCrewConsumed || 0;
 
                                         return teamEaten + extras + silhouettes + stunts + extraCrew;
                                     })()}
                                 </div>
-                                <div className="text-[10px] uppercase font-bold text-green-500">Total Validé</div>
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-green-500 tracking-wider">Total Validé</div>
+                            </div>
+                        </div>
+
+                        {/* Editable Stats Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-2">
+                            {/* Silhouettes */}
+                            <div className="bg-cinema-800 rounded-xl p-3 border border-cinema-700 flex flex-col shadow-sm">
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-400 mb-3 text-center tracking-wide">Silhouettes</div>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-600 rounded-lg text-center text-white font-bold focus:border-amber-500 outline-none py-1.5 transition-colors"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.silhouettesManual !== undefined) return project.cateringInfos[selectedDate].silhouettesManual;
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                return pdtDay?.silhouettes ? parseInt(pdtDay.silhouettes.match(/(\d+)/)?.[1] || '0') : 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), silhouettesManual: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 mt-1 font-medium tracking-wide border border-transparent">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600 font-light mb-4">/</span>
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded-lg text-center text-green-400 font-bold focus:border-green-500 outline-none py-1.5 transition-colors"
+                                            value={project.cateringInfos?.[selectedDate]?.silhouettesConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), silhouettesConsumed: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                            placeholder="-"
+                                        />
+                                        <span className="text-[9px] text-green-500/70 mt-1 font-medium tracking-wide">Validé</span>
+                                    </div>
+                                </div>
                             </div>
 
+                            {/* Figurants */}
+                            <div className="bg-cinema-800 rounded-xl p-3 border border-cinema-700 flex flex-col shadow-sm">
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-400 mb-3 text-center tracking-wide">Figurants</div>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-600 rounded-lg text-center text-white font-bold focus:border-amber-500 outline-none py-1.5 transition-colors"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.extrasManual !== undefined) return project.cateringInfos[selectedDate].extrasManual;
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                return pdtDay?.extras ? parseInt(pdtDay.extras.match(/(\d+)/)?.[1] || '0') : 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), extrasManual: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 mt-1 font-medium tracking-wide">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600 font-light mb-4">/</span>
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded-lg text-center text-green-400 font-bold focus:border-green-500 outline-none py-1.5 transition-colors"
+                                            value={project.cateringInfos?.[selectedDate]?.extrasConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), extrasConsumed: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                            placeholder="-"
+                                        />
+                                        <span className="text-[9px] text-green-500/70 mt-1 font-medium tracking-wide">Validé</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Cascadeurs */}
+                            <div className="bg-cinema-800 rounded-xl p-3 border border-cinema-700 flex flex-col shadow-sm">
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-400 mb-3 text-center tracking-wide">Cascadeurs</div>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-600 rounded-lg text-center text-white font-bold focus:border-amber-500 outline-none py-1.5 transition-colors"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.stunts !== undefined) return project.cateringInfos[selectedDate].stunts;
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                return pdtDay?.stunts ? parseInt(pdtDay.stunts.match(/(\d+)/)?.[1] || '0') : 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), stunts: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 mt-1 font-medium tracking-wide">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600 font-light mb-4">/</span>
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded-lg text-center text-green-400 font-bold focus:border-green-500 outline-none py-1.5 transition-colors"
+                                            value={project.cateringInfos?.[selectedDate]?.stuntsConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), stuntsConsumed: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                            placeholder="-"
+                                        />
+                                        <span className="text-[9px] text-green-500/70 mt-1 font-medium tracking-wide">Validé</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Extra Équipe */}
+                            <div className="bg-cinema-800 rounded-xl p-3 border border-cinema-700 flex flex-col shadow-sm">
+                                <div className="text-[10px] md:text-xs uppercase font-bold text-slate-400 mb-3 text-center tracking-wide">Extra Équipe</div>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-600 rounded-lg text-center text-white font-bold focus:border-amber-500 outline-none py-1.5 transition-colors"
+                                            value={(() => {
+                                                if (project.cateringInfos?.[selectedDate]?.extraCrewManual !== undefined) return project.cateringInfos[selectedDate].extraCrewManual;
+                                                const pdtDay = project.pdtDays?.find(d => d.date === selectedDate);
+                                                return pdtDay?.extraCrew ? parseInt(pdtDay.extraCrew.match(/(\d+)/)?.[1] || '0') : 0;
+                                            })()}
+                                            onChange={async (e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), extraCrewManual: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                        />
+                                        <span className="text-[9px] text-slate-500 mt-1 font-medium tracking-wide">Prévu</span>
+                                    </div>
+                                    <span className="text-slate-600 font-light mb-4">/</span>
+                                    <div className="flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            className="w-14 bg-cinema-900 border border-cinema-700 rounded-lg text-center text-green-400 font-bold focus:border-green-500 outline-none py-1.5 transition-colors"
+                                            value={project.cateringInfos?.[selectedDate]?.extraCrewConsumed ?? ''}
+                                            onChange={async (e) => {
+                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                const newInfos = {
+                                                    ...(project.cateringInfos || {}),
+                                                    [selectedDate]: { ...(project.cateringInfos?.[selectedDate] || { date: selectedDate }), extraCrewConsumed: val }
+                                                };
+                                                await updateProjectDetails({ cateringInfos: newInfos });
+                                            }}
+                                            placeholder="-"
+                                        />
+                                        <span className="text-[9px] text-green-500/70 mt-1 font-medium tracking-wide">Validé</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )
