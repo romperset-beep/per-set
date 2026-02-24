@@ -88,27 +88,44 @@ export const CateringList: React.FC = () => {
         // Prioritize Call Sheet cast, then PDT cast
         const castSource = callSheet?.cast?.length ? callSheet.cast : (pdtDay?.cast || []);
 
-        const castRows = castSource.map((actor: { actor?: string; role?: string; number?: string }, index: number) => {
-            // Try to resolve the actor name from the project's global castMembers if it's "Inconnu" or missing
-            let actorName = actor.actor;
+        const castRows = castSource.map((castItem: any, index: number) => {
+            // Handle both Call Sheet format (object) and PDT format (string)
+            const isObject = typeof castItem === 'object' && castItem !== null;
+            let actorName = isObject ? castItem.actor : castItem;
+            let roleName = isObject ? castItem.role : 'Rôle Inconnu';
+            const actorNumber = isObject ? castItem.number : undefined;
+
             const globalCast = project.castMembers || [];
 
             if (!actorName || actorName.toLowerCase().includes('inconnu')) {
-                // Try matching by role first
-                if (actor.role) {
-                    const matchedCast = globalCast.find(c => c.role.toLowerCase() === actor.role?.toLowerCase());
+                // Try matching by role
+                if (roleName !== 'Rôle Inconnu') {
+                    const matchedCast = globalCast.find(c => c.role.toLowerCase() === roleName?.toLowerCase());
                     if (matchedCast?.actor) actorName = matchedCast.actor;
                 }
 
-                // If still not found, try matching by cast number if available (e.g., from call sheet)
-                if ((!actorName || actorName.toLowerCase().includes('inconnu')) && actor.number) {
-                    const matchedCast = globalCast.find(c => c.number === actor.number);
+                // Try matching by cast number
+                if ((!actorName || actorName.toLowerCase().includes('inconnu')) && actorNumber) {
+                    const matchedCast = globalCast.find(c => c.number === actorNumber);
                     if (matchedCast?.actor) actorName = matchedCast.actor;
+                }
+
+                // If castItem was a string ID and we still don't have a name, try to match the ID/String directly
+                if ((!actorName || actorName.toLowerCase().includes('inconnu')) && !isObject && typeof castItem === 'string') {
+                    // Sometimes the string in PDT might be the role itself, or an ID
+                    const matchedCast = globalCast.find(c => c.role.toLowerCase() === castItem.toLowerCase() || c.actor.toLowerCase() === castItem.toLowerCase());
+                    if (matchedCast?.actor) {
+                        actorName = matchedCast.actor;
+                        roleName = matchedCast.role;
+                    } else if (castItem.trim() !== '') {
+                        // If we didn't find a match, use the string itself as the name as a fallback instead of 'Inconnu'
+                        actorName = castItem;
+                    }
                 }
             }
 
-            // Fallback
-            actorName = actorName || `Inconnu ${index + 1}`;
+            // Final Fallback
+            actorName = actorName && actorName.trim() !== '' ? actorName : `Inconnu ${index + 1}`;
 
             const castId = `cast_${actorName.replace(/\s+/g, '_')}`;
             const log = dailyLogs.find(l => l.userId === castId);
@@ -120,7 +137,7 @@ export const CateringList: React.FC = () => {
                 hasEaten: log?.hasEaten || false,
                 isVegetarian: log?.isVegetarian || false,
                 isManual: false, // Treated as system user for stability
-                role: actor.role || 'Rôle Inconnu'
+                role: roleName || 'Rôle Inconnu'
             };
         });
 
