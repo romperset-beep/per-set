@@ -211,7 +211,7 @@ export const PDTManager: React.FC = () => {
             project.shootingEndDate,
             demoMode
         );
-        const fileName = demoMode ? "Modele_PDT_DEMO.xlsx" : "Modele_PDT_ABetterSet.xlsx";
+        const fileName = demoMode ? "Modele_PDT_DEMO.xlsx" : "Modele_PDT_PER-SET.xlsx";
         XLSX.writeFile(wb, fileName);
 
         if (demoMode) {

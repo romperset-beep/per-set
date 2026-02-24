@@ -1081,7 +1081,7 @@ export const ViewSalesToABS = ({ items, project }: { items: any[], project: any 
             <div className="bg-emerald-900/20 border-b border-emerald-500/20 p-4">
                 <div className="flex items-center gap-3 text-emerald-400">
                     <DollarSign className="h-5 w-5" />
-                    <span className="font-bold">Ventes à A Better Set</span>
+                    <span className="font-bold">Ventes à PER-SET</span>
                 </div>
             </div>
             <div className="overflow-x-auto">
@@ -1113,7 +1113,7 @@ export const ViewSalesToABS = ({ items, project }: { items: any[], project: any 
                         {buybackItems.length === 0 && (
                             <tr>
                                 <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                                    Aucun article vendu à A Better Set pour le moment.
+                                    Aucun article vendu à PER-SET pour le moment.
                                 </td>
                             </tr>
                         )}

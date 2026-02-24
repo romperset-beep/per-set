@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Persist user in localStorage for better DX
     const [user, setUser] = useState<User | null>(() => {
         try {
-            const saved = localStorage.getItem('aBetterSetUser');
+            const saved = localStorage.getItem('perSetUser');
             return saved ? JSON.parse(saved) : null;
         } catch (e) {
             console.error("Failed to parse user from local storage", e);
@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
                         const fullUser = { ...userData, id: firebaseUser.uid };
                         setUser(fullUser);
-                        localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
+                        localStorage.setItem('perSetUser', JSON.stringify(fullUser));
 
                         // Clean up legacy storage after successful migration
                         if (legacyData) {
@@ -176,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
                         await setDoc(docRef, newUser);
                         setUser(newUser);
-                        localStorage.setItem('aBetterSetUser', JSON.stringify(newUser));
+                        localStorage.setItem('perSetUser', JSON.stringify(newUser));
 
                         // Clean up legacy data if it exists
                         if (legacyData) {
@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
                 // console.log("Auth State: Logged Out");
                 setUser(null);
-                localStorage.removeItem('aBetterSetUser');
+                localStorage.removeItem('perSetUser');
             }
             setLoading(false);
         });
@@ -209,7 +209,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const userData = docSnap.data() as User;
                 const fullUser = { ...userData, id: auth.currentUser.uid };
                 setUser(fullUser);
-                localStorage.setItem('aBetterSetUser', JSON.stringify(fullUser));
+                localStorage.setItem('perSetUser', JSON.stringify(fullUser));
             }
         } catch (e: unknown) {
             console.error("Refresh User Failed", e);
@@ -283,7 +283,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             await signOut(auth);
             setUser(null);
-            localStorage.removeItem('aBetterSetUser');
+            localStorage.removeItem('perSetUser');
             // Clearing project state should be handled by ProjectContext interpreting null user
         } catch (err: unknown) {
             console.error("Logout Error", err);
@@ -308,7 +308,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             const updated = { ...user, ...data };
             setUser(updated);
-            localStorage.setItem('aBetterSetUser', JSON.stringify(updated));
+            localStorage.setItem('perSetUser', JSON.stringify(updated));
 
             // Update local userProfiles list so TeamDirectory reflects changes immediately
             setUserProfiles(prev => prev.map(p =>
@@ -352,7 +352,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await deleteDoc(doc(db, 'users', uid));
             await auth.currentUser.delete();
             setUser(null);
-            localStorage.removeItem('aBetterSetUser');
+            localStorage.removeItem('perSetUser');
         } catch (err: unknown) {
             console.error("Delete Account Error", err);
             throw err;

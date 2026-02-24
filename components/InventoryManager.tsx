@@ -1009,13 +1009,13 @@ export const InventoryManager: React.FC = () => {
                         <h3 className="text-xl font-bold text-white mb-4">
                             {priceModal.action === SurplusAction.DONATION ? 'Valeur du Don' :
                                 priceModal.action === SurplusAction.NONE ? "Prix d'Achat (Optionnel)" :
-                                    priceModal.action === SurplusAction.BUYBACK ? "Rachat A Better Set" :
+                                    priceModal.action === SurplusAction.BUYBACK ? "Rachat PER-SET" :
                                         'Prix de Revente'}
                         </h3>
                         <p className="text-slate-300 mb-6">
                             {priceModal.action === SurplusAction.DONATION ? 'Souhaitez-vous définir une valeur pour ce don ? (Facultatif)' :
                                 priceModal.action === SurplusAction.NONE ? "Veuillez indiquer le prix d'achat si vous l'avez (sinon laissez 0)." :
-                                    priceModal.action === SurplusAction.BUYBACK ? "A Better Set rachète cet article à 50% de sa valeur d'origine." :
+                                    priceModal.action === SurplusAction.BUYBACK ? "PER-SET rachète cet article à 50% de sa valeur d'origine." :
                                         'Quel est votre prix de revente ?'}
                         </p>
 
@@ -1083,7 +1083,7 @@ export const InventoryManager: React.FC = () => {
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                    Disponible sur A Better Set
+                                    Disponible sur PER-SET
                                     <span className="text-xs bg-emerald-500 text-black px-2 py-0.5 rounded-full font-bold">ECO</span>
                                 </h3>
                                 <p className="text-xs text-emerald-200/70">
@@ -1127,7 +1127,7 @@ export const InventoryManager: React.FC = () => {
                                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2 group"
                                         >
                                             <ShoppingCart className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                                            Commander sur A Better Set
+                                            Commander sur PER-SET
                                         </button>
                                     )}
                                 </div>

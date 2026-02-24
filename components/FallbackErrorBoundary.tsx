@@ -51,7 +51,7 @@ export class FallbackErrorBoundary extends Component<Props, State> {
                         <button
                             onClick={() => {
                                 // Clear local storage and reload as a nuclear option
-                                localStorage.removeItem('aBetterSetUser');
+                                localStorage.removeItem('perSetUser');
                                 window.location.reload();
                             }}
                             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
