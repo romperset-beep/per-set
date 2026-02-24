@@ -181,6 +181,7 @@ export interface Project {
   pdtDays?: PDTDay[];
   items: ConsumableItem[];
   callSheets?: CallSheet[]; // Added: Call sheets list
+  castMembers?: CastMember[]; // Added: Global cast list for resolving names
   ecoprodChecklist?: Record<string, boolean>; // id -> isMet
 
   // Security / RBAC
@@ -575,6 +576,7 @@ export interface CallSheetWeather {
 }
 
 export interface CastMember {
+  number?: string; // Number in the cast list
   role: string;
   actor: string;
   pickupTime?: string; // P-U

@@ -88,8 +88,28 @@ export const CateringList: React.FC = () => {
         // Prioritize Call Sheet cast, then PDT cast
         const castSource = callSheet?.cast?.length ? callSheet.cast : (pdtDay?.cast || []);
 
-        const castRows = castSource.map((actor: { actor?: string; role?: string }, index: number) => {
-            const actorName = actor.actor || `Inconnu ${index + 1}`;
+        const castRows = castSource.map((actor: { actor?: string; role?: string; number?: string }, index: number) => {
+            // Try to resolve the actor name from the project's global castMembers if it's "Inconnu" or missing
+            let actorName = actor.actor;
+            const globalCast = project.castMembers || [];
+
+            if (!actorName || actorName.toLowerCase().includes('inconnu')) {
+                // Try matching by role first
+                if (actor.role) {
+                    const matchedCast = globalCast.find(c => c.role.toLowerCase() === actor.role?.toLowerCase());
+                    if (matchedCast?.actor) actorName = matchedCast.actor;
+                }
+
+                // If still not found, try matching by cast number if available (e.g., from call sheet)
+                if ((!actorName || actorName.toLowerCase().includes('inconnu')) && actor.number) {
+                    const matchedCast = globalCast.find(c => c.number === actor.number);
+                    if (matchedCast?.actor) actorName = matchedCast.actor;
+                }
+            }
+
+            // Fallback
+            actorName = actorName || `Inconnu ${index + 1}`;
+
             const castId = `cast_${actorName.replace(/\s+/g, '_')}`;
             const log = dailyLogs.find(l => l.userId === castId);
             return {
