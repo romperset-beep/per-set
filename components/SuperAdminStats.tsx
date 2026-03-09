@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { fetchAllProjectsAction, fetchAllGlobalItemsAction } from '../services/adminService';
+import { fetchAllProjectsAction, fetchAllGlobalItemsAction, migrateSensitiveDataAction } from '../services/adminService';
 import {
     BarChart3,
     TrendingUp,
@@ -59,6 +59,20 @@ export const SuperAdminStats: React.FC = () => {
         totalMoneySaved: 0
     });
     const [projectList, setProjectList] = useState<ProjectStats[]>([]);
+    const [isMigrating, setIsMigrating] = useState(false);
+
+    const handleMigration = async () => {
+        if (!window.confirm("Êtes-vous sûr de vouloir migrer toutes les données RH sensibles ? (Action irréversible qui déplace les numéros de sécu vers le nouveau système sécurisé)")) return;
+        setIsMigrating(true);
+        try {
+            const resultMsg = await migrateSensitiveDataAction();
+            alert(`Migration terminée : ${resultMsg}`);
+        } catch (error) {
+            alert(`Erreur lors de la migration : ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setIsMigrating(false);
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -155,12 +169,24 @@ export const SuperAdminStats: React.FC = () => {
     return (
         <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in">
             {/* Header */}
-            <div>
-                <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                    <Building2 className="h-8 w-8 text-blue-400" />
-                    Statistiques Globales (Super Admin)
-                </h2>
-                <p className="text-slate-400 mt-2">Vue d'ensemble de tous les tournages actifs et archivés.</p>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                        <Building2 className="h-8 w-8 text-blue-400" />
+                        Statistiques Globales (Super Admin)
+                    </h2>
+                    <p className="text-slate-400 mt-2">Vue d'ensemble de tous les tournages actifs et archivés.</p>
+                </div>
+                {user.email === 'romperset@gmail.com' && (
+                    <button
+                        onClick={handleMigration}
+                        disabled={isMigrating}
+                        className="bg-red-900/40 text-red-400 border border-red-900/50 hover:bg-red-900/60 px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2"
+                    >
+                        {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        {isMigrating ? 'Migration...' : 'Migrer Données RH'}
+                    </button>
+                )}
             </div>
 
             {/* KPI Grid */}

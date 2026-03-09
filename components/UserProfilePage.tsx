@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useProject } from '../context/ProjectContext';
-import { UserProfile, Department } from '../types';
+import { UserProfile, UserPrivateInfo, Department } from '../types';
 import { Save, Upload, FileText, CheckCircle, Trash2, Bell, BellOff, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
-import { getUserProfileAction, updateUserProfileAction } from '../services/userService';
+import { getUserProfileAction, updateUserProfileAction, getUserPrivateInfoAction, updateUserPrivateInfoAction } from '../services/userService';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getStorage } from 'firebase/storage';
 import { db, auth, storage } from '../services/firebase';
 import { USPA_JOBS } from '../data/uspaRates';
@@ -10,7 +10,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export const UserProfilePage: React.FC = () => {
     const { user, userProfiles, updateUserProfile } = useProject();
-    const [formData, setFormData] = useState<Partial<UserProfile>>({});
+    const [formData, setFormData] = useState<Partial<UserProfile & UserPrivateInfo>>({});
     const [isEditing, setIsEditing] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -32,12 +32,14 @@ export const UserProfilePage: React.FC = () => {
                 if (auth.currentUser) {
                     const data = await getUserProfileAction(auth.currentUser.uid);
                     if (data) {
+                        const privateData = await getUserPrivateInfoAction(auth.currentUser.uid);
                         console.log("Direct Profile Fetch Success:", data);
 
                         // Merge logic: Priority to Direct Fetch
                         const mergedData = {
                             ...existingProfile, // Project context info
-                            ...data,            // Personal private info
+                            ...data,            // Personal public info
+                            ...(privateData || {}), // Personal private info
                             id: user.email // Ensure ID is consistent for updates
                         };
 
@@ -63,9 +65,9 @@ export const UserProfilePage: React.FC = () => {
                             socialSecurityCenterAddress: mergedData.socialSecurityCenterAddress || '',
                             emergencyContactName: mergedData.emergencyContactName || '',
                             emergencyContactPhone: mergedData.emergencyContactPhone || '',
-                            congeSpectacleNumber: mergedData.congeSpectacleNumber || '',
                             lastMedicalVisit: mergedData.lastMedicalVisit || '',
                             isRetired: mergedData.isRetired || false,
+                            congeSpectacleNumber: mergedData.congeSpectacleNumber || '',
                             rib: mergedData.rib,
                             cmbCard: mergedData.cmbCard,
                             idCard: mergedData.idCard,
@@ -112,9 +114,9 @@ export const UserProfilePage: React.FC = () => {
                     socialSecurityCenterAddress: u.socialSecurityCenterAddress || '',
                     emergencyContactName: u.emergencyContactName || '',
                     emergencyContactPhone: u.emergencyContactPhone || '',
-                    congeSpectacleNumber: u.congeSpectacleNumber || '',
                     lastMedicalVisit: u.lastMedicalVisit || '',
                     isRetired: u.isRetired || false,
+                    congeSpectacleNumber: u.congeSpectacleNumber || '',
                     rib: u.rib,
                     cmbCard: u.cmbCard,
                     idCard: u.idCard,
@@ -235,7 +237,21 @@ export const UserProfilePage: React.FC = () => {
                     lastName: formData.lastName || user.name.split(' ').slice(1).join(' ')
                 };
 
-                await updateUserProfileAction(auth.currentUser.uid, finalData);
+                const privateKeys = ['ssn', 'birthPlace', 'birthDate', 'birthDepartment', 'birthCountry', 'nationality', 'socialSecurityCenterAddress', 'taxRate', 'congeSpectacleNumber'];
+                const privateDataToSave: any = {};
+                const publicDataToSave: any = { ...finalData };
+
+                privateKeys.forEach(key => {
+                    if (key in publicDataToSave) {
+                        privateDataToSave[key] = publicDataToSave[key];
+                        delete publicDataToSave[key];
+                    }
+                });
+
+                await updateUserProfileAction(auth.currentUser.uid, publicDataToSave);
+                if (Object.keys(privateDataToSave).length > 0) {
+                    await updateUserPrivateInfoAction(auth.currentUser.uid, privateDataToSave);
+                }
 
                 // Show success modal instead of alert
                 setShowSuccessModal(true);

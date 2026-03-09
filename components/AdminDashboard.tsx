@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { User, Project } from '../types';
-import { fetchAllUsersAction, fetchAllProjectsAction, fetchAllTransactionsAction, ProjectWithOfflineInfo, approveUserAction, rejectUserAction, updateGenericDocumentAction } from '../services/adminService';
+import { fetchAllUsersAction, fetchAllProjectsAction, fetchAllTransactionsAction, ProjectWithOfflineInfo, approveUserAction, rejectUserAction, updateGenericDocumentAction, migrateSensitiveDataAction } from '../services/adminService';
 import { validateTransactionAction, rejectTransactionAction } from '../services/transactionService';
 import { useProject } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +32,7 @@ export const AdminDashboard: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<Partial<User | Project>>({});
     const [resetConfirm, setResetConfirm] = useState("");
+    const [isMigrating, setIsMigrating] = useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -468,9 +469,36 @@ export const AdminDashboard: React.FC = () => {
                                 </ul>
                             </div>
 
+                            <hr className="border-red-900/50" />
+
+                            <div className="space-y-4 pt-4">
+                                <h3 className="text-xl font-bold text-white">Migration de Données (Admin Seulement)</h3>
+                                <p className="text-sm text-slate-400">Ce bouton permet de déplacer les données RH sensibles de l'ancien format vers le nouveau coffre-fort `private_info`. Ouvrez la console du navigateur pour voir les logs pendant l'exécution.</p>
+                                <button
+                                    onClick={async () => {
+                                        if (!window.confirm("Êtes-vous sûr de vouloir migrer toutes les données RH sensibles ?")) return;
+                                        setIsMigrating(true);
+                                        try {
+                                            const resultMsg = await migrateSensitiveDataAction();
+                                            alert(`Migration terminée : ${resultMsg}`);
+                                        } catch (error) {
+                                            alert(`Erreur lors de la migration : ${error instanceof Error ? error.message : String(error)}`);
+                                        } finally {
+                                            setIsMigrating(false);
+                                        }
+                                    }}
+                                    disabled={isMigrating}
+                                    className="w-full bg-blue-900/40 text-blue-400 border border-blue-900/50 hover:bg-blue-900/60 transition-colors py-3 rounded-lg font-bold"
+                                >
+                                    {isMigrating ? 'Migration en cours...' : 'Migrer Données RH'}
+                                </button>
+                            </div>
+
+                            <hr className="border-red-900/50" />
+
                             <div className="space-y-4 pt-4">
                                 <p className="text-slate-400 text-sm">
-                                    Pour confirmer, veuillez taper <span className="font-mono bg-black px-2 py-0.5 rounded text-white select-all">SUPPRIMER-TOUT</span> ci-dessous :
+                                    Pour confirmer la remise à zéro, veuillez taper <span className="font-mono bg-black px-2 py-0.5 rounded text-white select-all">SUPPRIMER-TOUT</span> ci-dessous :
                                 </p>
                                 <input
                                     type="text"

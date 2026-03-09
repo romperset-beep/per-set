@@ -416,14 +416,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         emergencyContactPhone: '',
                         isRetired: false,
                         congeSpectacleNumber: '',
-                        lastMedicalVisit: '',
-                        ssn: '',
-                        birthPlace: '',
-                        birthDate: '',
-                        birthDepartment: '',
-                        birthCountry: '',
-                        nationality: '',
-                        socialSecurityCenterAddress: ''
+                        lastMedicalVisit: ''
                     } as UserProfile);
                 }
 

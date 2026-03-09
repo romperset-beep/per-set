@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useProject } from '../../context/ProjectContext';
 import { useTeam } from '../../context/TeamContext';
-import { Department } from '../../types';
+import { Department, UserPrivateInfo } from '../../types';
+import { getUserPrivateInfoAction } from '../../services/userService';
 import { FileText } from 'lucide-react';
 
 export const DocumentButton = ({ label, hasDoc, url }: { label: string, hasDoc: boolean, url?: string }) => {
@@ -36,7 +37,7 @@ const DetailRow = ({ label, value, className = '' }: any) => (
 );
 
 export const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose: () => void }) => {
-    const { currentDept } = useProject();
+    const { currentDept, user } = useProject();
     const { updateOfflineMember } = useTeam();
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({
@@ -47,6 +48,27 @@ export const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose
         email: profile.email || '',
         phone: profile.phone || ''
     });
+
+    const [privateInfo, setPrivateInfo] = useState<UserPrivateInfo | null>(null);
+
+    const isSuperAdmin = user?.isAdmin;
+    const isSelf = user?.id === profile.id;
+    const isJobAdmin = user?.role?.toLowerCase().includes('administrateur');
+    const canViewSensitiveData = isSuperAdmin || isSelf || isJobAdmin;
+
+    React.useEffect(() => {
+        const fetchPrivateInfo = async () => {
+            if (canViewSensitiveData && !profile.isOffline && profile.id) {
+                try {
+                    const data = await getUserPrivateInfoAction(profile.id);
+                    if (data) setPrivateInfo(data);
+                } catch (e) {
+                    console.log("Private info access denied or failed");
+                }
+            }
+        };
+        fetchPrivateInfo();
+    }, [user, profile, canViewSensitiveData]);
 
     const handleSave = async () => {
         if (!profile.isOffline) return;
@@ -170,10 +192,10 @@ export const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose
                             <section>
                                 <h3 className="text-lg font-bold text-blue-400 mb-4 border-b border-cinema-700/50 pb-2">État Civil & Social</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                                    <DetailRow label="Date de Naissance" value={`${profile.birthDate || ''} à ${profile.birthPlace || ''} (${profile.birthCountry || ''})`} />
-                                    <DetailRow label="Nationalité" value={profile.nationality} />
-                                    <DetailRow label="Numéro Sécu" value={profile.ssn} />
-                                    <DetailRow label="Centre Sécu" value={profile.socialSecurityCenterAddress} />
+                                    <DetailRow label="Date de Naissance" value={canViewSensitiveData ? (privateInfo ? `${privateInfo.birthDate || ''} à ${privateInfo.birthPlace || ''} (${privateInfo.birthCountry || ''})` : '-') : 'Masqué'} />
+                                    <DetailRow label="Nationalité" value={canViewSensitiveData ? (privateInfo?.nationality || '-') : 'Masqué'} />
+                                    <DetailRow label="Numéro Sécu" value={canViewSensitiveData ? (privateInfo?.ssn || '-') : 'Masqué'} />
+                                    <DetailRow label="Centre Sécu" value={canViewSensitiveData ? (privateInfo?.socialSecurityCenterAddress || '-') : 'Masqué'} />
                                 </div>
                             </section>
 
@@ -183,7 +205,7 @@ export const ProfileDetailModal = ({ profile, onClose }: { profile: any, onClose
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                                     <DetailRow label="Contact Urgence" value={profile.emergencyContactName} />
                                     <DetailRow label="Tél Urgence" value={profile.emergencyContactPhone} />
-                                    <DetailRow label="N° Congés Spectacle" value={profile.congeSpectacleNumber} />
+                                    <DetailRow label="N° Congés Spectacle" value={canViewSensitiveData ? (privateInfo?.congeSpectacleNumber || '-') : 'Masqué'} />
                                     <DetailRow label="Dernière Visite Médicale" value={profile.lastMedicalVisit} />
                                     <DetailRow label="Retraité" value={profile.isRetired ? "Oui" : "Non"} />
                                 </div>

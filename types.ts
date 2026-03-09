@@ -471,26 +471,11 @@ export interface UserProfile {
   defaultCommuteDistanceKm?: number;
   greyCardUrl?: string; // Added: URL of uploaded Grey Card
 
-  // Admin Info
-  ssn: string; // Numéro de sécurité sociale
-  birthPlace: string;
-  birthDate: string;
-  birthDepartment: string;
-  birthCountry: string;
-  nationality: string;
-  socialSecurityCenterAddress: string;
-  taxRate?: number; // Added: Taux d'imposition à la source (%)
-
-  // Saved Commute Routes
-  savedRoutes?: SavedRoute[];
-
-  // Emergency Contact
   emergencyContactName: string;
   emergencyContactPhone: string;
 
   // Professional Info
   isRetired: boolean;
-  congeSpectacleNumber: string;
   lastMedicalVisit: string;
 
   // Documents (Base64 or URL)
@@ -503,6 +488,19 @@ export interface UserProfile {
   privacySettings?: {
     contactVisibility: 'TEAM' | 'PRODUCTION'; // Default 'TEAM'
   };
+}
+
+export interface UserPrivateInfo {
+  id?: string;
+  ssn: string; // Numéro de sécurité sociale
+  birthPlace: string;
+  birthDate: string;
+  birthDepartment: string;
+  birthCountry: string;
+  nationality: string;
+  socialSecurityCenterAddress: string;
+  taxRate?: number; // Taux d'imposition à la source (%)
+  congeSpectacleNumber?: string; // N° Congés Spectacles
 }
 
 export interface SavedRoute {

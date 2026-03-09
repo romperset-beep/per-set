@@ -1,4 +1,4 @@
-import { collection, getDocs, query, doc, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, getDocs, query, doc, updateDoc, collectionGroup, setDoc, deleteField } from 'firebase/firestore';
 import { db } from './firebase';
 import { User, Project, Transaction, ConsumableItem } from '../types';
 
@@ -53,4 +53,53 @@ export const updateGenericDocumentAction = async (collectionName: 'users' | 'pro
 export const fetchAllGlobalItemsAction = async (): Promise<ConsumableItem[]> => {
     const itemsSnap = await getDocs(collectionGroup(db, 'items'));
     return itemsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ConsumableItem));
+};
+
+export const migrateSensitiveDataAction = async (): Promise<string> => {
+    try {
+        console.log("Migration started...");
+        const usersQ = query(collection(db, 'users'));
+        const usersSnap = await getDocs(usersQ);
+        console.log(`Found ${usersSnap.size} total users in 'users' collection.`);
+
+        const privateKeys = ['ssn', 'birthPlace', 'birthDate', 'birthDepartment', 'birthCountry', 'nationality', 'socialSecurityCenterAddress', 'taxRate', 'congeSpectacleNumber'];
+        let migratedCount = 0;
+
+        for (const userDoc of usersSnap.docs) {
+            const data = userDoc.data();
+            const privateDataToSave: Record<string, any> = {};
+            const keysToDelete: Record<string, any> = {};
+            let hasPrivateData = false;
+
+            privateKeys.forEach(key => {
+                if (data[key] !== undefined && data[key] !== null && data[key] !== "") {
+                    // Check if it's not an empty string so we don't migrate empty data
+                    privateDataToSave[key] = data[key];
+                    keysToDelete[key] = deleteField();
+                    hasPrivateData = true;
+                }
+            });
+
+            if (hasPrivateData) {
+                console.log(`Migrating data for user ${userDoc.id}:`, privateDataToSave);
+                // 1. Save to private_info/hr_data
+                const privateInfoRef = doc(db, 'users', userDoc.id, 'private_info', 'hr_data');
+                await setDoc(privateInfoRef, privateDataToSave, { merge: true });
+
+                // 2. Delete from root document
+                const userRef = doc(db, 'users', userDoc.id);
+                await updateDoc(userRef, keysToDelete);
+                migratedCount++;
+                console.log(`Successfully migrated user ${userDoc.id}`);
+            } else {
+                console.log(`User ${userDoc.id} has no private data to migrate or it is already migrated.`);
+            }
+        }
+
+        console.log(`Migration finished. Migrated ${migratedCount} profiles.`);
+        return `${migratedCount} profils migrés avec succès.`;
+    } catch (err) {
+        console.error("Migration Error:", err);
+        throw err;
+    }
 };

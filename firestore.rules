@@ -6,6 +6,12 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && request.auth.token.email == 'romperset@gmail.com';
     }
+    function hasHRDataAccess() {
+      let isSuperAdmin = request.auth != null && request.auth.token.email == 'romperset@gmail.com';
+      let userDocRaw = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let isRoleAdmin = userDocRaw != null && userDocRaw.data.get('role', '').matches('(?i).*administrateur.*');
+      return isSuperAdmin || isRoleAdmin;
+    }
     function isAuth() {
       return request.auth != null;
     }
@@ -19,6 +25,11 @@ service cloud.firestore {
       allow read: if isAuth();
       // Only the user themselves or Admin can edit the profile
       allow write: if isOwner(userId) || isAdmin();
+      
+      // Sub-collection for HR and sensitive data
+      match /private_info/{document=**} {
+        allow read, write: if isOwner(userId) || hasHRDataAccess();
+      }
     }
 
     // 2. Projects & Subcollections (Items, Logs, etc.)
