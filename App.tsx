@@ -423,7 +423,7 @@ const AppContent: React.FC = () => {
           // Need to pass currentDept to show correct call time
           // ProjectManager holds the currentDept state, but App.tsx doesn't natively expose it easily unless we lift state up or use Context.
           // Wait, useProject has currentDept!
-          return <DailyCallSheetSummary />;
+          return <DailyCallSheetSummary overrideDepartment={currentDept} />;
         case 'food-donations':
           return <FoodDonationWidget />;
         case 'admin':

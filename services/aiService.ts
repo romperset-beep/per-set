@@ -117,7 +117,9 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             2. Pour "departmentCallTimes", cherche le tableau des convocations (ex: MES, ELEC, MACH, COST...).
             3. Pour "departmentNotes", cherche les instructions spécifiques par département (souvent après un titre en GRAS/MAJUSCULES).
             4. Normalise EXTREMEMENT STRICTEMENT les clés des départements dans "departmentCallTimes" ET "departmentNotes" pour correspondre EXACTEMENT à cette liste (C'EST CRUCIAL) :
-               - "Caméra" (pour CAM, IMAGE, CAM 1, CAM 2)
+               - "Caméra" (pour CAM, IMAGE - heure commune à toutes les caméras)
+               - "Caméra 1" (pour CAM 1, CAMERA 1) - si une heure spécifique à CAM 1 existe
+               - "Caméra 2" (pour CAM 2, CAMERA 2) - si une heure spécifique à CAM 2 existe (souvent décalée)
                - "Lumière" (pour ELEC, ÉLECTRICITÉ, ÉLECTRO)
                - "Machinerie" (pour MACH, MACHINERIE)
                - "Régie" (pour REGIE, RÉGIE)
