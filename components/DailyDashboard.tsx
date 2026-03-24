@@ -73,15 +73,23 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
         return match ? sheet.departmentCallTimes[match] : null;
     };
 
+    // For Caméra department, build separate CAM 1 / CAM 2 times
+    const isCameraDept = effectiveDept && effectiveDept.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').startsWith('camera');
+    const cam1Time = todayCallSheet?.departmentCallTimes?.['Caméra 1']
+        || todayCallSheet?.departmentCallTimes?.['Caméra']
+        || null;
+    const cam2Time = todayCallSheet?.departmentCallTimes?.['Caméra 2'] || null;
+
     // Format Call Time
     const callTimeDisplay = useMemo(() => {
         if (!todayCallSheet) return '--:--';
         if (effectiveDept) {
+            if (isCameraDept && cam1Time) return cam1Time;
             const specificTime = getDepartmentTime(todayCallSheet, effectiveDept);
             if (specificTime) return specificTime;
         }
         return todayCallSheet.callTime || '--:--';
-    }, [todayCallSheet, effectiveDept]);
+    }, [todayCallSheet, effectiveDept, cam1Time, isCameraDept]);
 
     // Helper for Google Maps Link
     const getMapsLink = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -120,17 +128,32 @@ export const DailyDashboard: React.FC<{ overrideDepartment?: string }> = ({ over
                         {/* 1. Title Badge */}
                         <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm">
                             <Clock className="w-3 h-3" />
-                            {effectiveDept && getDepartmentTime(todayCallSheet, effectiveDept)
-                                ? `CONVOCATION ${effectiveDept.toUpperCase()}`
-                                : 'P.A.T GÉNÉRAL'}
+                            {effectiveDept && (isCameraDept ? 'CONVOCATIONS CAMÉRA' : getDepartmentTime(todayCallSheet, effectiveDept) ? `CONVOCATION ${effectiveDept.toUpperCase()}` : 'P.A.T GÉNÉRAL')}
                         </div>
 
-                        {/* 2. Main Time Display */}
-                        <div className="relative z-10">
-                            <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">
-                                {callTimeDisplay}
-                            </span>
-                        </div>
+                        {/* 2. Main Time Display (dual for Caméra) */}
+                        {isCameraDept && (cam1Time || cam2Time) ? (
+                            <div className="flex flex-wrap justify-center gap-8 items-end mt-1">
+                                {cam1Time && (
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-1">CAM 1</span>
+                                        <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">{cam1Time}</span>
+                                    </div>
+                                )}
+                                {cam2Time && (
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-1">CAM 2</span>
+                                        <span className="font-black text-amber-400 tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">{cam2Time}</span>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="relative z-10">
+                                <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">
+                                    {callTimeDisplay}
+                                </span>
+                            </div>
+                        )}
 
                         {/* 3. Stats Row */}
                         <div className="flex flex-wrap justify-center gap-8 items-center w-full max-w-xl px-4 mt-1">

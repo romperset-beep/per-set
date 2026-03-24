@@ -61,7 +61,10 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
 
     // For Caméra department, build separate CAM 1 / CAM 2 times
     const isCameraDept = effectiveDept && effectiveDept.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').startsWith('camera');
-    const cam1Time = todayCallSheet?.departmentCallTimes?.['Caméra 1'] || null;
+    // cam1Time accepts 'Caméra 1' OR plain 'Caméra' (in case AI stored it without a number)
+    const cam1Time = todayCallSheet?.departmentCallTimes?.['Caméra 1']
+        || todayCallSheet?.departmentCallTimes?.['Caméra']
+        || null;
     const cam2Time = todayCallSheet?.departmentCallTimes?.['Caméra 2'] || null;
 
     // Format Call Time (primary display)
