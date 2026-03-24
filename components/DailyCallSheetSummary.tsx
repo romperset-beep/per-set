@@ -4,11 +4,12 @@ import { Clock, MapPin, Utensils, AlertTriangle, CloudRain, FileText, ChevronDow
 
 export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = ({ overrideDepartment }) => {
     const { project, user, callSheets } = useProject();
-    // Use overrideDepartment only if it is explicitly a non-PRODUCTION dept,
-    // otherwise fall back to user's own department. This fixes the mobile issue
-    // where currentDept initializes as 'PRODUCTION' before Firebase loads the user.
-    const effectiveDept = (overrideDepartment && overrideDepartment !== 'PRODUCTION')
-        ? overrideDepartment
+    // Always use user.department for non-production users. This avoids the race
+    // condition where currentDept initializes as 'PRODUCTION' before Firebase
+    // loads the user profile (especially noticeable on mobile).
+    const isProduction = user?.department === 'PRODUCTION';
+    const effectiveDept = isProduction
+        ? (overrideDepartment || user?.department)
         : (user?.department || overrideDepartment);
 
     // Get "Today's" Call Sheet
@@ -22,7 +23,7 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
         return callSheets.find(cs => cs.date === todayStr);
     }, [callSheets]);
 
-    // Helper for fuzzy department matching
+    // Helper for fuzzy department matching (returns the time string)
     const getDepartmentTime = (sheet: any, userDept: string) => {
         if (!sheet || !sheet.departmentCallTimes || !userDept) return null;
         const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
@@ -58,15 +59,22 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
         return match ? sheet.departmentCallTimes[match] : null;
     };
 
-    // Format Call Time
+    // For Caméra department, build separate CAM 1 / CAM 2 times
+    const isCameraDept = effectiveDept && effectiveDept.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').startsWith('camera');
+    const cam1Time = todayCallSheet?.departmentCallTimes?.['Caméra 1'] || null;
+    const cam2Time = todayCallSheet?.departmentCallTimes?.['Caméra 2'] || null;
+
+    // Format Call Time (primary display)
     const callTimeDisplay = useMemo(() => {
         if (!todayCallSheet) return '--:--';
         if (effectiveDept) {
+            // For Caméra, prefer CAM 1 as primary
+            if (isCameraDept && cam1Time) return cam1Time;
             const specificTime = getDepartmentTime(todayCallSheet, effectiveDept);
             if (specificTime) return specificTime;
         }
         return todayCallSheet.callTime || '--:--';
-    }, [todayCallSheet, effectiveDept]);
+    }, [todayCallSheet, effectiveDept, cam1Time, isCameraDept]);
 
     const getMapsLink = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
@@ -100,16 +108,32 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                 <div className="w-full flex flex-col justify-center items-center gap-3 py-2">
                     <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm">
                         <Clock className="w-3 h-3" />
-                        {effectiveDept && getDepartmentTime(todayCallSheet, effectiveDept)
-                            ? `CONVOCATION ${effectiveDept.toUpperCase()}`
-                            : 'P.A.T GÉNÉRAL'}
+                        {effectiveDept && (isCameraDept ? 'CONVOCATIONS CAMÉRA' : getDepartmentTime(todayCallSheet, effectiveDept) ? `CONVOCATION ${effectiveDept.toUpperCase()}` : 'P.A.T GÉNÉRAL')}
                     </div>
 
-                    <div className="relative z-10">
-                        <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">
-                            {callTimeDisplay}
-                        </span>
-                    </div>
+                    {/* If camera dept AND both CAM 1 + CAM 2 exist, show them side by side */}
+                    {isCameraDept && (cam1Time || cam2Time) ? (
+                        <div className="flex flex-wrap justify-center gap-6 items-end mt-1">
+                            {cam1Time && (
+                                <div className="flex flex-col items-center">
+                                    <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-1">CAM 1</span>
+                                    <span className="font-black text-white tracking-tighter text-6xl drop-shadow-2xl">{cam1Time}</span>
+                                </div>
+                            )}
+                            {cam2Time && (
+                                <div className="flex flex-col items-center">
+                                    <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold mb-1">CAM 2</span>
+                                    <span className="font-black text-amber-400 tracking-tighter text-6xl drop-shadow-2xl">{cam2Time}</span>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="relative z-10">
+                            <span className="font-black text-white tracking-tighter text-7xl md:text-8xl drop-shadow-2xl">
+                                {callTimeDisplay}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="flex flex-wrap justify-center gap-8 items-center w-full max-w-xl px-4 mt-1">
                         {(effectiveDept &&
@@ -129,6 +153,7 @@ export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = 
                             </div>
                         )}
                     </div>
+
 
                     <a
                         href={todayCallSheet.url}
