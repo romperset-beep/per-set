@@ -4,7 +4,12 @@ import { Clock, MapPin, Utensils, AlertTriangle, CloudRain, FileText, ChevronDow
 
 export const DailyCallSheetSummary: React.FC<{ overrideDepartment?: string }> = ({ overrideDepartment }) => {
     const { project, user, callSheets } = useProject();
-    const effectiveDept = overrideDepartment || user?.department;
+    // Use overrideDepartment only if it is explicitly a non-PRODUCTION dept,
+    // otherwise fall back to user's own department. This fixes the mobile issue
+    // where currentDept initializes as 'PRODUCTION' before Firebase loads the user.
+    const effectiveDept = (overrideDepartment && overrideDepartment !== 'PRODUCTION')
+        ? overrideDepartment
+        : (user?.department || overrideDepartment);
 
     // Get "Today's" Call Sheet
     const todayCallSheet = useMemo(() => {
