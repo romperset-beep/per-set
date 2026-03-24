@@ -1385,9 +1385,19 @@ export const TimesheetWidget: React.FC = () => {
                                     <div key={key} className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden">
                                         <div className="bg-cinema-900/50 px-6 py-4 border-b border-cinema-700 flex justify-between items-center">
                                             <h3 className="font-bold text-white uppercase tracking-wider text-sm">{week.label}</h3>
-                                            <span className="bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30">
-                                                {formatHours(week.totalHours)}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => downloadCSV(week.logs, `Heures_${week.label.replace(/[^a-zA-Z0-9]/g, '_')}`)}
+                                                    disabled={isDownloading}
+                                                    className="flex items-center gap-2 px-3 py-1 bg-cinema-700 hover:bg-cinema-600 border border-cinema-600 rounded-lg text-xs font-medium text-slate-300 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isDownloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                                                    Exporter
+                                                </button>
+                                                <span className="bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30">
+                                                    {formatHours(week.totalHours)}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left border-collapse">

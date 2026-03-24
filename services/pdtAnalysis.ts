@@ -74,11 +74,10 @@ export const analyzePDTText = (fullText: string): PDTAnalysisResult => {
 
     // 1. Detect "Nth day of shooting"
     // Debug showed: "6\nè\nme jour de tournage"
-    // Previous loose regex matched "11" from "17.11.2024" because it was close to "jour".
-    // New Regex: Matches number, then optional suffix (allowing split like è \n me), then "jour".
-    // Rejects random text like ".2024".
+    // Also matched "J2 / 18" or "Jour 2/18" commonly found in short call sheet headers
     const startDayRegex = /(\d+)\s*(?:(?:[eè°]\s*[rm]?\s*e)|(?:(?:er|ème|eme|°|e)))?\s*jour\s*(?:de)?\s*tournage/gi;
-    const matches = [...fullText.matchAll(startDayRegex)];
+    const shortDayRegex = /J(?:our)?\s*(\d+)\s*\/\s*\d+/gi;
+    const matches = [...fullText.matchAll(startDayRegex), ...fullText.matchAll(shortDayRegex)];
 
     let startDayOffset = 0;
     let startDayInfo = "Début de planning standard (Jour 1 supposé)";

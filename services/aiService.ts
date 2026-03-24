@@ -114,9 +114,21 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
 
             Règles Importantes:
             1. Si une info est introuvable, laisse-la vide ("") ou null.
-            2. Pour "departmentCallTimes", cherche le tableau des convocations.
+            2. Pour "departmentCallTimes", cherche le tableau des convocations (ex: MES, ELEC, MACH, COST...).
             3. Pour "departmentNotes", cherche les instructions spécifiques par département (souvent après un titre en GRAS/MAJUSCULES).
-            4. Normalise les clés des départements (ex: "M.E.S" -> "Mise en Scène").
+            4. Normalise EXTREMEMENT STRICTEMENT les clés des départements dans "departmentCallTimes" ET "departmentNotes" pour correspondre EXACTEMENT à cette liste (C'EST CRUCIAL) :
+               - "Caméra" (pour CAM, IMAGE, CAM 1, CAM 2)
+               - "Lumière" (pour ELEC, ÉLECTRICITÉ, ÉLECTRO)
+               - "Machinerie" (pour MACH, MACHINERIE)
+               - "Régie" (pour REGIE, RÉGIE)
+               - "Décoration" (pour DECO, DÉCORATION)
+               - "Mise en scène" (pour MES, MISE EN SCENE, 1er MES, 2e MES, 3e MES)
+               - "Son" (pour SON)
+               - "Costume" (pour COST, COSTUMES, HMC)
+               - "Maquillage" (pour MAQ, MAQUILLAGE, HMC)
+               - "Coiffure" (pour COIFF, COIFFURE, HMC)
+               - "Accessoire" (pour ACCESS, ACCESSOIRES)
+               (Exemple: Si tu vois une note pour 'IMAGE', mets-la sous la clé "Caméra". Pour 'ACCESSOIRES', utilise "Accessoire" sans 's'.)
             5. Déduis l'année si nécessaire (probablement ${new Date().getFullYear()}).
         `;
 
