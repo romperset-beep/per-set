@@ -117,9 +117,9 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
             2. Pour "departmentCallTimes", cherche le tableau des convocations (ex: MES, ELEC, MACH, COST...).
             3. Pour "departmentNotes", cherche les instructions spécifiques par département (souvent après un titre en GRAS/MAJUSCULES).
             4. Normalise EXTREMEMENT STRICTEMENT les clés des départements dans "departmentCallTimes" ET "departmentNotes" pour correspondre EXACTEMENT à cette liste (C'EST CRUCIAL) :
-               - "Caméra" (pour CAM, IMAGE - heure commune à toutes les caméras)
+               - "Caméra" (UNIQUEMENT pour CAM, IMAGE - heure commune)
                - "Caméra 1" (pour CAM 1, CAMERA 1) - si une heure spécifique à CAM 1 existe
-               - "Caméra 2" (pour CAM 2, CAMERA 2) - si une heure spécifique à CAM 2 existe (souvent décalée)
+               - "Caméra 2" (pour CAM 2, CAMERA 2) - si une heure spécifique CAM 2 existe ou si les notes précisent une convocation décalée (ex: "CAM 2 décalée de 30 min" → calcule l'heure réelle = heure_CAM + 30 min)
                - "Lumière" (pour ELEC, ÉLECTRICITÉ, ÉLECTRO)
                - "Machinerie" (pour MACH, MACHINERIE)
                - "Régie" (pour REGIE, RÉGIE)
@@ -130,7 +130,7 @@ export const analyzeCallSheetPDF = async (file: File): Promise<Partial<CallSheet
                - "Maquillage" (pour MAQ, MAQUILLAGE, HMC)
                - "Coiffure" (pour COIFF, COIFFURE, HMC)
                - "Accessoire" (pour ACCESS, ACCESSOIRES)
-               (Exemple: Si tu vois une note pour 'IMAGE', mets-la sous la clé "Caméra". Pour 'ACCESSOIRES', utilise "Accessoire" sans 's'.)
+               - "Photos de jeu" (pour PHOTOS DE JEU / INFOGRAPHIE, INFOGRAPHIE, MAKING-OF, STILL) - ATTENTION: NE PAS confondre avec "IMAGE" (département caméra). Ce sont deux choses DISTINCTES.
             5. Déduis l'année si nécessaire (probablement ${new Date().getFullYear()}).
         `;
 
