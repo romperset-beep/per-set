@@ -4,7 +4,7 @@ import { useMarketplace } from '../context/MarketplaceContext';
 import { generateEcoImpactReport } from '../services/geminiService';
 import { ImpactMetrics, SurplusAction, EcoprodCriterion, CarbonContext } from '../types';
 import { Loader2, Leaf, Share2, Award, Building, DollarSign, PackageOpen, ShoppingBag, CheckSquare, Info, ShieldCheck, Settings, X } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { ECOPROD_CRITERIA_RAW, ECOPROD_CRITERIA } from '../data/ecoprodCriteria';
 import html2canvas from 'html2canvas';
 // import { jsPDF } from 'jspdf'; // Removed for dynamic import
@@ -281,6 +281,29 @@ export const ImpactReport: React.FC = () => {
     const aiScore = metrics?.sustainabilityScore || 0;
     const isAuditActive = auditScore !== null;
     const displayScore = isAuditActive ? auditScore : aiScore;
+
+    // Calculate Radar Data
+    const radarData = ECOPROD_CRITERIA_RAW.map(category => {
+        let earnedPoints = 0;
+        let totalPoints = 0;
+        category.criteria.forEach(c => {
+            const weight = c.impact === 'High' ? 3 : c.impact === 'Medium' ? 2 : 1;
+            totalPoints += weight;
+            if (project.ecoprodChecklistDetailed?.[c.id]?.status === 'done' || project.ecoprodChecklist?.[c.id]) {
+                earnedPoints += weight;
+            }
+        });
+        const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+        
+        // Clean up category name for display (e.g. "A. Production & Engagement RSE" -> "Production")
+        const shortName = category.category.split('.')[1]?.trim().split(' ')[0] || category.category;
+
+        return {
+            subject: shortName,
+            score: score,
+            fullMark: 100,
+        };
+    });
 
     const handleToggleCriterion = async (id: string, current: boolean) => {
         try {
@@ -830,6 +853,27 @@ export const ImpactReport: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* --- Nouveau Graphique Ecoprod Radial --- */}
+                                <div className="bg-cinema-800 rounded-xl border border-cinema-700 p-6">
+                                    <div className="mb-4">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <ShieldCheck className="h-5 w-5 text-emerald-400" /> Profil Label Ecoprod
+                                        </h3>
+                                        <p className="text-sm text-slate-400">Score de couverture par catégorie d'impact.</p>
+                                    </div>
+                                    <div className="h-80 w-full bg-cinema-900/50 rounded-lg p-2 border border-cinema-700">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                                                <PolarGrid stroke="#334155" />
+                                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10 }} />
+                                                <Radar name="Couverture Ecoprod" dataKey="score" stroke="#34d399" fill="#10b981" fillOpacity={0.4} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff', fontSize: '12px' }} itemStyle={{ color: '#10b981', fontWeight: 'bold' }} formatter={(value: number) => [`${value}%`, 'Score de couverture']} />
+                                            </RadarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
 
                                 <div className="bg-cinema-800 rounded-xl border border-cinema-700 overflow-hidden col-span-full">
                                     <div className="bg-cinema-700/40 px-6 py-4 border-b border-cinema-700">

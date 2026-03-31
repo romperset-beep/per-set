@@ -218,6 +218,12 @@ export interface Project {
   mealChoices?: CrewMealChoice[]; // Added for crew selections
   cateringMode?: 'CANTINE' | 'TRAITEUR'; // Catering mode preference
   weekMapping?: Record<string, string>; // Maps "W42-2023" -> "Week 1 (Shooting)"
+  // RSE / Ecoprod
+  ecoprodChecklistDetailed?: Record<string, EcoprodChecklistItem>; // criterionId -> item
+  ecoprodJustificatifs?: Record<string, EcoprodJustificatif[]>; // criterionId -> list
+  mobilityLogs?: MobilityLog[];
+  wasteLogs?: WasteLog[];
+  trainingRecords?: TrainingRecord[];
 }
 
 export interface ReinforcementDetail {
@@ -359,6 +365,69 @@ export interface EcoprodCriterion {
   label: string;
   impact: 'High' | 'Medium' | 'Low';
   level?: 1 | 2 | 3;
+}
+
+export interface EcoprodChecklistItem {
+  criterionId: string;
+  status: 'not_started' | 'in_progress' | 'done' | 'na';
+  assignedTo?: string; // userId
+  assignedToName?: string; // display name
+  comment?: string;
+  updatedAt: string; // ISO
+  updatedBy?: string;
+}
+
+export interface EcoprodJustificatif {
+  criterionId: string;
+  fileUrl: string;
+  fileName: string;
+  fileType?: string; // 'pdf' | 'image' | 'doc'
+  status: 'missing' | 'provided' | 'validated';
+  uploadedAt: string; // ISO
+  uploadedBy: string;
+  notes?: string;
+}
+
+export interface MobilityLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  userId: string;
+  userName: string;
+  department: Department | 'PRODUCTION';
+  origin: string;
+  destination: string;
+  vehicleType: 'AVION' | 'TRAIN' | 'VOITURE_THERMIQUE' | 'VOITURE_HYBRIDE' | 'VOITURE_ELECTRIQUE' | 'METRO_BUS' | 'VELO' | 'AUTRE';
+  distanceKm: number;
+  passengers?: number; // For carpooling
+  co2Kg: number; // Calculated
+  isCarpool?: boolean;
+  notes?: string;
+}
+
+export interface WasteLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  location?: string; // Lieu de tournage
+  submittedBy: string;
+  // Volumes in bags or kg
+  recyclable?: number; // Papier, carton, plastique
+  glass?: number;
+  organic?: number; // Alimentaire / compost
+  general?: number; // Tout-venant
+  deee?: number; // Piles, écrans (count)
+  unit: 'SACS' | 'KG';
+  notes?: string;
+}
+
+export interface TrainingRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  department: Department | 'PRODUCTION';
+  type: 'SENSIBILISATION' | 'FORMATION';
+  organisme?: string;
+  date: string; // YYYY-MM-DD
+  notes?: string;
 }
 
 export enum ExpenseStatus {

@@ -14,13 +14,15 @@ import {
   ShieldCheck,
   Utensils,
   Clock,
-  Truck, // Added
-  Globe, // Added
-  Zap, // Added
-  ClipboardList, // Added
-  BarChart2, // Added
-  CalendarRange, // Added
-  HeartHandshake // Added
+  Truck, 
+  Globe, 
+  ClipboardList, 
+  CalendarRange, 
+  HeartHandshake,
+  CheckSquare, 
+  FolderCheck,
+  BarChart2,
+  Zap
 } from 'lucide-react';
 import { useProject } from '../context/ProjectContext';
 import { useLogistics } from '../context/LogisticsContext'; // Restored
@@ -87,6 +89,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
         { id: 'local_marketplace', label: "Ventes à l'équipe", icon: ShoppingBag, allowedDepts: 'ALL' },
         { id: 'donations', label: 'Économie Circulaire', icon: Recycle },
         { id: 'report', label: 'Rapport RSE+', icon: FileText },
+        { id: 'ecoprod-checklist', label: 'Checklist Ecoprod', icon: CheckSquare, allowedDepts: ['PRODUCTION'] },
+        { id: 'justificatifs-ecoprod', label: 'Justificatifs Label', icon: FolderCheck, allowedDepts: ['PRODUCTION'] },
       ]
     },
     {
@@ -120,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, onCl
     if (currentDept === 'PRODUCTION') return true;
 
     // 3. Define Restricted Items Groups
-    const prodOnlyItems = ['inter_marketplace', 'donations', 'report'];
+    const prodOnlyItems = ['inter_marketplace', 'donations', 'report', 'ecoprod-checklist', 'justificatifs-ecoprod'];
     const prodAndRegieItems = ['orders', 'food-donations'];
 
     // 4. Check Restrictions

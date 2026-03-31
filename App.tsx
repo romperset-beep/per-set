@@ -58,6 +58,8 @@ const DepartmentOrders = lazyImport(() => import('./components/DepartmentOrders'
 const SuperAdminStats = lazyImport(() => import('./components/SuperAdminStats').then(m => ({ default: m.SuperAdminStats })));
 const PDTManager = lazyImport(() => import('./components/PDTManager').then(m => ({ default: m.PDTManager })));
 const FoodDonationWidget = lazyImport(() => import('./components/FoodDonationWidget').then(m => ({ default: m.FoodDonationWidget })));
+const EcoprodChecklist = lazyImport(() => import('./components/EcoprodChecklist').then(m => ({ default: m.EcoprodChecklist })));
+const JustificatifsEcoprod = lazyImport(() => import('./components/JustificatifsEcoprod').then(m => ({ default: m.JustificatifsEcoprod })));
 
 import { BetaTestBadge } from './components/BetaTestBadge';
 
@@ -432,6 +434,10 @@ const AppContent: React.FC = () => {
           return <SuperAdminStats />;
         case 'my-lists': // Added route for Centralized Lists
           return <MyListsWidget />;
+        case 'ecoprod-checklist':
+          return <EcoprodChecklist />;
+        case 'justificatifs-ecoprod':
+          return <JustificatifsEcoprod />;
 
         default:
           return <ProjectManager activeTab={activeTab} setActiveTab={setActiveTab} />;

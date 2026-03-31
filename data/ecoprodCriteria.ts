@@ -1,6 +1,133 @@
 import { EcoprodCriterion } from "../types";
 
 export const ECOPROD_CRITERIA_RAW = [
+    // ─── A. PRODUCTION & ENGAGEMENT ───────────────────────────────────────────
+    {
+        "category": "A. Production & Engagement RSE",
+        "criteria": [
+            {
+                "id": "A1",
+                "label": "Avez-vous rédigé et diffusé une note d'intention RSE auprès de vos équipes ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "A2",
+                "label": "Avez-vous désigné un référent RSE au sein de l'équipe de production ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "A3",
+                "label": "Avez-vous inclus une clause RSE dans les contrats avec vos prestataires et partenaires ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "A4",
+                "label": "Avez-vous réalisé un bilan carbone prévisionnel et définitif du projet ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "A5",
+                "label": "Avez-vous mis en place une démarche d'amélioration continue RSE sur l'ensemble des projets de la société ?",
+                "impact": "High",
+                "level": 1
+            }
+        ]
+    },
+    // ─── C. ÉDITORIAL ─────────────────────────────────────────────────────────
+    {
+        "category": "C. Éditorial & Éco-réalisation",
+        "criteria": [
+            {
+                "id": "C1",
+                "label": "Avez-vous réalisé une lecture environnementale du scénario pour identifier les points de vigilance ?",
+                "impact": "Medium",
+                "level": 2
+            },
+            {
+                "id": "C2",
+                "label": "Avez-vous mis en place des mesures d'éco-réalisation lors du tournage (éviter destructions, limiter effets polluants) ?",
+                "impact": "Medium",
+                "level": 2
+            },
+            {
+                "id": "C3",
+                "label": "Avez-vous sensibilisé le réalisateur et l'équipe artistique aux enjeux environnementaux liés au contenu créatif ?",
+                "impact": "Low",
+                "level": 3
+            }
+        ]
+    },
+    // ─── E. LIEUX DE TOURNAGE ─────────────────────────────────────────────────
+    {
+        "category": "E. Lieux de Tournage",
+        "criteria": [
+            {
+                "id": "E1",
+                "label": "Avez-vous privilégié des lieux de tournage accessibles et limitant les déplacements motorisés ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "E2",
+                "label": "Avez-vous mis en place des mesures de protection des milieux naturels sur les lieux de tournage en extérieur ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "E3",
+                "label": "Avez-vous informé les équipes des règles de préservation des espaces naturels utilisés ?",
+                "impact": "Medium",
+                "level": 2
+            },
+            {
+                "id": "E4",
+                "label": "Avez-vous remis en état les lieux naturels utilisés après le tournage ?",
+                "impact": "High",
+                "level": 1
+            }
+        ]
+    },
+    // ─── H. DÉPLACEMENTS ──────────────────────────────────────────────────────
+    {
+        "category": "H. Déplacements & Mobilité",
+        "criteria": [
+            {
+                "id": "H1",
+                "label": "Avez-vous établi un plan de mobilité pour réduire les émissions de GES liées aux déplacements ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "H2",
+                "label": "Avez-vous favorisé le covoiturage ou les transports collectifs pour les déplacements de l'équipe ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "H3",
+                "label": "Avez-vous utilisé des véhicules à faibles émissions (électrique, hybride, hydrogène) pour les transports de production ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "H4",
+                "label": "Avez-vous évité ou compensé les déplacements en avion lorsqu'une alternative ferroviaire existait ?",
+                "impact": "High",
+                "level": 1
+            },
+            {
+                "id": "H5",
+                "label": "Avez-vous calculé et suivi les émissions CO2 liées aux déplacements de la production ?",
+                "impact": "Medium",
+                "level": 2
+            }
+        ]
+    },
+
     {
         "category": "Gouvernance RSE",
         "criteria": [
